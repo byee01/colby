@@ -7,7 +7,8 @@ Planning and documentation only. No code yet.
 |---|---|
 | [01-protocol-notes.md](01-protocol-notes.md) | BLE facts the app depends on, pulled from the upstream spec |
 | [02-api-design.md](02-api-design.md) | Internal API: layers, domain model, codec, transport, commands, history, alerts |
-| [03-roadmap.md](03-roadmap.md) | Milestones, estimates, risks, open questions |
+| [03-roadmap.md](03-roadmap.md) | Milestones, estimates, risks, decisions log |
+| [04-release-and-beta.md](04-release-and-beta.md) | TestFlight / package flight path, CI, crash reporting, release checklist |
 
 ## Decisions so far
 
@@ -25,6 +26,8 @@ Planning and documentation only. No code yet.
 | Probes | Design for up to 8 at once (probe ID range 1–8). |
 | Background | Lives in menu bar (macOS) / system tray (Windows) when the window is closed; alerts keep firing. Start at login is opt-in, off by default. |
 | History | Keep everything until the user deletes it. Export deferred. |
+| Beta | macOS TestFlight (internal → external). Windows Microsoft Store package flights. See 04. |
+| Crash reporting | Store-provided only: Xcode Organizer / TestFlight, Partner Center Health. No third-party SDK. |
 | UX | Deferred. |
 
 ## Upstream sources (primary)

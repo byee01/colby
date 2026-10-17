@@ -24,7 +24,7 @@ Estimates are for one experienced developer, in weeks. They assume the hardware 
 | M4 | MeatNet | NodeLink, merge rules, ConnectionPolicy | Probe out of Mac range but in Display range still updates + backfills via node | 2 |
 | M5 | Prediction + commands | PredictionPresenter, Commands | Countdown matches Display within ±15 s over a full cook; set prediction/alarms/silence confirmed via status | 1.5 |
 | M6 | Alerts | AlertEngine, rules, sinks, keep-awake | Each rule type fires/clears per fixture tests; alarm loops until ack; Mac stays awake during cook | 1.5 |
-| M7 | Minimal UI + Store packaging | Placeholder UI over the facade (real UX later), menu bar extra, opt-in login item, sandbox, demo mode, App Store Connect + TestFlight | TestFlight build runs a cook end to end with the window closed | 2 |
+| M7 | Minimal UI + Store packaging | Placeholder UI over the facade (real UX later), menu bar extra, opt-in login item, sandbox, demo mode, MetricKit logging, App Store Connect + TestFlight CI (04 §2) | TestFlight build runs a cook end to end with the window closed | 2 |
 | | **macOS total** | | | **~12.5** |
 
 ## Milestones: Windows
@@ -38,7 +38,7 @@ The codec, stores, presenter and alert engine are re-implemented in C# against t
 | W3 | Direct link, history, SQLite | 1.5 |
 | W4 | MeatNet | 1 |
 | W5 | Prediction, commands, alerts, keep-awake, toasts | 1.5 |
-| W6 | Minimal UI, tray icon, opt-in startupTask, MSIX + Partner Center submission | 2 |
+| W6 | Minimal UI, tray icon, opt-in startupTask, MSIX, private-audience submission, package flights (04 §3) | 2 |
 | | **Windows total** | **~8.5** |
 
 Real UX design and build is not included. Budget it separately once the UX phase starts.
@@ -72,10 +72,8 @@ Real UX design and build is not included. Budget it separately once the UX phase
 | 6 | Window closed | Stay resident in menu bar / tray; start at login opt-in |
 | 7 | Name | "Colby - Desktop monitor for Combustion thermometers" |
 | 8 | Pricing | Free |
+| 9 | Notify Combustion before submission | No |
+| 10 | Crash reporting | Store-provided only (Organizer/TestFlight, Partner Center Health) |
+| 11 | Beta path | TestFlight (macOS), package flights (Windows); see 04 |
 
-## Open questions
-
-| # | Question |
-|---|---|
-| 1 | Notify Combustion (`hello@combustion.inc`) before Store submission? Not required for MIT code use; trademark use is nominative. |
-| 2 | Telemetry / crash reporting: none, or Store-provided only? |
+No open questions. Next phase: UX.
