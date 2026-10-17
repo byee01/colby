@@ -56,8 +56,10 @@ Per build:
 
 | Job | Runner | Steps |
 |---|---|---|
-| `mac-test` | `macos-latest` | `swift test` (codec + core vs `spec/fixtures`) |
-| `win-test` | `windows-latest` | `dotnet test` (same fixtures) |
+| `mac-test` | `macos-latest` | `swift test` (codec + core vs `spec/fixtures`); emit traces for `spec/replays` |
+| `win-test` | `windows-latest` | `dotnet test` (same fixtures); emit traces |
+| `parity` | `ubuntu-latest`, needs both | Diff Swift vs C# traces and golden traces (05 §3) |
+| `nightly` | both, scheduled | Long replays + 8-probe soak (05 layers 5–6) |
 | `mac-beta` | `macos-latest`, on tag | archive → export → upload to TestFlight → assign to `Internal` |
 | `win-beta` | `windows-latest`, on tag | build MSIX upload → submit to `internal` flight |
 | Manual promote | workflow_dispatch | macOS: add build to `Beta` group / submit for review. Windows: move to `beta` flight / public submission |

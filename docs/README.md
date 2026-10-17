@@ -9,6 +9,7 @@ Planning and documentation only. No code yet.
 | [02-api-design.md](02-api-design.md) | Internal API: layers, domain model, codec, transport, commands, history, alerts |
 | [03-roadmap.md](03-roadmap.md) | Milestones, estimates, risks, decisions log |
 | [04-release-and-beta.md](04-release-and-beta.md) | TestFlight / package flight path, CI, crash reporting, release checklist |
+| [05-test-strategy.md](05-test-strategy.md) | Test layers, parity traces, replays, hardware matrix, emulator rig |
 
 ## Decisions so far
 

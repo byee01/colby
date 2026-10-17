@@ -449,7 +449,40 @@ public interface ICommands
 }
 ```
 
-## 15. Code layout
+## 15. Clock (injectable time)
+
+Every component that reads time or sets a timer takes a `Clock`: PredictionPresenter (200 ms ticks, 15 s stale), AlertEngine (sustain, snooze, `probeOffline`), UartClient (timeouts), ConnectionPolicy (backoff), ProbeStore (10 s source drop, 10 Hz coalescing), HistoryStore (anchors).
+
+```
+protocol/interface Clock
+  now() -> time                       # wall clock (UTC)
+  monotonic() -> duration             # for intervals; never jumps
+  sleep(duration) async               # cancellable
+  timer(every: duration) -> stream<tick>
+```
+
+| Impl | Use |
+|---|---|
+| `SystemClock` | App. Swift: `ContinuousClock` + `Date`. C#: `TimeProvider.System`. |
+| `TestClock` | Tests and replays. Time only moves on `advance(by:)`; timers fire in order, deterministically. C#: `FakeTimeProvider`. |
+
+No component calls `Date()`, `DateTime.Now`, `Timer`, `Task.sleep`, or `Task.Delay` directly. Enforce with a lint rule (SwiftLint custom rule; Roslyn banned-API analyzer).
+
+## 16. RecordingTransport
+
+Decorator over any `BleTransport` that writes every advertisement, notification, write, connect, disconnect, and state change to a replay file (format: 05 §4). `SimulatedTransport` replays that file.
+
+```
+RecordingTransport(inner: BleTransport, sink: ReplayWriter)
+diagnostics.startRecording() -> RecordingHandle
+diagnostics.stopRecording(handle) -> file URL       # user can share it from the diagnostics view
+```
+
+- Off by default. Started from a "Record session" button in diagnostics.
+- File stays on device; the user chooses to share it (e.g. attach to TestFlight feedback). No upload.
+- Captures from beta testers become regression replays in `spec/replays/`.
+
+## 17. Code layout
 
 ```
 colby/
