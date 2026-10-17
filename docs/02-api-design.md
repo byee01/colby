@@ -61,6 +61,7 @@ ProbeSnapshot
   overheating: Set<SensorIndex>
   prediction: PredictionStatus?  # nil if only advertisement data has been seen
   alarms: AlarmConfig?           # nil until a full status has been received
+  foodSafe: FoodSafe?            # read-only in v1; nil until a full status has been received
   session: SessionInfo?          # sessionId, samplePeriod, logRange(min,max)
   link: LinkInfo                 # see below
   receivedAt: time
@@ -89,6 +90,16 @@ Alarm
   temperature: °C
   tripped: bool                  # read-only
   alarming: bool                 # read-only; false after silence
+
+FoodSafe                         # decoded from Food Safe Data + Food Safe Status; no commands in v1
+  mode: simplified | integrated
+  product: u16                   # enum differs by mode; map to label in UI
+  serving: servedImmediately | cookedAndChilled
+  thresholdTemp, zValue, referenceTemp, dValue: double   # integrated only
+  targetLogReduction: double
+  state: notSafe | safe | safetyImpossible
+  logReduction: double           # 0 in simplified mode
+  secondsAboveThreshold: u16
 
 SessionInfo
   sessionId: u32                 # 0 = unknown
@@ -238,15 +249,16 @@ Merge rules (one probe, many sources):
 series(session: SessionKey) -> observable<TemperatureSeries>
 sessions(serial?) -> [SessionSummary]          # start, end, peak core, setpoint, sample count
 backfill(session) async                        # fills gaps via Read Logs
-export(session, format: csv) -> file
-delete(session)
+delete(session)                                # retention: keep all until the user deletes
+# export(session, format) deferred past v1
 ```
 - Records keyed by `(serial, sessionId, seq)`. Insert is idempotent.
 - On connect: read `logRange`, request missing ranges in chunks of 128 records (tune on device), newest first so the graph fills from the right.
 - Live records: each status carries `logRange.max`; when it advances, fetch the new seqs (direct or via node).
 - **Time derivation**: logs have no timestamps. On each status, record anchor `(seq = logRange.max, time = receivedAt)`. `time(seq) = anchorTime − (anchorSeq − seq) × samplePeriod`. Keep the latest anchor per session; recompute on read, not on write.
 - `TemperatureSeries` exposes `samples` plus downsampled views for long cooks: `downsampled(maxPoints)` using min/max per bucket so spikes stay visible.
-- Storage: SQLite. macOS: GRDB or SQLite via `SQLite3`. Windows: `Microsoft.Data.Sqlite`. Same schema on both (§9).
+- Storage: SQLite. macOS: GRDB or SQLite via `SQLite3`. Windows: `Microsoft.Data.Sqlite`. Same schema on both (§11).
+- DB location: macOS sandbox container `~/Library/Containers/<bundle-id>/Data/Library/Application Support/`; Windows `ApplicationData.Current.LocalFolder`. Both come from the platform API, never hard-coded.
 
 ## 7. PredictionPresenter
 Input: `PredictionStatus` + status `seq` per probe. Output: `observable<PredictionView>`.
@@ -381,6 +393,21 @@ CombustionApp
   diagnostics: observable<DiagnosticsSnapshot>   # links, RSSI, hop counts, UART error counts, node heartbeat topology
   demoMode: bool                                 # SimulatedTransport replaying a recorded cook
 ```
+
+Capacity target: 8 probes at once, across 1 MeatNet network. Stores, alert engine, and downsampling are sized and tested for 8 concurrent sessions.
+
+## 13a. App host lifecycle
+
+The core runs as long as the app process runs, not as long as a window is open.
+
+| | macOS | Windows |
+|---|---|---|
+| Resident UI | `MenuBarExtra` (SwiftUI); app keeps running with no windows | Tray icon (`H.NotifyIcon.WinUI` or Win32 `Shell_NotifyIcon`); closing the window hides it |
+| Start at login (opt-in, off by default) | `SMAppService.mainApp.register()` | MSIX `windows.startupTask` extension, enabled via `StartupTask.RequestEnableAsync()` |
+| Quit | Menu bar "Quit" stops core and releases keep-awake | Tray "Exit" does the same |
+| Store constraints | Sandbox; Bluetooth entitlement; usage string must explain why | `bluetooth` capability; startupTask must be user-enabled |
+
+The facade exposes `isResidentWithoutWindow` so the UI can show a one-time hint that the app is still running in the menu bar/tray.
 
 ## 14. Swift and C# shape (sketch)
 

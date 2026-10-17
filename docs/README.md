@@ -17,6 +17,14 @@ Planning and documentation only. No code yet.
 | Devices v1 | Predictive Probe direct, plus probes relayed by MeatNet nodes (Display/Timer, Booster/Charger). |
 | Control v1 | Read everything. Write: set prediction, set high/low alarms, silence alarms. |
 | Alerts v1 | Desktop notification + sound. App-side custom rules in addition to probe alarms. No phone push/webhooks. |
+| Food safe v1 | Read-only display. Configuration stays in the Combustion phone app. |
+| Min OS | macOS 14+, Windows 11. |
+| Distribution | Mac App Store only (sandboxed). Microsoft Store only (MSIX). |
+| Pricing | Free. No in-app purchase code. |
+| Name | "Colby - Desktop monitor for Combustion thermometers". Own name, no Combustion logo, no claim of official status. |
+| Probes | Design for up to 8 at once (probe ID range 1–8). |
+| Background | Lives in menu bar (macOS) / system tray (Windows) when the window is closed; alerts keep firing. Start at login is opt-in, off by default. |
+| History | Keep everything until the user deletes it. Export deferred. |
 | UX | Deferred. |
 
 ## Upstream sources (primary)
