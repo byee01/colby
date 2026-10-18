@@ -52,6 +52,8 @@ struct PredictionSmoother {
     static let maxSeconds: UInt32 = 4 * 3600
     static let countdownLimit: UInt32 = 300
     static let roundTo = 15.0
+    /// Dates near 2^31 s resolve to ~0.2 µs; a tick that lands this close to a deadline counts as on it.
+    static let slack = 0.001
 
     let statusPeriod: TimeInterval
     private(set) var status: PredictionStatus?
@@ -67,6 +69,9 @@ struct PredictionSmoother {
     var isRamping: Bool { ramp != nil }
 
     mutating func ingest(_ s: PredictionStatus, seq: UInt32, at now: Date) {
+        // Bring the countdown up to this instant first, so a new ramp starts from what is on screen even if a
+        // timer tick has not been delivered yet.
+        tick(at: now)
         status = s
         lastStatusAt = now
         if s.state == .removalPredictionDone {
@@ -98,14 +103,14 @@ struct PredictionSmoother {
 
     mutating func tick(at now: Date) {
         guard let r = ramp else { return }
-        let fraction = min(1, max(0, now.timeIntervalSince(r.start) / statusPeriod))
+        let fraction = min(1, max(0, (now.timeIntervalSince(r.start) + Self.slack) / statusPeriod))
         displayed = r.from + (r.to - r.from) * fraction
         if fraction >= 1 { ramp = nil }
     }
 
     func isStale(at now: Date, after limit: TimeInterval) -> Bool {
         guard let last = lastStatusAt else { return false }
-        return now.timeIntervalSince(last) >= limit
+        return now.timeIntervalSince(last) + Self.slack >= limit
     }
 
     func view(serial: ProbeSerial, at now: Date, staleAfter: TimeInterval) -> PredictionView? {
@@ -129,12 +134,14 @@ public struct PredictionUpdate: Sendable, Equatable {
 /// Input: `ProbeStore.statusEvents` (every accepted full status; `logRange.max` is the status sequence).
 /// Output: `predictions(_:)` per probe (latest value first, only changes after) and `updates` for all probes.
 ///
-/// Timing runs on the injected `Clock`: a single wake-up task sleeps until the next thing that can change a
-/// view, either the next 200 ms tick while a countdown is moving, or the earliest stale deadline (15 s after
-/// a probe's last status). With nothing counting down, a probe costs one sleeper, not a 5 Hz timer.
+/// Timing runs on the injected `Clock`. A 200 ms timer runs only while some countdown is still moving between
+/// statuses (the last five minutes). A 1 s timer watches for staleness (15 s after a probe's last status, seen
+/// within a second) while any probe is reporting. With nothing counting down, that is all there is.
 public actor PredictionPresenter {
     public static let tickInterval: Duration = .milliseconds(200)
     public static let staleAfter: Duration = .seconds(15)
+    /// How often staleness is checked while a probe is reporting.
+    static let staleCheckInterval: Duration = .seconds(1)
 
     private let probes: ProbeStore
     private let clock: any Clock
@@ -147,7 +154,8 @@ public actor PredictionPresenter {
     private var smoothers: [ProbeSerial: PredictionSmoother] = [:]
     private var last: [ProbeSerial: PredictionView] = [:]
     private var task: Task<Void, Never>?
-    private var wake: Task<Void, Never>?
+    private var staleWatch: Task<Void, Never>?
+    private var ticker: Task<Void, Never>?
 
     public init(
         probes: ProbeStore, clock: any Clock, tickInterval: Duration = PredictionPresenter.tickInterval,
@@ -162,7 +170,8 @@ public actor PredictionPresenter {
 
     deinit {
         task?.cancel()
-        wake?.cancel()
+        staleWatch?.cancel()
+        ticker?.cancel()
     }
 
     // MARK: Observables
@@ -175,7 +184,13 @@ public actor PredictionPresenter {
     /// Every probe's changes, no replay.
     public nonisolated var updates: AsyncStream<PredictionUpdate> { updateBroadcaster.stream() }
 
-    public func view(for serial: ProbeSerial) -> PredictionView? { last[serial] }
+    /// The view as of now, computed on the spot, so it is right even if a timer tick is still on its way.
+    public func view(for serial: ProbeSerial) -> PredictionView? {
+        guard var s = smoothers[serial] else { return nil }
+        let now = clock.now()
+        s.tick(at: now)
+        return s.view(serial: serial, at: now, staleAfter: stale.totalSeconds)
+    }
 
     // MARK: Lifecycle
 
@@ -195,8 +210,10 @@ public actor PredictionPresenter {
     public func stop() {
         task?.cancel()
         task = nil
-        wake?.cancel()
-        wake = nil
+        staleWatch?.cancel()
+        staleWatch = nil
+        ticker?.cancel()
+        ticker = nil
     }
 
     // MARK: Input
@@ -220,31 +237,48 @@ public actor PredictionPresenter {
         updateBroadcaster.send(PredictionUpdate(serial: serial, view: v))
     }
 
-    /// Sleeps until the next tick (a countdown is moving) or the next stale deadline, whichever is first.
+    /// Starts or stops the two timers: 200 ms while a countdown is moving, 1 s while any probe could still go stale.
     private func reschedule() {
-        wake?.cancel()
-        wake = nil
         let now = clock.now()
-        var next: Date?
-        for s in smoothers.values {
-            var candidate: Date?
-            if s.isRamping {
-                candidate = now.addingTimeInterval(tick.totalSeconds)
-            } else if let lastAt = s.lastStatusAt, !s.isStale(at: now, after: stale.totalSeconds) {
-                candidate = lastAt.addingTimeInterval(stale.totalSeconds)
-            }
-            if let c = candidate, next.map({ c < $0 }) ?? true { next = c }
+        let limit = stale.totalSeconds
+        if smoothers.values.contains(where: \.isRamping) {
+            if ticker == nil { ticker = run(every: tick) { await $0.ticked() } }
+        } else {
+            ticker?.cancel()
+            ticker = nil
         }
-        guard let next else { return }
-        let delay = max(next.timeIntervalSince(now), 0.001)
-        let clock = self.clock
-        wake = Task { [weak self] in
-            do { try await clock.sleep(for: .seconds(delay)) } catch { return }
-            await self?.wakeUp()
+        if smoothers.values.contains(where: { $0.lastStatusAt != nil && !$0.isStale(at: now, after: limit) }) {
+            if staleWatch == nil { staleWatch = run(every: Self.staleCheckInterval) { await $0.staleChecked() } }
+        } else {
+            staleWatch?.cancel()
+            staleWatch = nil
         }
     }
 
-    private func wakeUp() {
+    /// Runs `body` on every tick of a clock timer until it returns false. Timers, not chains of sleeps: they re-arm
+    /// themselves, so a tick is not lost when this task is slow to run (a `TestClock` does not wait for it).
+    private func run(every period: Duration, _ body: @escaping @Sendable (PredictionPresenter) async -> Bool) -> Task<Void, Never> {
+        let ticks = clock.timer(every: period)
+        return Task { [weak self] in
+            for await _ in ticks {
+                guard let self, await body(self) else { return }
+            }
+        }
+    }
+
+    /// Returns false when no countdown is moving any more (the ticker then ends).
+    private func ticked() -> Bool {
+        refresh()
+        return ticker != nil
+    }
+
+    /// Returns false once every probe is stale (the watcher then ends).
+    private func staleChecked() -> Bool {
+        refresh()
+        return staleWatch != nil
+    }
+
+    private func refresh() {
         let now = clock.now()
         for serial in Array(smoothers.keys) {
             smoothers[serial]?.tick(at: now)
