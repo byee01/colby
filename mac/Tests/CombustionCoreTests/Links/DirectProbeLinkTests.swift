@@ -83,6 +83,25 @@ struct DirectProbeLinkTests {
         #expect(rig.transport.writes.isEmpty)
     }
 
+    /// Live fetches and backfill share one link; the probe UART allows one Read Logs at a time, so the
+    /// second caller must wait for its turn rather than fail with `.busy`.
+    @Test func concurrentReadLogsAreSerializedNotRejectedAsBusy() async throws {
+        let rig = try await LinkRig()
+        let link = try await makeLink(rig)
+        rig.transport.addResponder { bytes in
+            guard let msg = try? decodeWritten(bytes, variant: .probe), case .readLogs(let s, let e) = msg.request else { return [] }
+            return (s...e).map(probeLogReply)
+        }
+        async let first = collectLogs(link.readLogs(probe: linkProbe, start: 0, end: 4))
+        async let second = collectLogs(link.readLogs(probe: linkProbe, start: 10, end: 14))
+        async let third = collectLogs(link.readLogs(probe: linkProbe, start: 20, end: 21))
+        let (a, b, c) = try await (first, second, third)
+        #expect(a == (0...4).map(linkRecord))
+        #expect(b == (10...14).map(linkRecord))
+        #expect(c == (20...21).map(linkRecord))
+        #expect(rig.transport.writes.count == 3)
+    }
+
     @Test func readLogsIdleTimeoutUsesTheClock() async throws {
         let rig = try await LinkRig()
         let link = try await makeLink(rig)
@@ -119,6 +138,8 @@ struct DirectProbeLinkTests {
         await #expect(throws: TransportError.characteristicNotFound(.probeStatus)) { try await link.start() }
         var it = link.disconnected.makeAsyncIterator()
         #expect(await it.next() == .requested)
+        // The failed start released the connection slot.
+        _ = try await rig.transport.connect(linkPeripheral, timeout: .seconds(1))
     }
 
     @Test func disconnectEndsStreamsAndFailsPendingRequests() async throws {

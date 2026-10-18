@@ -43,6 +43,29 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 | 3 | Usability test (06 §15 U5) |
 | 4 | Optional interactive prototype (U4) |
 
-## Next: implementation
+## Implementation status (macOS core, `mac/`)
 
-Start macOS M0–M3 (`03-roadmap.md`): capture real probe traffic into `spec/replays` and `spec/fixtures`, then the Swift codec against the shared fixtures, then CoreBluetooth transport and ProbeStore. None of these depend on the open UX items.
+| Milestone | State | Where |
+|---|---|---|
+| M0 captures | Blocked: no hardware. Fixtures hand-built from spec @ `eabc77d` + Android SDK tests; regenerate with `python3 spec/tools/gen_codec_fixtures/gen_all.py` | `spec/fixtures/` (330) |
+| M1 codec | Done, 100% region coverage | `Sources/CombustionCodec` |
+| M2 transport + adverts | Done on simulator. CoreBluetooth transport written, **never compiled** (Linux only so far) | `Sources/CombustionCoreBluetooth`, `Links/AdvertisementSource`, `Stores/ProbeStore` |
+| M3 direct link + history | Done on simulator: UartClient, DirectProbeLink, SessionTracker, HistoryStore (SQLite), BackfillPlanner, DirectConnectionPolicy, CombustionApp facade, e2e tests for exit criteria | `Sources/CombustionCore`, `Tests/CombustionCoreTests/EndToEnd` |
+| Sim | SimulatedTransport, RecordingTransport, replay format, SimulatedProbe; `swift run colby-sim` | `Sources/CombustionSim`, `Sources/ColbySim` |
+
+Tests: `cd mac && swift test` (294, Swift 6.1.3). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
+
+CI (`.github/workflows/mac.yml`, macOS 15 + Linux): every run ends in `startup_failure` with 0 jobs. Check repo Actions settings / spending limit. Until it runs, the CoreBluetooth module is unverified.
+
+Spec discrepancies found while writing the codec (verify on hardware): hop count bits (followed SDKs: top 2 bits), overheat bit order (followed Android), GATT status 94 B legacy / 100 B current, node Silence Alarms has a 16 B payload, node 0x48 request is serial only.
+
+Deviations from 02: `SessionKey` = (serial, sessionId, startedAt) since id 0 repeats; `ProbeSnapshot.instantReadFahrenheit` (Android filters °F separately); probe UART readLogs queued per link instead of `busy`.
+
+Known weak spots: `TestClock` wake ordering under a multi-threaded executor relies on yields plus an opt-in `wakeGrace` real-time pause (e2e tests); session change during an in-flight backfill on a link that stays connected is untested; `NodeSnapshot`, `DeviceInfo` not implemented.
+
+## Next
+
+1. Get CI running; fix CoreBluetooth compile errors on macOS 15.
+2. M0 on hardware: `RecordingTransport` captures into `spec/replays/`; check the discrepancies above.
+3. M4 MeatNet: `NodeLink` (UartClient node variant exists; route 0x45 from `unsolicited`), node step in ConnectionPolicy, `NodeSnapshot`.
+4. M5 PredictionPresenter + Commands; M6 AlertEngine; M7 app target.

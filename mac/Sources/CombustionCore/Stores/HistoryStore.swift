@@ -29,6 +29,9 @@ public actor HistoryStore {
     private var livePending: [Int64: LogRange] = [:]
     private var backfilling: Set<Int64> = []
 
+    /// Log downloads running right now (live fetches plus backfills), for diagnostics.
+    public var fetchesInFlight: Int { liveRunning.count + backfilling.count }
+
     /// Last database error from `consume`.
     public private(set) var lastError: (any Error)?
 

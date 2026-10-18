@@ -49,6 +49,18 @@ struct AdvertisementSourceTests {
         #expect(await rig.source.diagnostics.probePackets == 1)
     }
 
+    @Test func directProbeAdvertisementsAreSightingsWithTheirPeripheral() async throws {
+        let rig = Rig()
+        let sightings = rig.source.probeSightings
+        await rig.source.start()
+        let ad = probeAd()
+        // A node's repeat of the same probe is not connectable at the probe: no sighting.
+        try rig.inject(.repeated(ad, hopCount: 2), from: "NODE-PERIPHERAL")
+        try rig.inject(.probe(ad), from: "PROBE-PERIPHERAL", rssi: -64)
+        let s = try #require(await firstValue(sightings))
+        #expect(s == ProbeSighting(serial: ad.serial, peripheral: "PROBE-PERIPHERAL", rssi: -64, time: rig.clock.now()))
+    }
+
     @Test func missingPreferencesLeaveHighRadioPowerUnknown() async throws {
         let rig = Rig()
         let obs = rig.source.observations

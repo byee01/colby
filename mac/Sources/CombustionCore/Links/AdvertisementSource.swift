@@ -18,6 +18,22 @@ public struct NodeSighting: Sendable, Equatable {
     }
 }
 
+/// A probe heard advertising from its own peripheral (not repeated by a node). The peripheral is what a
+/// direct connection needs; observations alone do not carry it.
+public struct ProbeSighting: Sendable, Equatable {
+    public var serial: ProbeSerial
+    public var peripheral: PeripheralId
+    public var rssi: Int
+    public var time: Date
+
+    public init(serial: ProbeSerial, peripheral: PeripheralId, rssi: Int, time: Date) {
+        self.serial = serial
+        self.peripheral = peripheral
+        self.rssi = rssi
+        self.time = time
+    }
+}
+
 public struct AdvertisementDiagnostics: Sendable, Equatable {
     /// Advertisements received from the transport.
     public var received = 0
@@ -40,6 +56,8 @@ public struct AdvertisementDiagnostics: Sendable, Equatable {
 public actor AdvertisementSource {
     public nonisolated var observations: AsyncStream<ProbeObservation> { observationBroadcast.stream() }
     public nonisolated var nodeSightings: AsyncStream<NodeSighting> { sightingBroadcast.stream() }
+    /// Probes heard on their own peripheral; `ConnectionPolicy` connects to these.
+    public nonisolated var probeSightings: AsyncStream<ProbeSighting> { probeSightingBroadcast.stream() }
 
     public var diagnostics: AdvertisementDiagnostics { stats }
     /// The node serial last advertised by `peripheral`, if any.
@@ -48,6 +66,7 @@ public actor AdvertisementSource {
     private let transport: any BleTransport
     private let observationBroadcast = Broadcaster<ProbeObservation>()
     private let sightingBroadcast = Broadcaster<NodeSighting>()
+    private let probeSightingBroadcast = Broadcaster<ProbeSighting>()
     private var nodeByPeripheral: [PeripheralId: NodeSerial] = [:]
     private var stats = AdvertisementDiagnostics()
     private var task: Task<Void, Never>?
@@ -89,6 +108,8 @@ public actor AdvertisementSource {
         case .probe(let probe):
             stats.probePackets += 1
             publish(probe, kind: .advertisement, via: nil, hopCount: nil, raw)
+            probeSightingBroadcast.send(ProbeSighting(
+                serial: probe.serial, peripheral: raw.peripheral, rssi: raw.rssi, time: raw.time))
         case .repeated(let probe, let hops):
             stats.probePackets += 1
             publish(probe, kind: .nodeAdvertisement, via: nodeByPeripheral[raw.peripheral], hopCount: hops, raw)

@@ -11,6 +11,9 @@ import Foundation
 ///   its next sleep, which is then honoured in the same `advance` if due.
 /// - Work that hops through other actors or I/O after waking is not awaited;
 ///   call `settle()` for more scheduler turns, or await the result you need.
+/// - On a multi-threaded executor a woken task may need longer than `settleYields` turns to reach its next
+///   sleep (it hops through actors first). `wakeGrace` is an opt-in real-time pause after each fired
+///   sleeper that closes that window; virtual time still moves only in `advance`.
 /// - `advance` begins with a `settle()` so tasks spawned just before it can
 ///   register their sleeps first.
 public final class TestClock: Clock, @unchecked Sendable {
@@ -31,12 +34,16 @@ public final class TestClock: Clock, @unchecked Sendable {
     private var entries: [Entry] = []
     private var nextID: UInt64 = 0
     private var pendingWakes = 0
+    private let wakeGrace: Duration
 
     public static let defaultStart = Date(timeIntervalSince1970: 1_700_000_000)
     public static let settleYields = 8
 
-    public init(start: Date = TestClock.defaultStart) {
+    /// - Parameter wakeGrace: real time to wait after each fired sleeper (not timer tick) so the woken task
+    ///   can finish its next steps and register its next sleep. Zero (the default) only yields.
+    public init(start: Date = TestClock.defaultStart, wakeGrace: Duration = .zero) {
         self.startDate = start
+        self.wakeGrace = wakeGrace
     }
 
     public func now() -> Date {
@@ -110,10 +117,11 @@ public final class TestClock: Clock, @unchecked Sendable {
         precondition(duration >= .zero, "TestClock cannot go backwards")
         await settle()
         let target = lock.withLock { offset + duration }
-        while let fire = fireNext(upTo: target) {
+        while let (fire, wakesSleeper) = fireNext(upTo: target) {
             fire()
             while lock.withLock({ pendingWakes }) > 0 { await Task.yield() }
             await settle()
+            if wakesSleeper, wakeGrace > .zero { try? await Task.sleep(for: wakeGrace) }
         }
         lock.withLock { offset = target }
         await settle()
@@ -121,7 +129,7 @@ public final class TestClock: Clock, @unchecked Sendable {
 
     /// Pops the earliest due entry, moves time to its deadline and returns the
     /// action that wakes it (run outside the lock).
-    private func fireNext(upTo target: Duration) -> (() -> Void)? {
+    private func fireNext(upTo target: Duration) -> (action: () -> Void, wakesSleeper: Bool)? {
         lock.withLock {
             var best: Int?
             for (i, e) in entries.enumerated() where e.deadline <= target {
@@ -139,11 +147,11 @@ public final class TestClock: Clock, @unchecked Sendable {
             case .sleeper(let c):
                 entries.remove(at: i)
                 pendingWakes += 1
-                return { c.resume() }
+                return ({ c.resume() }, true)
             case .timer(let c, let period):
                 entries[i].deadline = entry.deadline + period
                 let at = entry.deadline
-                return { c.yield(at) }
+                return ({ c.yield(at) }, false)
             }
         }
     }

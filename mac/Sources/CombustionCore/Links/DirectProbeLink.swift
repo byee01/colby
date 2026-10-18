@@ -61,6 +61,8 @@ public actor DirectProbeLink: LogFetcher {
                 }
             })
         } catch {
+            // Tear down fully, including the connection: a half-started link must not hold a probe slot.
+            await connection.close()
             await finish(.requested)
             throw error
         }
@@ -118,12 +120,52 @@ public actor DirectProbeLink: LogFetcher {
 
     /// `probe` must be this link's probe; anything else fails with `UartError.failure` (a mismatch would
     /// file another probe's history under the wrong serial).
+    ///
+    /// Reads are serialized per link: the probe UART allows one Read Logs in flight, and live fetches and
+    /// backfill run concurrently, so a second caller waits for its turn instead of failing with `.busy`.
     public nonisolated func readLogs(
         probe: ProbeSerial, start: UInt32, end: UInt32
     ) -> AsyncThrowingStream<LogRecord, any Error> {
         guard probe == serial else {
             return AsyncThrowingStream { $0.finish(throwing: UartError.failure) }
         }
-        return uart.readLogs(probe: nil, start: start, end: end, idleTimeout: .seconds(2))
+        let (stream, out) = AsyncThrowingStream<LogRecord, any Error>.makeStream()
+        let task = Task {
+            await self.acquireReadTurn()
+            defer { Task { await self.releaseReadTurn() } }
+            if Task.isCancelled {
+                out.finish(throwing: CancellationError())
+                return
+            }
+            do {
+                for try await r in self.uart.readLogs(probe: nil, start: start, end: end, idleTimeout: .seconds(2)) {
+                    out.yield(r)
+                }
+                out.finish()
+            } catch {
+                out.finish(throwing: error)
+            }
+        }
+        out.onTermination = { _ in task.cancel() }
+        return stream
+    }
+
+    private var readBusy = false
+    private var readWaiters: [CheckedContinuation<Void, Never>] = []
+
+    private func acquireReadTurn() async {
+        if readBusy {
+            await withCheckedContinuation { readWaiters.append($0) }
+        } else {
+            readBusy = true
+        }
+    }
+
+    private func releaseReadTurn() {
+        if readWaiters.isEmpty {
+            readBusy = false
+        } else {
+            readWaiters.removeFirst().resume()
+        }
     }
 }

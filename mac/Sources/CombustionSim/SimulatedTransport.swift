@@ -45,6 +45,8 @@ public final class SimulatedTransport: BleTransport, @unchecked Sendable {
     private struct Fault {
         var characteristic: GattUUID?
         var remaining: Int
+        /// Matching notifications to let through before the fault starts.
+        var skip = 0
     }
 
     private struct RecordedResponse {
@@ -73,6 +75,7 @@ public final class SimulatedTransport: BleTransport, @unchecked Sendable {
     private var responseDelay: Duration = .zero
     private var connectDelay: Duration = .zero
     private var refusals = 0
+    private var blockedConnects: Set<PeripheralId> = []
     private var refusalError: TransportError?
     private var writeLog: [SimulatedWrite] = []
     private var readValues: [String: [UInt8]] = [:]
@@ -105,6 +108,7 @@ public final class SimulatedTransport: BleTransport, @unchecked Sendable {
         let (delay, failure): (Duration, TransportError?) = lock.withLock {
             if currentState != .poweredOn { return (.zero, .notPoweredOn(currentState)) }
             if connections[id] != nil { return (.zero, .alreadyConnected(id)) }
+            if blockedConnects.contains(id) { return (.zero, .connectionRefused(id)) }
             if refusals > 0 {
                 refusals -= 1
                 return (.zero, refusalError ?? .connectionRefused(id))
@@ -153,8 +157,12 @@ public final class SimulatedTransport: BleTransport, @unchecked Sendable {
     public func injectNotification(peripheral: PeripheralId, characteristic: GattUUID, bytes: [UInt8]) {
         let (conn, copies): (SimulatedConnection?, Int) = lock.withLock {
             if let i = drops.firstIndex(where: { $0.characteristic == nil || $0.characteristic == characteristic }) {
-                consume(&drops, at: i)
-                return (nil, 0)
+                if drops[i].skip > 0 {
+                    drops[i].skip -= 1
+                } else {
+                    consume(&drops, at: i)
+                    return (nil, 0)
+                }
             }
             var copies = 1
             if let i = duplicates.firstIndex(where: { $0.characteristic == nil || $0.characteristic == characteristic }) {
@@ -196,9 +204,10 @@ public final class SimulatedTransport: BleTransport, @unchecked Sendable {
 
     // MARK: Faults
 
-    /// Silently drops the next `count` notifications (optionally only on one characteristic).
-    public func dropNextNotifications(_ count: Int = 1, on characteristic: GattUUID? = nil) {
-        lock.withLock { drops.append(Fault(characteristic: characteristic, remaining: count)) }
+    /// Silently drops the next `count` notifications (optionally only on one characteristic), after letting
+    /// `skip` matching notifications through (to lose records from the middle of a download).
+    public func dropNextNotifications(_ count: Int = 1, after skip: Int = 0, on characteristic: GattUUID? = nil) {
+        lock.withLock { drops.append(Fault(characteristic: characteristic, remaining: count, skip: skip)) }
     }
 
     /// Delivers each of the next `count` notifications twice.
@@ -219,6 +228,13 @@ public final class SimulatedTransport: BleTransport, @unchecked Sendable {
             refusalError = error
         }
     }
+
+    /// Connects to `peripheral` are refused until `allowConnects`. Models a probe that is out of range.
+    public func blockConnects(to peripheral: PeripheralId) { lock.withLock { _ = blockedConnects.insert(peripheral) } }
+    public func allowConnects(to peripheral: PeripheralId) { lock.withLock { _ = blockedConnects.remove(peripheral) } }
+
+    /// True while a connection to `peripheral` is open.
+    public func isConnected(_ peripheral: PeripheralId) -> Bool { lock.withLock { connections[peripheral] != nil } }
 
     // MARK: Replay
 

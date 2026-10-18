@@ -194,3 +194,35 @@ struct TestClockTests {
         #expect(b >= a)
     }
 }
+
+struct TestClockWakeGraceTests {
+    /// `wakeGrace` is real time spent after each fired sleeper (not after timer ticks), so a woken task
+    /// that is slow to reach its next sleep is not overtaken by virtual time.
+    @Test func wakeGracePausesAfterEachFiredSleeperOnly() async throws {
+        let clock = TestClock(wakeGrace: .milliseconds(20))
+        let wakes = SyncLog<Double>()
+        let task = Task {
+            while !Task.isCancelled {
+                do { try await clock.sleep(for: .seconds(1)) } catch { return }
+                wakes.add(clock.monotonic().totalSeconds)
+            }
+        }
+        while clock.sleeperCount == 0 { await Task.yield() }
+        let started = ContinuousClock.now
+        await clock.advance(by: .seconds(3))
+        let elapsed = ContinuousClock.now - started
+        task.cancel()
+        #expect(wakes.items == [1, 2, 3])
+        #expect(elapsed >= .milliseconds(60))
+
+        // Timer ticks do not pay the grace.
+        let ticks = clock.timer(every: .milliseconds(10))
+        let counter = SyncLog<Int>()
+        let consumer = Task { for await _ in ticks { counter.add(1) } }
+        let timerStart = ContinuousClock.now
+        await clock.advance(by: .seconds(1)) // 100 ticks
+        let timerElapsed = ContinuousClock.now - timerStart
+        consumer.cancel()
+        #expect(timerElapsed < .milliseconds(1500), "100 ticks at 20 ms each would take 2 s")
+    }
+}

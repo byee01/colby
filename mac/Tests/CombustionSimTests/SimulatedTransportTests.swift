@@ -175,3 +175,32 @@ struct SimulatedTransportTests {
         _ = try await sim.connect(probeA, timeout: .seconds(1))
     }
 }
+
+struct SimulatedTransportConnectAndFaultTests {
+    @Test func blockedConnectsAreRefusedUntilAllowed() async throws {
+        let clock = TestClock()
+        let sim = SimulatedTransport(clock: clock)
+        sim.blockConnects(to: probeA)
+        await #expect(throws: TransportError.connectionRefused(probeA)) {
+            _ = try await sim.connect(probeA, timeout: .seconds(1))
+        }
+        #expect(!sim.isConnected(probeA))
+        sim.allowConnects(to: probeA)
+        let c = try await sim.connect(probeA, timeout: .seconds(1))
+        #expect(sim.isConnected(probeA))
+        await c.close()
+        #expect(!sim.isConnected(probeA))
+    }
+
+    @Test func dropCanSkipNotificationsFirst() async throws {
+        let clock = TestClock()
+        let sim = SimulatedTransport(clock: clock)
+        let c = try await sim.connect(probeA, timeout: .seconds(1))
+        var it = try await c.subscribe(.uartTX).makeAsyncIterator()
+        sim.dropNextNotifications(2, after: 3, on: .uartTX)
+        for i in 0..<8 { sim.injectNotification(peripheral: probeA, characteristic: .uartTX, bytes: [UInt8(i)]) }
+        var got: [UInt8] = []
+        for _ in 0..<6 { if let b = await it.next() { got += b } }
+        #expect(got == [0, 1, 2, 5, 6, 7])
+    }
+}
