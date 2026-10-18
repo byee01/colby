@@ -12,6 +12,8 @@ public static class UartMessageType
     public const byte ProbeFirmware = 0x46;
     public const byte ProbeHardware = 0x47;
     public const byte ProbeModel = 0x48;
+    /// <summary>Node heartbeat (network topology); payload not decoded.</summary>
+    public const byte Heartbeat = 0x49;
 }
 
 /// <summary>A command to a probe. Over a node every request also names the probe (<c>EncodeRequest(probe:)</c>).</summary>
