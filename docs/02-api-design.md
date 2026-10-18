@@ -356,7 +356,7 @@ spec/fixtures/
 ```sql
 probe(serial INTEGER PRIMARY KEY, nickname TEXT, followed INTEGER, last_seen INTEGER)
 session(id INTEGER PRIMARY KEY, serial INTEGER, session_id INTEGER, sample_period_ms INTEGER,
-        started_at INTEGER, ended_at INTEGER, anchor_seq INTEGER, anchor_time INTEGER,
+        started_at INTEGER, ended_at INTEGER, anchor_seq INTEGER, anchor_time INTEGER, nickname TEXT,
         UNIQUE(serial, session_id, started_at))
 sample(session INTEGER, seq INTEGER, t1..t8 REAL, vs INTEGER, pred_state INTEGER, pred_mode INTEGER,
        pred_type INTEGER, setpoint REAL, pred_seconds INTEGER, est_core REAL,

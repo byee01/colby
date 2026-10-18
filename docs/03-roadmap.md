@@ -41,7 +41,7 @@ The codec, stores, presenter and alert engine are re-implemented in C# against t
 | W6 | Minimal UI, tray icon, opt-in startupTask, MSIX, private-audience submission, package flights (04 §3) | 2 |
 | | **Windows total** | **~8.5** |
 
-Real UX design and build is not included. Budget it separately once the UX phase starts.
+UX design: ~7 weeks (06 §15). Custom-look build on top of M7/W6: ~+4 weeks macOS, ~+3 weeks Windows.
 
 ## Risks
 
@@ -76,4 +76,4 @@ Real UX design and build is not included. Budget it separately once the UX phase
 | 10 | Crash reporting | Store-provided only (Organizer/TestFlight, Partner Center Health) |
 | 11 | Beta path | TestFlight (macOS), package flights (Windows); see 04 |
 
-No open questions. Next phase: UX.
+Open UX questions: see 06 §16.
