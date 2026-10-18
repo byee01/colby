@@ -318,9 +318,11 @@ macOS notification banners use `UNNotificationSound.default` (system sound names
 
 | Board | Shows |
 |---|---|
+| Main window · 1 probe | Most common case; same layout with one chip |
 | Main window · 3 probes | Graph-first layout, hover crosshair, chip selection; tweaks: probes 1/3/8, alerting, time format (stands in for the setting) |
 | Main window · alarm firing | Red alert band, alerting chip |
 | Main window · 8 probes | Non-focused probes core-only, end-label de-collision |
+| Kitchen mode · 1 probe | Dedicated full-window layout |
 | Kitchen mode · 4 probes / alarm | 2×2 tiles with trend lines; full-screen red takeover |
 | Live Activity equivalents · macOS | Menu bar states, popover, floating window, widgets |
 | Live Activity equivalents · Windows | Tray states, tooltip, flyout, widgets board, alarm toast |
@@ -330,10 +332,21 @@ macOS notification banners use `UNNotificationSound.default` (system sound names
 | Settings | Sections: General (units, prediction time with preview, menu bar, login, keep awake), Alerts and sounds (volume, Do Not Disturb, sound per event, default alerts for new probes), Devices (followed probes, MeatNet nodes), History and data, Diagnostics (links, Record session), About |
 | Design tokens | Colors, validated probe palette (dark + light), type scale, sound map, spacing |
 
-Completion time: the chosen format is primary; where space allows (inspector, kitchen tiles) the other format sits beside it at lower emphasis (muted, ~30% of the primary size), e.g. `3:42  at 5:02 PM` or `5:02  PM · in 3:42`. Chips, menu bar and widgets show the primary format only. Graph ready markers always use clock time.
+Completion time: the chosen format is primary; the other is always shown beside or under it, muted and smaller. Applies to every surface:
 
-Rendered screenshots: `docs/design/screenshots/` (`MainAt.png`, `KitchenAt.png` show the "Ready at" setting).
+| Surface | Primary | Secondary |
+|---|---|---|
+| Main inspector, kitchen tiles | `3:42` | `at 5:02 PM` (or `5:02` + `PM · in 3:42`) |
+| Probe chips | `3:42` | none (no room) |
+| Menu bar item | `165° · 3:42` | `5:02` (muted, no AM/PM) |
+| Popover / tray flyout rows | `3:42` | `at 5:02 PM` under it; ready rows show `since 1:18 PM` |
+| Floating live window, widgets, Widgets board | `3:42` | `at 5:02 PM` |
+| Tray tooltip | `ready in 3:42` | `(5:02 PM)` |
+| Alarm toast | n/a | time reached in body |
+| Graph markers | clock time | n/a |
 
-Rendered screenshots (all): `docs/design/screenshots/` (headless Chromium, 1440 px wide).
+Single probe is the most common case. Every surface has a 1-probe version, listed first. Kitchen mode with 1 probe uses a dedicated full-window layout: name and core temperature in the header, 400 px countdown with 72 px secondary time, progress bar and wide trend line.
+
+Screenshots: `docs/design/screenshots/`, regenerated together from the current canvas every time (`render-all.sh` in the scratchpad). Set: Main1, Main1At, Main, MainAlert, Main8, Kitchen1, Kitchen1At, Kitchen, KitchenAlert, LiveActivity, WindowsSurfaces, Sheets, Tokens, Onboarding, History, Settings, SettingsAlerts, SettingsDevices.
 
 Next: empty and error states board; then U2 (tokens.json + component specs).
