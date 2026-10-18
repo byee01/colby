@@ -58,7 +58,30 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 
 Tests: `cd mac && swift test` (446, Swift 6.1.3). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
 
-CI (`.github/workflows/mac.yml`, `windows.yml`): every run ends in `startup_failure` with 0 jobs; GitHub lists 0 registered workflows and the runs show path `BuildFailed`. YAML parses. Owner to check: Settings → Actions → General (Actions enabled, allowed actions include `actions/checkout`, `actions/setup-dotnet`), Billing (private repo: macOS minutes count 10×, default $0 spending limit), and the run page's error. Until CI runs, `CombustionCoreBluetooth` and `CombustionMacPlatform` are unverified.
+## CI status (blocked)
+
+Workflows: `.github/workflows/mac.yml` (macOS 15 + Linux `swift:6.1-noble`), `windows.yml` (windows-latest + Linux, .NET 8).
+
+Symptom: every run on `claude/combustion-desktop-plan` ends `startup_failure` with 0 jobs (13+ runs, latest after `6e29041`). The API lists **0 registered workflows**; runs show an empty name and path `BuildFailed`. Both YAML files parse. Billing exhaustion normally fails jobs with a billing message instead, so settings or a run-page error are the likelier cause.
+
+Billing facts (private repo), from [GitHub docs](https://docs.github.com/en/billing/concepts/product-billing/github-actions):
+- Each plan includes monthly free minutes for private repos; GitHub Free ≈ 2,000 min/month (secondary copy of the docs; confirm on the current page).
+- macOS runners consume minutes at 10×, Windows at 2×, Linux 1× (≈ 200 macOS minutes on Free).
+- Monthly-billed accounts default to a **$0 spending limit**: no usage past the included minutes.
+- Public repos: standard GitHub-hosted runners are free.
+
+Owner checklist, in order:
+1. Open a failed run (e.g. https://github.com/byee01/colby/actions/runs/39106182658) and read the error banner; it is the only place the real reason appears.
+2. Settings → Actions → General: Actions enabled; allowed actions include `actions/checkout`, `actions/setup-dotnet` (or allow all).
+3. Settings → Billing → Actions: minutes used; set a small spending limit if exhausted.
+4. Still failing: merge the workflow files to `main` (workflows register from the default branch), or make the repo public.
+5. Workaround without CI: `cd mac && swift test` on a Mac with Xcode 16.
+
+Until CI or a Mac runs the build, `CombustionCoreBluetooth` and `CombustionMacPlatform` have never been compiled.
+
+Local toolchain in this kind of container: `/opt/swift/usr/bin` (add to `PATH`); `swift test` takes ~35 s.
+
+## Implementation notes
 
 Spec discrepancies found while writing the codec (verify on hardware): hop count bits (followed SDKs: top 2 bits), overheat bit order (followed Android), GATT status 94 B legacy / 100 B current, node Silence Alarms has a 16 B payload, node 0x48 request is serial only.
 
@@ -76,6 +99,13 @@ M5/M6 decisions where the docs are silent:
 - Not done: alert-rule editing UI and sound per rule kind (`AlertSound` has 4 cases; 06 §17.3 lists 6 events: 5-minute warning, disconnected and low battery should play once, not loop).
 
 Known weak spots: `TestClock` wake ordering under a multi-threaded executor relies on yields plus an opt-in `wakeGrace` real-time pause (e2e tests); session change during an in-flight backfill on a link that stays connected is untested; node heartbeat (0x49) payload is not decoded (layout not in our spec digest); `ProbeSnapshot` has no per-probe `DeviceInfo` yet (node 0x46-0x48 reads exist in the codec but nothing calls them).
+
+## Windows status
+
+| Milestone | State | Where |
+|---|---|---|
+| W1 codec (C#) | Done: `Combustion.Codec` port, tests against the shared `spec/fixtures`, framer fuzz, round trips | `windows/` |
+| W2+ | Not started; Core/Sim are stubs | `windows/` |
 
 ## Next
 
