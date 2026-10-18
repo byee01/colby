@@ -72,10 +72,6 @@ public protocol ConnectionPolicy: Sendable {
     func nodeStates() async -> [NodeSerial: ProbeConnectionState]
 }
 
-public extension ConnectionPolicy {
-    func nodeStates() async -> [NodeSerial: ProbeConnectionState] { [:] }
-}
-
 /// Default policy:
 /// 1. Scanning is the app's job (always on); this policy reacts to what the scan hears.
 /// 2. Connect directly to each followed probe once its own advertisement has been heard. Direct wins:

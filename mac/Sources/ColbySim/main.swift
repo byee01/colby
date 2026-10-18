@@ -1,9 +1,11 @@
 // colby-sim: runs CombustionApp against simulated probes and prints a live table.
 //
-//   swift run colby-sim [--probes 3] [--speed 120] [--minutes 60] [--preload 300] [--no-wander]
+//   swift run colby-sim [--probes 3] [--speed 120] [--minutes 60] [--preload 300] [--no-wander] [--node]
 //
 // Time is a TestClock advanced in 5 s steps; `--speed` is virtual seconds per real second. Probe 2 leaves
 // radio range for a stretch (unless --no-wander) so you can watch it reconnect and backfill.
+// With --node a simulated Display relays every probe: probe 2 then keeps updating (src "node") and
+// backfilling through it while out of the Mac's range.
 import CombustionCodec
 import CombustionCore
 import CombustionSim
@@ -15,6 +17,7 @@ struct Options {
     var minutes = 60
     var preload = 300
     var wander = true
+    var node = false
 
     init(_ args: [String]) {
         var it = args.makeIterator()
@@ -25,8 +28,9 @@ struct Options {
             case "--minutes": minutes = it.next().flatMap(Int.init) ?? minutes
             case "--preload": preload = it.next().flatMap(Int.init) ?? preload
             case "--no-wander": wander = false
+            case "--node": node = true
             default:
-                print("usage: colby-sim [--probes N] [--speed X] [--minutes M] [--preload RECORDS] [--no-wander]")
+                print("usage: colby-sim [--probes N] [--speed X] [--minutes M] [--preload RECORDS] [--no-wander] [--node]")
                 exit(a == "--help" ? 0 : 2)
             }
         }
@@ -46,6 +50,15 @@ func describe(_ state: ProbeConnectionState?) -> String {
     }
 }
 
+func sourceName(_ kind: LinkSource.Kind?) -> String {
+    switch kind {
+    case .directConnection?: "direct"
+    case .nodeConnection?: "node"
+    case .nodeAdvertisement?: "n-adv"
+    default: "adv"
+    }
+}
+
 func run(_ options: Options) async throws {
     let clock = TestClock(wakeGrace: .microseconds(200))
     let transport = SimulatedTransport(clock: clock)
@@ -60,6 +73,14 @@ func run(_ options: Options) async throws {
         probe.preload(records: options.preload + i * 40)
         probe.start()
         probes.append(probe)
+    }
+
+    var display: SimulatedNode?
+    if options.node {
+        let node = SimulatedNode(serial: "DISPLAY001", transport: transport, clock: clock)
+        for probe in probes { node.relay(probe) }
+        node.start()
+        display = node
     }
 
     await app.start()
@@ -95,7 +116,7 @@ func run(_ options: Options) async throws {
             let sessions = (try? await app.history.sessions(serial: probe.serial)) ?? []
             let stored = sessions.first?.sampleCount ?? 0
             func t(_ i: Int) -> String { snap?.temperatures[i].map { String(format: "%.1f", $0) } ?? "-" }
-            let source = snap.map { $0.isOffline ? "off" : ($0.link.primary?.kind == .directConnection ? "direct" : "adv") } ?? "-"
+            let source = snap.map { $0.isOffline ? "off" : sourceName($0.link.primary?.kind) } ?? "-"
             print(String(format: "%-7d %-9@ %-6@ %-7@ %-7@ %-7@ %-8d %-8d %-16@ %@",
                          elapsed / 60, probe.serial.hex as NSString, source as NSString, t(0) as NSString, t(3) as NSString,
                          t(7) as NSString, Int(probe.logRange.max), stored,
@@ -105,6 +126,7 @@ func run(_ options: Options) async throws {
     }
     await app.stop()
     for probe in probes { probe.stop() }
+    display?.stop()
     print("\ndone")
 }
 
