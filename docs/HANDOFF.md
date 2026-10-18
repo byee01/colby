@@ -105,11 +105,19 @@ Known weak spots: `TestClock` wake ordering under a multi-threaded executor reli
 | Milestone | State | Where |
 |---|---|---|
 | W1 codec (C#) | Done: `Combustion.Codec` port, tests against the shared `spec/fixtures`, framer fuzz, round trips | `windows/` |
-| W2+ | Not started; Core/Sim are stubs | `windows/` |
+| W2 base + transport | Done: clock, deterministic context, streams, models, SQLite, ProbeStore; WinRT BLE transport (**compiles on Linux, never run on Windows or hardware**) | `src/Combustion.Core`, `src/Combustion.Transport.WinRT` |
+| W3/W4 links + MeatNet | Done: UartClient, AdvertisementSource, DirectProbeLink, NodeLink, ConnectionPolicy, Commands, LinkRouter, LinkCoordinator, CombustionApp facade | `src/Combustion.Core` |
+| History | Done: SessionTracker, BackfillPlanner, HistoryStore | `src/Combustion.Core/Stores` |
+| W5 prediction + alerts | Done: PredictionPresenter, AlertEngine, SQLite alert store, LiveSnapshot; platform adapters (alarm toasts, looping system sounds, power-request keep-awake, app data paths; **compiled on Linux only**) | `src/Combustion.Core`, `src/Combustion.Windows.Platform` |
+| Sim | Done: SimulatedTransport, SimulatedProbe, SimulatedNode, RecordingTransport, replay format | `src/Combustion.Sim` |
+| W6 app | Not started (WinUI 3, tray, MSIX) | |
+
+Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,242 passing (codec 966, core 231, sim 45). Gaps vs Swift: no end-to-end `CombustionApp` tests (Swift has M3–M6 e2e suites); `AlertSound` has the same 4-case gap. Conventions for the port: `windows/PORTING.md`.
 
 ## Next
 
-1. Get CI running (or `swift test` on a Mac); fix CoreBluetooth and MacPlatform compile errors on macOS 15.
+1. Get CI running (or `swift test` on a Mac, `dotnet test` on Windows); fix compile errors in the Apple-only and Windows-only modules (CoreBluetooth, MacPlatform, Transport.WinRT, Windows.Platform).
 2. M0 on hardware: `RecordingTransport` captures into `spec/replays/`; check the discrepancies above.
 3. Split `AlertSound` per 06 §17.3 (looping vs once).
-4. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension.
+4. Windows: port the Swift end-to-end suites (M3–M6) to C#.
+5. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension; then W6 (WinUI 3).
