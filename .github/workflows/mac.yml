@@ -1,0 +1,30 @@
+name: mac
+
+on:
+  push:
+    paths: ["mac/**", "spec/**", ".github/workflows/mac.yml"]
+  pull_request:
+    paths: ["mac/**", "spec/**", ".github/workflows/mac.yml"]
+
+jobs:
+  test-macos:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: mac
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      - run: swift build --build-tests
+      - run: swift test
+
+  test-linux:
+    runs-on: ubuntu-24.04
+    container: swift:6.1-noble
+    defaults:
+      run:
+        working-directory: mac
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y libsqlite3-dev
+      - run: swift test
