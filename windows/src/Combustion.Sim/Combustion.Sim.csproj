@@ -2,8 +2,15 @@
   <PropertyGroup>
     <RootNamespace>Combustion.Sim</RootNamespace>
     <AssemblyName>Combustion.Sim</AssemblyName>
+    <Description>SimulatedTransport, simulated probes and nodes, replay files and RecordingTransport. Port of mac/Sources/CombustionSim.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Combustion.Core\Combustion.Core.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
+    <AdditionalFiles Include="..\Combustion.Core\BannedSymbols.txt" Link="BannedSymbols.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Combustion.Codec" />
+    <Using Include="Combustion.Core" />
   </ItemGroup>
 </Project>
