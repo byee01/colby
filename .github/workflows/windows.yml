@@ -16,7 +16,8 @@ jobs:
           dotnet-version: 8.0.x
       - run: dotnet test windows/Colby.sln --configuration Release
 
-  # The codec and core are platform-neutral, so the same suite runs on Linux (the WinUI and WinRT projects will be excluded here when they land).
+  # The codec and core are platform-neutral, so the same suite runs on Linux. Combustion.Transport.WinRT sets
+  # EnableWindowsTargeting, so it compiles here too (it has no tests to run).
   test-linux:
     runs-on: ubuntu-24.04
     steps:

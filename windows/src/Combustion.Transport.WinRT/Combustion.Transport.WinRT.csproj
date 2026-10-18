@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>Combustion.Transport.WinRT</RootNamespace>
+    <AssemblyName>Combustion.Transport.WinRT</AssemblyName>
+    <Description>Windows IBleTransport on WinRT Bluetooth LE (docs/02 §5.1). Port of mac/Sources/CombustionCoreBluetooth.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Combustion.Core\Combustion.Core.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
+    <!-- Same rules as Core: IClock for time, no ConfigureAwait(false). -->
+    <AdditionalFiles Include="..\Combustion.Core\BannedSymbols.txt" Link="BannedSymbols.txt" />
+  </ItemGroup>
+</Project>
