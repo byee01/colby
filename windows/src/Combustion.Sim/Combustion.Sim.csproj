@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Combustion.Sim</RootNamespace>
+    <AssemblyName>Combustion.Sim</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Combustion.Core\Combustion.Core.csproj" />
+  </ItemGroup>
+</Project>

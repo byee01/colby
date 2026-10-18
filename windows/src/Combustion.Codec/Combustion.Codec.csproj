@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Combustion.Codec</RootNamespace>
+    <AssemblyName>Combustion.Codec</AssemblyName>
+    <Description>Pure wire codec for Combustion Inc. thermometers (no dependencies). Port of mac/Sources/CombustionCodec.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Combustion.Codec.Tests" />
+  </ItemGroup>
+</Project>

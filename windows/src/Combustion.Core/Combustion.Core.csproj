@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Combustion.Core</RootNamespace>
+    <AssemblyName>Combustion.Core</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Combustion.Codec\Combustion.Codec.csproj" />
+  </ItemGroup>
+</Project>
