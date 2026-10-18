@@ -398,6 +398,27 @@ public class ProbeStoreTests
         Assert.Equal([F.Serial], reopened.FollowedSerials());
     });
 
+    /// <summary>Swift <c>followUnfollowPublishesAndPersists</c>: the same flow against a real HistoryStore.</summary>
+    [Fact]
+    public void FollowUnfollowPersistsInHistoryStore() => Det.Run(async () =>
+    {
+        var clock = new TestClock();
+        using var history = new HistoryStore(":memory:", clock);
+        var store = new ProbeStore(clock, history);
+        using var log = store.Followed().Collect();
+        await store.StartAsync();
+        await store.FollowAsync(F.Serial);
+        await store.FollowAsync(new ProbeSerial(2));
+        await store.UnfollowAsync(new ProbeSerial(2));
+        await clock.SettleAsync();
+        Assert.Equal(new ValueSet<ProbeSerial>([F.Serial]), log.Last);
+        Assert.Equal([F.Serial], store.FollowedSerials());
+
+        var reopened = new ProbeStore(clock, history);
+        await reopened.StartAsync();
+        Assert.Equal([F.Serial], reopened.FollowedSerials());
+    });
+
     [Fact]
     public void FollowWithoutPersistenceWorks() => Det.Run(async () =>
     {
