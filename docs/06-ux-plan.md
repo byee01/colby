@@ -16,6 +16,7 @@ Built on the facade in 02 §13. The UI only reads `ProbeSnapshot`, `PredictionVi
 | Units | Follow OS region (°F for US locale, °C elsewhere); user override in Settings |
 | Probe identity | Probe number + color (as on Display/phone); optional nickname per cook |
 | Kitchen mode | Toggle (toolbar button + shortcut) → full screen; Esc exits |
+| Theme | Dark only (light theme removed from tokens and boards) |
 | Font | Bundled Barlow + Barlow Semi Condensed (SIL OFL 1.1), tabular figures for all numbers |
 | Sounds | Built-in OS sounds only; nothing bundled (§17.3) |
 | Live Activity equivalents | Menu bar item, popover, floating live window, desktop widgets (macOS); tray, flyout, alarm toast, widgets board, floating live window (Windows) (§17.2) |
@@ -267,8 +268,7 @@ Build impact (custom look vs. placeholder UI already in M7/W6): about +4 weeks m
 | # | Question |
 |---|---|
 | 1 | Logo / app icon for "Colby" (canvas uses a placeholder thermometer glyph) |
-| 2 | Light theme: ship in v1 or dark-only first? (Main board has a light tweak) |
-| 3 | Confirm Barlow tabular figures render identically in SwiftUI and WinUI (U2 check); fallback: Archivo (OFL) |
+| 2 | Confirm Barlow tabular figures render identically in SwiftUI and WinUI (U2 check); fallback: Archivo (OFL) |
 
 ## 17. Design pass 1 (canvas)
 
@@ -317,7 +317,7 @@ macOS notification banners use `UNNotificationSound.default` (system sound names
 
 | Board | Shows |
 |---|---|
-| Main window · 3 probes | Graph-first layout, hover crosshair, chip selection, Ready in/at toggle; tweaks: probes 1/3/8, alerting, dark/light |
+| Main window · 3 probes | Graph-first layout, hover crosshair, chip selection, Ready in/at toggle; tweaks: probes 1/3/8, alerting |
 | Main window · alarm firing | Red alert band, alerting chip |
 | Main window · 8 probes | Non-focused probes core-only, end-label de-collision |
 | Kitchen mode · 4 probes / alarm | 2×2 tiles with trend lines; full-screen red takeover |
@@ -325,5 +325,7 @@ macOS notification banners use `UNNotificationSound.default` (system sound names
 | Live Activity equivalents · Windows | Tray states, tooltip, flyout, widgets board, alarm toast |
 | Set target · Alarms & alerts | Unit-aware target entry with range validation, mode choice, probe alarms, desktop alerts, sound picker |
 | Design tokens | Colors, validated probe palette (dark + light), type scale, sound map, spacing |
+
+Rendered screenshots: `docs/design/screenshots/` (headless Chromium, 1440 px wide).
 
 Next: U2 (tokens.json + component specs from the Tokens board), then onboarding, history, settings, empty/error states boards.

@@ -10,7 +10,7 @@ Planning and documentation only. No code yet.
 | [03-roadmap.md](03-roadmap.md) | Milestones, estimates, risks, decisions log |
 | [04-release-and-beta.md](04-release-and-beta.md) | TestFlight / package flight path, CI, crash reporting, release checklist |
 | [05-test-strategy.md](05-test-strategy.md) | Test layers, parity traces, replays, hardware matrix, emulator rig |
-| [06-ux-plan.md](06-ux-plan.md) | UX decisions, screens, graph spec, alerts, kitchen mode, design system, accessibility |
+| [06-ux-plan.md](06-ux-plan.md) | UX decisions, screens, graph spec, alerts, kitchen mode, design system, accessibility; screenshots in `design/screenshots/` |
 
 ## Decisions so far
 
@@ -30,7 +30,7 @@ Planning and documentation only. No code yet.
 | History | Keep everything until the user deletes it. Export deferred. |
 | Beta | macOS TestFlight (internal → external). Windows Microsoft Store package flights. See 04. |
 | Crash reporting | Store-provided only: Xcode Organizer / TestFlight, Partner Center Health. No third-party SDK. |
-| UX | Graph-first window, custom shared look, kitchen mode, manual target only. See 06. |
+| UX | Graph-first window, custom shared look, dark only, kitchen mode, manual target only. See 06. |
 
 ## Upstream sources (primary)
 
