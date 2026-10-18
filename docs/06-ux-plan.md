@@ -16,6 +16,10 @@ Built on the facade in 02 §13. The UI only reads `ProbeSnapshot`, `PredictionVi
 | Units | Follow OS region (°F for US locale, °C elsewhere); user override in Settings |
 | Probe identity | Probe number + color (as on Display/phone); optional nickname per cook |
 | Kitchen mode | Toggle (toolbar button + shortcut) → full screen; Esc exits |
+| Font | Bundled Barlow + Barlow Semi Condensed (SIL OFL 1.1), tabular figures for all numbers |
+| Sounds | Built-in OS sounds only; nothing bundled (§17.3) |
+| Live Activity equivalents | Menu bar item, popover, floating live window, desktop widgets (macOS); tray, flyout, alarm toast, widgets board, floating live window (Windows) (§17.2) |
+| Design canvas | [Colby Desktop Design](https://claude.ai/artifact/SptGVDutqLHwzLb7hUJeGU) (U1 wireframes + first hi-fi pass) |
 
 ## 2. Principles
 
@@ -125,7 +129,7 @@ Two sections, same sheet:
 | Probe alarms | Core high, Surface high/low, Ambient high/low as primary rows; T1–T8 under "Advanced". Toggle + temperature per row. Note: "Also alarms on your Display and phone app." | `setAlarm` (probe) |
 | App alerts | Prediction within N min, Prediction done, Resting done, Ambient out of range for N min, Stall, Probe offline, Battery low | `AlertEngine` rules (02 §9) |
 
-Defaults when a probe is first followed: `predictionDone`, `probeOffline (60 s)`, `batteryLow` on; nothing written to the probe.
+Defaults when a probe is first followed match the official app's alert set: Ready (`predictionDone`, repeats until acknowledged), 5-minute warning (`predictionWithin 300 s`), Overheat, Disconnected (`probeOffline 60 s`, only during an active cook), Low battery. Nothing written to the probe.
 
 ## 7. Alerts
 
@@ -204,7 +208,7 @@ First launch:
 | Setting | Default |
 |---|---|
 | Units | Follow region |
-| Alarm sound / volume | Built-in "Chime", 80% |
+| Alarm sound / volume | Built-in per event (§17.3), 80% |
 | Alert when Do Not Disturb is on | On (macOS time-sensitive; Windows alarm toast) |
 | Start at login | Off |
 | Kitchen mode theme | Dark |
@@ -229,7 +233,7 @@ design/
 | Spacing / radius | 4 pt grid |
 | Motion | Pulse for alerting chip; respects Reduce Motion / Windows animation setting |
 
-Fonts: system UI font for text (SF Pro / Segoe UI Variable) to keep Store-native feel; one bundled numeric display font for countdown/temps is optional (licensing must allow app embedding).
+Fonts: bundled Barlow (text) and Barlow Semi Condensed (numbers), SIL OFL 1.1, which allows embedding in apps. Tabular figures on for every number.
 
 Components (each with Swift + WinUI implementation): `ProbeChip`, `ProbeTile` (kitchen), `TempGraph`, `Countdown`, `ProgressBar`, `AlertBand`, `TempField` (unit-aware input), `SensorTable`, `MenuBarSummary`.
 
@@ -262,7 +266,64 @@ Build impact (custom look vs. placeholder UI already in M7/W6): about +4 weeks m
 
 | # | Question |
 |---|---|
-| 1 | Who designs: you, a hired designer, or Claude-produced wireframes/prototypes (HTML) as a starting point? |
-| 2 | Brand direction for the custom look: name/logo/colors for "Colby"? |
-| 3 | Bundled numeric display font, or system font only? |
-| 4 | Sound set: license stock sounds or commission? |
+| 1 | Logo / app icon for "Colby" (canvas uses a placeholder thermometer glyph) |
+| 2 | Light theme: ship in v1 or dark-only first? (Main board has a light tweak) |
+| 3 | Confirm Barlow tabular figures render identically in SwiftUI and WinUI (U2 check); fallback: Archivo (OFL) |
+
+## 17. Design pass 1 (canvas)
+
+### 17.1 References from the official Combustion app
+
+No screenshots could be fetched (combustion.inc and app stores are blocked from the planning environment). References are from text sources; visuals are Colby's own.
+
+| Reference | Source | Type | Used as |
+|---|---|---|---|
+| "Target temp (cooking to) and predicted (ready-in) time are now visible on the graph" | [Product release notes](https://combustion.inc/pages/product-release-notes) | Primary | Labels "Cooking to" / "Ready in"; target line + ready marker on graph |
+| Predictions in relative ("ready in") or absolute "clock" time | [App Store listing](https://apps.apple.com/us/app/combustion-inc/id1658858290) | Primary | "Ready in / Ready at" toggle in toolbar |
+| Live Activities: "live cooking data for one of your probes" on Lock Screen, Watch, Dynamic Island | [Product release notes](https://combustion.inc/pages/product-release-notes) | Primary | One-probe floating live window, menu bar compact item |
+| Live Activities gained "temperature trend lines" (v3.3.0) | [Update history](https://combustioninc.gorgias.help/en-US/combustion-app-update-history-1614818) | Primary (vendor help center) | Trend sparkline on every live surface and kitchen tile |
+| Live Activities follow in-app device order; rounding fix between Live Activity and app | [App Store listing](https://apps.apple.com/us/app/combustion-inc/id1658858290) | Primary | Same order and same rounding on every surface (shared formatter) |
+| Alerts: ready, 5-minute warning, overheat, disconnect (after 60 s in a cook), low battery; persistent ready alarm | [Product release notes](https://combustion.inc/pages/product-release-notes) | Primary | Default alert set (§6) |
+| Graph scrubbing | [Product release notes](https://combustion.inc/pages/product-release-notes) | Primary | Hover crosshair + tooltip |
+
+### 17.2 Live Activity equivalents
+
+| iOS surface | macOS | Windows |
+|---|---|---|
+| Dynamic Island compact | Menu bar item: badge + core + countdown (`141° · 0:38`); accent when ready; red when alarming | Tray icon color (idle / cooking / alarm) + tooltip |
+| Dynamic Island expanded | Menu bar popover: alert row, all probes with trend, actions | Tray flyout, same content |
+| Lock Screen Live Activity | Floating live window (always on top, one probe or up to 3), ⌥⌘L | Same floating window component |
+| Home/Lock widgets | WidgetKit desktop widgets, small (1 probe) and medium (3 probes) | Widgets board card (Windows App SDK widget provider) |
+| Alert banner | Time-sensitive notification + in-app loop | Alarm-scenario toast with looping audio |
+
+Widgets: countdown uses a self-updating timer text; temperatures refresh on ≥ 1° change within the OS refresh budget. The floating window and menu bar are the real-time surfaces.
+
+API impact: WidgetKit extension + App Group shared container for a small snapshot file (macOS); Windows widget provider COM server declared in the MSIX manifest. Both read a `LiveSnapshot` (probe n, name, core, target, state, ready time, last 30 core samples) written by the core at most once per 5 s.
+
+### 17.3 Sounds (built-in only)
+
+| Event | macOS (in-app loop, `NSSound(named:)`) | Windows toast audio | Repeats |
+|---|---|---|---|
+| Ready | Glass | `ms-winsoundevent:Notification.Looping.Alarm` | Until acknowledged |
+| Overheat | Sosumi | `Notification.Looping.Alarm2` | Until acknowledged |
+| Probe high/low alarm | Hero | `Notification.Looping.Alarm3` | Until acknowledged |
+| 5-minute warning | Ping | `Notification.Reminder` | Once |
+| Disconnected, low battery | Basso | `Notification.Default` | Once |
+| Custom rule | Submarine | `Notification.Reminder` | Once |
+
+macOS notification banners use `UNNotificationSound.default` (system sound names are not addressable by the notification API); the looping sound plays in-app, which works because Colby stays resident. System sound files are played by name, never copied into the bundle.
+
+### 17.4 Canvas contents
+
+| Board | Shows |
+|---|---|
+| Main window · 3 probes | Graph-first layout, hover crosshair, chip selection, Ready in/at toggle; tweaks: probes 1/3/8, alerting, dark/light |
+| Main window · alarm firing | Red alert band, alerting chip |
+| Main window · 8 probes | Non-focused probes core-only, end-label de-collision |
+| Kitchen mode · 4 probes / alarm | 2×2 tiles with trend lines; full-screen red takeover |
+| Live Activity equivalents · macOS | Menu bar states, popover, floating window, widgets |
+| Live Activity equivalents · Windows | Tray states, tooltip, flyout, widgets board, alarm toast |
+| Set target · Alarms & alerts | Unit-aware target entry with range validation, mode choice, probe alarms, desktop alerts, sound picker |
+| Design tokens | Colors, validated probe palette (dark + light), type scale, sound map, spacing |
+
+Next: U2 (tokens.json + component specs from the Tokens board), then onboarding, history, settings, empty/error states boards.
