@@ -325,6 +325,9 @@ macOS notification banners use `UNNotificationSound.default` (system sound names
 | Live Activity equivalents · macOS | Menu bar states, popover, floating window, widgets |
 | Live Activity equivalents · Windows | Tray states, tooltip, flyout, widgets board, alarm toast |
 | Set target · Alarms & alerts | Unit-aware target entry with range validation, mode choice, probe alarms, desktop alerts, sound picker |
+| Onboarding · 4 steps | Welcome (demo link, not-affiliated line), Bluetooth (with denied-state banner), find thermometers (follow checkboxes, Display listed as relay), background (menu bar, login opt-in; notification permission deferred to first alert) |
+| History | Cook list (title, date, duration, peak); detail with stat tiles, read-only graph, alert events on the timeline and as a list; Rename, Delete |
+| Settings | Sections: General (units, prediction time with preview, menu bar, login, keep awake), Alerts and sounds (volume, Do Not Disturb, sound per event, default alerts for new probes), Devices (followed probes, MeatNet nodes), History and data, Diagnostics (links, Record session), About |
 | Design tokens | Colors, validated probe palette (dark + light), type scale, sound map, spacing |
 
 Completion time: the chosen format is primary; where space allows (inspector, kitchen tiles) the other format sits beside it at lower emphasis (muted, ~30% of the primary size), e.g. `3:42  at 5:02 PM` or `5:02  PM · in 3:42`. Chips, menu bar and widgets show the primary format only. Graph ready markers always use clock time.
@@ -333,4 +336,4 @@ Rendered screenshots: `docs/design/screenshots/` (`MainAt.png`, `KitchenAt.png` 
 
 Rendered screenshots (all): `docs/design/screenshots/` (headless Chromium, 1440 px wide).
 
-Next: U2 (tokens.json + component specs from the Tokens board), then onboarding, history, settings, empty/error states boards.
+Next: empty and error states board; then U2 (tokens.json + component specs).
