@@ -43,6 +43,7 @@ func describe(_ state: ProbeConnectionState?) -> String {
     switch state {
     case nil: "advert only"
     case .waitingForAdvertisement?: "waiting"
+    case .viaNode(let n)?: "via \(n)"
     case .connecting(let n)?: "connecting #\(n)"
     case .connected?: "connected"
     case .backoff(let n, _)?: "backoff #\(n)"
