@@ -1,0 +1,12 @@
+{
+  "description": "Set alarms: all 22 unset at -20 C (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "FFFFFFFF",
+  "requestId": 305419896,
+  "request": {
+    "type": "setAlarms"
+  },
+  "expectedHex": "CAFE34AE0B7856341230FFFFFFFF0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+}

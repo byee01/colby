@@ -1,0 +1,11 @@
+{
+  "description": "Unknown response type 0x7E",
+  "source": "hand-built",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEA43C7E0100",
+  "expectedError": {
+    "kind": "unknownMessageType",
+    "type": 126
+  }
+}

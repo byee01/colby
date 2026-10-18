@@ -1,0 +1,38 @@
+{
+  "description": "A notification ends inside one frame and starts the next frame's tail plus another frame",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFEC66D0301064D3C2B1A8813CAFE5D1405",
+    "0100CAFE494804011809000000848370100EC241380807E1201CE02945A5096009"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    },
+    {
+      "direction": "response",
+      "messageType": 5,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": ""
+    },
+    {
+      "direction": "response",
+      "messageType": 4,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "09000000848370100EC241380807E1201CE02945A5096009"
+    }
+  ],
+  "expectedErrors": []
+}

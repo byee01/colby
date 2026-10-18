@@ -1,0 +1,16 @@
+{
+  "description": "Node response to 0x0B with success = 0",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE71578BBEBAFECA0DF0AD0B0000",
+  "expected": {
+    "messageType": 11,
+    "success": false,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

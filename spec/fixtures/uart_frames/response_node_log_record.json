@@ -1,0 +1,41 @@
+{
+  "description": "Node Read Logs response record (28-byte payload)",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE461F84BEBAFECA0DF0AD0B011C3F5A00102A0000002A037DC012BC0264100EF4C144E02945A5096009",
+  "expected": {
+    "messageType": 4,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "logRecord",
+      "probe": "10005A3F",
+      "sequence": 42,
+      "temperatures": [
+        20.5,
+        30.0,
+        40.0,
+        50.0,
+        60.0,
+        70.0,
+        80.0,
+        90.0
+      ],
+      "prediction": {
+        "virtualSensors": {
+          "core": "t1",
+          "surface": "t4",
+          "ambient": "t8"
+        },
+        "state": "predicting",
+        "mode": "timeToRemoval",
+        "type": "removal",
+        "setpoint": 65.0,
+        "rawSecondsRemaining": 1234,
+        "estimatedCore": 40.0
+      }
+    }
+  }
+}

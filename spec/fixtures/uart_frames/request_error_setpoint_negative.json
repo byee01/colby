@@ -1,0 +1,14 @@
+{
+  "description": "Negative set point",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": -0.1,
+    "mode": "timeToRemoval"
+  },
+  "expectedError": {
+    "kind": "outOfRange"
+  }
+}

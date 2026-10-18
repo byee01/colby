@@ -1,0 +1,41 @@
+{
+  "description": "Node log record with maximum fields",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE7AA38400000000FFFFFFFF011CFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7DD2FFFFFFFF1F",
+  "expected": {
+    "messageType": 4,
+    "success": true,
+    "requestId": 0,
+    "responseId": 4294967295,
+    "body": {
+      "type": "logRecord",
+      "probe": "FFFFFFFF",
+      "sequence": 4294967295,
+      "temperatures": [
+        389.55,
+        389.55,
+        389.55,
+        389.55,
+        389.55,
+        389.55,
+        389.55,
+        389.55
+      ],
+      "prediction": {
+        "virtualSensors": {
+          "core": "t6",
+          "surface": "t7",
+          "ambient": "t8"
+        },
+        "state": "removalPredictionDone",
+        "mode": "removalAndResting",
+        "type": "resting",
+        "setpoint": 102.3,
+        "rawSecondsRemaining": 131071,
+        "estimatedCore": 184.7
+      }
+    }
+  }
+}

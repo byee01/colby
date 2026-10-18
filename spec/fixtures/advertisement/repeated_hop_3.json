@@ -1,0 +1,31 @@
+{
+  "description": "Node-repeated probe data, 3 hop(s). Hop count is in the top two bits of the network byte",
+  "source": "spec",
+  "hex": "C70902425A001052836B980DB8A1370887E3C01C00C08000",
+  "expected": {
+    "kind": "repeated",
+    "serial": "10005A42",
+    "temperatures": [
+      22.5,
+      23.0,
+      23.5,
+      24.0,
+      24.5,
+      25.0,
+      25.5,
+      26.0
+    ],
+    "mode": "normal",
+    "color": "yellow",
+    "probeNumber": 1,
+    "batteryLow": false,
+    "virtualSensors": {
+      "core": "t1",
+      "surface": "t4",
+      "ambient": "t8"
+    },
+    "overheating": [],
+    "preferences": null,
+    "hopCount": 3
+  }
+}

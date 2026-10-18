@@ -1,0 +1,11 @@
+{
+  "description": "0x46 does not exist on the probe's own UART",
+  "source": "hand-built",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE65B4460118000000000000000000000000000000000000000000000000",
+  "expectedError": {
+    "kind": "unknownMessageType",
+    "type": 70
+  }
+}

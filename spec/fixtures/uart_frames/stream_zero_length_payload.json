@@ -1,0 +1,21 @@
+{
+  "description": "Frame with an empty payload",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFE5D14050100"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 5,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": ""
+    }
+  ],
+  "expectedErrors": []
+}

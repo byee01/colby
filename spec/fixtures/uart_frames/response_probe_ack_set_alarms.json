@@ -1,0 +1,16 @@
+{
+  "description": "Response to 0x0B with no payload, success",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE5C0F0B0100",
+  "expected": {
+    "messageType": 11,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "Node log response with 20 payload bytes (needs 28)",
+  "source": "hand-built",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE753E84BEBAFECA0DF0AD0B01140000000000000000000000000000000000000000",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 28,
+    "actual": 20
+  }
+}

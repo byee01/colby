@@ -1,0 +1,19 @@
+{
+  "description": "Node Read Session Information response (serial + 6 bytes)",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE58E583BEBAFECA0DF0AD0B010A3F5A00104D3C2B1A8813",
+  "expected": {
+    "messageType": 3,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "sessionInfo",
+      "probe": "10005A3F",
+      "sessionId": 439041101,
+      "samplePeriodMs": 5000
+    }
+  }
+}

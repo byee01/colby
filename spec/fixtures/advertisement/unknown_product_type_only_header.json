@@ -1,0 +1,9 @@
+{
+  "description": "Three bytes (vendor + type) are enough to classify an unknown product",
+  "source": "hand-built",
+  "hex": "C70909",
+  "expected": {
+    "kind": "unknown",
+    "productType": 9
+  }
+}

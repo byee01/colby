@@ -1,0 +1,10 @@
+{
+  "description": "13 bytes: Android returns null; here tooShort",
+  "source": "android-test",
+  "hex": "FFFFFFFFFFFFFFFFFFFFFFFFFF",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 30,
+    "actual": 13
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "Node response header only",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "node",
+  "direction": "response",
+  "chunks": [
+    "CAFE0EDE85050302010E0C0B0A0000"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 5,
+      "requestId": 16909061,
+      "responseId": 168496142,
+      "success": false,
+      "payloadHex": ""
+    }
+  ],
+  "expectedErrors": []
+}

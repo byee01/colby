@@ -1,0 +1,33 @@
+{
+  "description": "Mode/ID 0b101_110_01 and status 0b10_11_101_1 from ProbeAdvertisingDataTest: instant read, color 6, ID 6, low battery, core T6, surface T7, ambient T7",
+  "source": "android-test",
+  "hex": "C709017856341200000000000000000000000000B9BB000004",
+  "expected": {
+    "kind": "probe",
+    "serial": "12345678",
+    "temperatures": [
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0
+    ],
+    "mode": "instantRead",
+    "color": "unknown(6)",
+    "probeNumber": 6,
+    "batteryLow": true,
+    "virtualSensors": {
+      "core": "t6",
+      "surface": "t7",
+      "ambient": "t7"
+    },
+    "overheating": [],
+    "preferences": {
+      "powerMode": "normal",
+      "highRadioPower": true
+    }
+  }
+}

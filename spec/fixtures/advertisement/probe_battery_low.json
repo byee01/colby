@@ -1,0 +1,33 @@
+{
+  "description": "Low battery bit set, virtual sensors unaffected",
+  "source": "spec",
+  "hex": "C709013F5A001052836B980DB8A1370887E3C01C0095000000",
+  "expected": {
+    "kind": "probe",
+    "serial": "10005A3F",
+    "temperatures": [
+      22.5,
+      23.0,
+      23.5,
+      24.0,
+      24.5,
+      25.0,
+      25.5,
+      26.0
+    ],
+    "mode": "normal",
+    "color": "yellow",
+    "probeNumber": 1,
+    "batteryLow": true,
+    "virtualSensors": {
+      "core": "t3",
+      "surface": "t5",
+      "ambient": "t7"
+    },
+    "overheating": [],
+    "preferences": {
+      "powerMode": "normal",
+      "highRadioPower": false
+    }
+  }
+}

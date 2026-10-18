@@ -1,0 +1,41 @@
+{
+  "description": "Log record 0 with every field zero (-20 C temperatures)",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEC26404011800000000000000000000000000000000000A000000000000",
+  "expected": {
+    "messageType": 4,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "logRecord",
+      "probe": null,
+      "sequence": 0,
+      "temperatures": [
+        -20.0,
+        -20.0,
+        -20.0,
+        -20.0,
+        -20.0,
+        -20.0,
+        -20.0,
+        -20.0
+      ],
+      "prediction": {
+        "virtualSensors": {
+          "core": "t3",
+          "surface": "t5",
+          "ambient": "t5"
+        },
+        "state": "notInserted",
+        "mode": "none",
+        "type": "none",
+        "setpoint": 0.0,
+        "rawSecondsRemaining": 0,
+        "estimatedCore": -20.0
+      }
+    }
+  }
+}

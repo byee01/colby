@@ -1,0 +1,24 @@
+{
+  "description": "Request stream with a damaged CRC",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "request",
+  "chunks": [
+    "CAFE8FC205028A06CAFE5C480300"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "request",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": null,
+      "payloadHex": ""
+    }
+  ],
+  "expectedErrors": [
+    "badCrc",
+    "badSync"
+  ]
+}

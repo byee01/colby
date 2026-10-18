@@ -1,0 +1,12 @@
+{
+  "description": "Display with preferences byte 0",
+  "source": "spec",
+  "hex": "C7090444535030303030303032000000000000000000000000",
+  "expected": {
+    "kind": "node",
+    "productType": 4,
+    "nodeProductType": "display",
+    "serial": "DSP0000002",
+    "preferences": 0
+  }
+}

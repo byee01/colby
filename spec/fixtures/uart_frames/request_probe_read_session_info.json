@@ -1,0 +1,10 @@
+{
+  "description": "Read Session Information, no payload",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "readSessionInfo"
+  },
+  "expectedHex": "CAFE5C480300"
+}

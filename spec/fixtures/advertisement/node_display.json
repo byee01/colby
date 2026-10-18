@@ -1,0 +1,12 @@
+{
+  "description": "Display own advertisement: product type 4, 10-char serial, preferences byte",
+  "source": "spec",
+  "hex": "C7090444535030303030303031030000000000000000000000",
+  "expected": {
+    "kind": "node",
+    "productType": 4,
+    "nodeProductType": "display",
+    "serial": "DSP0000001",
+    "preferences": 3
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "description": "Probe Model Information response: serial + 50-byte string",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE37BCC8BEBAFECA0DF0AD0B01363F5A001050524F42457C534B552D3130307C4C4F542D323032342D313700000000000000000000000000000000000000000000000000",
+  "expected": {
+    "messageType": 72,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "revision",
+      "probe": "10005A3F",
+      "kind": "model",
+      "text": "PROBE|SKU-100|LOT-2024-17"
+    }
+  }
+}

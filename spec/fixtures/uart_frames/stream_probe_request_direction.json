@@ -1,0 +1,30 @@
+{
+  "description": "Probe framer reading requests (6-byte header), e.g. a simulator reading the app's writes",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "request",
+  "chunks": [
+    "CAFE70C2",
+    "05028A06CAFE62580C00"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "request",
+      "messageType": 5,
+      "requestId": null,
+      "responseId": null,
+      "success": null,
+      "payloadHex": "8A06"
+    },
+    {
+      "direction": "request",
+      "messageType": 12,
+      "requestId": null,
+      "responseId": null,
+      "success": null,
+      "payloadHex": ""
+    }
+  ],
+  "expectedErrors": []
+}

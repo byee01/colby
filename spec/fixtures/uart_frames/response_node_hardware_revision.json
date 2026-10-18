@@ -1,0 +1,19 @@
+{
+  "description": "Probe Hardware Revision response: serial + 16-byte string",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFEE787C7BEBAFECA0DF0AD0B01143F5A001048572D42320000000000000000000000",
+  "expected": {
+    "messageType": 71,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "revision",
+      "probe": "10005A3F",
+      "kind": "hardware",
+      "text": "HW-B2"
+    }
+  }
+}

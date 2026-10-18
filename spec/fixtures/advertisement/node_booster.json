@@ -1,0 +1,12 @@
+{
+  "description": "Booster own advertisement: product type 5",
+  "source": "spec",
+  "hex": "C7090542535430303030303031800000000000000000000000",
+  "expected": {
+    "kind": "node",
+    "productType": 5,
+    "nodeProductType": "booster",
+    "serial": "BST0000001",
+    "preferences": 128
+  }
+}

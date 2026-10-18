@@ -1,0 +1,10 @@
+{
+  "description": "Vendor ID only, no product type",
+  "source": "hand-built",
+  "hex": "C709",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 3,
+    "actual": 2
+  }
+}

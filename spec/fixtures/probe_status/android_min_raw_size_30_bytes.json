@@ -1,0 +1,44 @@
+{
+  "description": "30 bytes of 0xFF (ProbeStatus.MIN_RAW_SIZE): no food safe",
+  "source": "android-test",
+  "hex": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+  "expected": {
+    "logRange": {
+      "min": 4294967295,
+      "max": 4294967295
+    },
+    "temperatures": [
+      389.55,
+      389.55,
+      389.55,
+      389.55,
+      389.55,
+      389.55,
+      389.55,
+      389.55
+    ],
+    "mode": "error",
+    "color": "unknown(7)",
+    "probeNumber": 8,
+    "batteryLow": true,
+    "virtualSensors": {
+      "core": "t1",
+      "surface": "t7",
+      "ambient": "t8"
+    },
+    "prediction": {
+      "state": "unknown",
+      "mode": "reserved",
+      "type": "reserved",
+      "setpoint": 102.3,
+      "heatStart": 102.3,
+      "rawSecondsRemaining": 131071,
+      "estimatedCore": 184.7
+    },
+    "foodSafe": null,
+    "overheating": null,
+    "preferences": null,
+    "alarms": null,
+    "session": null
+  }
+}

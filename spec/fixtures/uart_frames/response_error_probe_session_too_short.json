@@ -1,0 +1,12 @@
+{
+  "description": "Successful session info with 5 payload bytes",
+  "source": "hand-built",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE2B020301050000000000",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 6,
+    "actual": 5
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "success = 0 ignores the payload",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE152A0300064D3C2B1A8813",
+  "expected": {
+    "messageType": 3,
+    "success": false,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

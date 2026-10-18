@@ -1,0 +1,12 @@
+{
+  "description": "Engine (product type 6): only the serial is decoded in v1",
+  "source": "spec",
+  "hex": "C70906454E47494E4530303031000000000000000000000000",
+  "expected": {
+    "kind": "node",
+    "productType": 6,
+    "nodeProductType": "engine",
+    "serial": "ENGINE0001",
+    "preferences": null
+  }
+}

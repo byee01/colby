@@ -1,0 +1,10 @@
+{
+  "description": "Empty manufacturer data",
+  "source": "hand-built",
+  "hex": "",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 3,
+    "actual": 0
+  }
+}

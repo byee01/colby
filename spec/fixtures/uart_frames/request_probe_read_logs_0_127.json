@@ -1,0 +1,12 @@
+{
+  "description": "Read Logs 0..127",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "readLogs",
+    "start": 0,
+    "end": 127
+  },
+  "expectedHex": "CAFE68F30408000000007F000000"
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Response to 0x05 with success = 0",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE6C27050000",
+  "expected": {
+    "messageType": 5,
+    "success": false,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

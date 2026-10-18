@@ -1,0 +1,12 @@
+{
+  "description": "Set Prediction 63.3 C: 0.1 C resolution",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 63.3,
+    "mode": "timeToRemoval"
+  },
+  "expectedHex": "CAFEE28405027906"
+}

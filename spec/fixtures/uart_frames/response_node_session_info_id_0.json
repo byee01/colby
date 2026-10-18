@@ -1,0 +1,19 @@
+{
+  "description": "Node session info with session ID 0 reported raw",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE5E5B83BEBAFECA0DF0AD0B010A3F5A0010000000000000",
+  "expected": {
+    "messageType": 3,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "sessionInfo",
+      "probe": "10005A3F",
+      "sessionId": 0,
+      "samplePeriodMs": 0
+    }
+  }
+}

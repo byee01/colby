@@ -1,0 +1,16 @@
+{
+  "description": "Response to 0x01 with no payload, success",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE9DC8010100",
+  "expected": {
+    "messageType": 1,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

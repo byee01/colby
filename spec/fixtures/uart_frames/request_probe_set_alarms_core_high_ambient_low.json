@@ -1,0 +1,22 @@
+{
+  "description": "Set alarms: core high 74.5 C, ambient low 100 C",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setAlarms",
+    "high": {
+      "core": {
+        "set": true,
+        "temperature": 74.5
+      }
+    },
+    "low": {
+      "ambient": {
+        "set": true,
+        "temperature": 100.0
+      }
+    }
+  },
+  "expectedHex": "CAFE55F90B2C00000000000000000000000000000000891D0000000000000000000000000000000000000000000000008125"
+}

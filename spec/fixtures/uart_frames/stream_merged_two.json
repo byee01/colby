@@ -1,0 +1,29 @@
+{
+  "description": "Two frames in one notification",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFEC66D0301064D3C2B1A8813CAFE5D14050100"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    },
+    {
+      "direction": "response",
+      "messageType": 5,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": ""
+    }
+  ],
+  "expectedErrors": []
+}

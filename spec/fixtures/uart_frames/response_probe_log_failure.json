@@ -1,0 +1,16 @@
+{
+  "description": "Read Logs failure (success = 0, empty payload)",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE5C10040000",
+  "expected": {
+    "messageType": 4,
+    "success": false,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

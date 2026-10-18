@@ -1,0 +1,12 @@
+{
+  "description": "Probe Firmware Revision request (node only) (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "FFFFFFFF",
+  "requestId": 1,
+  "request": {
+    "type": "readProbeFirmware"
+  },
+  "expectedHex": "CAFE761B460100000004FFFFFFFF"
+}

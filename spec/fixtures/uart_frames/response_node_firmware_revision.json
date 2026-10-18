@@ -1,0 +1,19 @@
+{
+  "description": "Probe Firmware Revision response: serial + 20-byte NUL-padded string",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE9973C6BEBAFECA0DF0AD0B01183F5A001076312E342E322D6275696C643700000000000000",
+  "expected": {
+    "messageType": 70,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "revision",
+      "probe": "10005A3F",
+      "kind": "firmware",
+      "text": "v1.4.2-build7"
+    }
+  }
+}

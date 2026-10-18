@@ -1,0 +1,60 @@
+{
+  "description": "Truncated status of 93 bytes: alarms cut one byte short: absent",
+  "source": "spec",
+  "hex": "64000000C800000052836B980DB8A1370887E3C01C00C000000000000019000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "expected": {
+    "logRange": {
+      "min": 100,
+      "max": 200
+    },
+    "temperatures": [
+      22.5,
+      23.0,
+      23.5,
+      24.0,
+      24.5,
+      25.0,
+      25.5,
+      26.0
+    ],
+    "mode": "normal",
+    "color": "yellow",
+    "probeNumber": 1,
+    "batteryLow": false,
+    "virtualSensors": {
+      "core": "t1",
+      "surface": "t4",
+      "ambient": "t8"
+    },
+    "prediction": {
+      "state": "notInserted",
+      "mode": "none",
+      "type": "none",
+      "setpoint": 0.0,
+      "heatStart": 0.0,
+      "rawSecondsRemaining": 0,
+      "estimatedCore": 0.0
+    },
+    "foodSafe": {
+      "mode": "simplified",
+      "product": 0,
+      "serving": "servedImmediately",
+      "thresholdTemp": null,
+      "zValue": null,
+      "referenceTemp": null,
+      "dValue": null,
+      "targetLogReduction": 0.0,
+      "state": "notSafe",
+      "logReduction": 0.0,
+      "secondsAboveThreshold": 0,
+      "logSequence": 0
+    },
+    "overheating": [],
+    "preferences": {
+      "powerMode": "normal",
+      "highRadioPower": false
+    },
+    "alarms": null,
+    "session": null
+  }
+}

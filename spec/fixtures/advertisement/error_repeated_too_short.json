@@ -1,0 +1,10 @@
+{
+  "description": "Repeated packet without the network byte",
+  "source": "hand-built",
+  "hex": "C709023F5A001052836B980DB8A1370887E3C01C00C0",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 23,
+    "actual": 22
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "description": "Set Prediction 0 C, mode none (cancel) (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "00000001",
+  "requestId": 3735928559,
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 0.0,
+    "mode": "none"
+  },
+  "expectedHex": "CAFE391C05EFBEADDE06010000000000"
+}

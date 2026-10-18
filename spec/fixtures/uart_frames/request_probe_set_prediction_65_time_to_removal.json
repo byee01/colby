@@ -1,0 +1,12 @@
+{
+  "description": "Set Prediction 65.0 C, time to removal",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 65.0,
+    "mode": "timeToRemoval"
+  },
+  "expectedHex": "CAFE70C205028A06"
+}

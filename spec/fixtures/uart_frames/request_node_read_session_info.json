@@ -1,0 +1,12 @@
+{
+  "description": "Read Session Information, no payload (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "00000001",
+  "requestId": 1,
+  "request": {
+    "type": "readSessionInfo"
+  },
+  "expectedHex": "CAFE674403010000000401000000"
+}

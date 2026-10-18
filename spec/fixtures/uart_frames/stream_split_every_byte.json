@@ -1,0 +1,48 @@
+{
+  "description": "Two frames delivered one byte per notification",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CA",
+    "FE",
+    "C6",
+    "6D",
+    "03",
+    "01",
+    "06",
+    "4D",
+    "3C",
+    "2B",
+    "1A",
+    "88",
+    "13",
+    "CA",
+    "FE",
+    "5D",
+    "14",
+    "05",
+    "01",
+    "00"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    },
+    {
+      "direction": "response",
+      "messageType": 5,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": ""
+    }
+  ],
+  "expectedErrors": []
+}

@@ -1,0 +1,31 @@
+{
+  "description": "Repeated probe in Instant Read mode",
+  "source": "spec",
+  "hex": "C709023F5A00104006000000000000000000000001C00000",
+  "expected": {
+    "kind": "repeated",
+    "serial": "10005A3F",
+    "temperatures": [
+      60.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0
+    ],
+    "mode": "instantRead",
+    "color": "yellow",
+    "probeNumber": 1,
+    "batteryLow": false,
+    "virtualSensors": {
+      "core": "t1",
+      "surface": "t4",
+      "ambient": "t8"
+    },
+    "overheating": [],
+    "preferences": null,
+    "hopCount": 1
+  }
+}

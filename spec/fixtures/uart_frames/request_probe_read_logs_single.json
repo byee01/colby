@@ -1,0 +1,12 @@
+{
+  "description": "Read Logs of one record",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "readLogs",
+    "start": 5000,
+    "end": 5000
+  },
+  "expectedHex": "CAFE992B04088813000088130000"
+}

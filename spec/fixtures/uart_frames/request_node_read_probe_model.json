@@ -1,0 +1,12 @@
+{
+  "description": "Probe Model Information request (node only); 4-byte payload as sent by the Android SDK (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "10005A3F",
+  "requestId": 0,
+  "request": {
+    "type": "readProbeModel"
+  },
+  "expectedHex": "CAFE57234800000000043F5A0010"
+}

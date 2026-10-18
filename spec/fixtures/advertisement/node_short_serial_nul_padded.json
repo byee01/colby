@@ -1,0 +1,12 @@
+{
+  "description": "Serial shorter than 10 characters is NUL padded; padding is stripped",
+  "source": "spec",
+  "hex": "C7090441423132000000000000010000000000000000000000",
+  "expected": {
+    "kind": "node",
+    "productType": 4,
+    "nodeProductType": "display",
+    "serial": "AB12",
+    "preferences": 1
+  }
+}

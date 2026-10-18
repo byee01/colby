@@ -1,0 +1,23 @@
+{
+  "description": "A stray CA right before CA FE",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CACAFEC66D0301064D3C2B1A8813"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    }
+  ],
+  "expectedErrors": [
+    "badSync"
+  ]
+}

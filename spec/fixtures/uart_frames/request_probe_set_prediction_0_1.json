@@ -1,0 +1,12 @@
+{
+  "description": "Set Prediction 0.1 C",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 0.1,
+    "mode": "removalAndResting"
+  },
+  "expectedHex": "CAFEDCE405020108"
+}

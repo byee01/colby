@@ -1,0 +1,16 @@
+{
+  "description": "Response to 0x0C with success = 0",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEFDB90C0000",
+  "expected": {
+    "messageType": 12,
+    "success": false,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

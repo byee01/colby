@@ -1,0 +1,19 @@
+{
+  "description": "Session ID and period at maximum",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE1F44030106FFFFFFFFFFFF",
+  "expected": {
+    "messageType": 3,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "sessionInfo",
+      "probe": null,
+      "sessionId": 4294967295,
+      "samplePeriodMs": 65535
+    }
+  }
+}

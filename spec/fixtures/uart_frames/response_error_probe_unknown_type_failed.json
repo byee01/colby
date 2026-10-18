@@ -1,0 +1,11 @@
+{
+  "description": "Unknown type with success = 0 is still unknown",
+  "source": "hand-built",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE950F7E0000",
+  "expectedError": {
+    "kind": "unknownMessageType",
+    "type": 126
+  }
+}

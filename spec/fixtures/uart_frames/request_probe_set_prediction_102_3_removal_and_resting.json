@@ -1,0 +1,12 @@
+{
+  "description": "Set Prediction at the 10-bit maximum 102.3 C, removal and resting",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 102.3,
+    "mode": "removalAndResting"
+  },
+  "expectedHex": "CAFE71E40502FF0B"
+}

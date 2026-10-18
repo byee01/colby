@@ -1,0 +1,24 @@
+{
+  "description": "Garbage header with a short length fails its CRC; the following frame is found",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFE1122030102AABBCAFEC66D0301064D3C2B1A8813"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    }
+  ],
+  "expectedErrors": [
+    "badCrc",
+    "badSync"
+  ]
+}

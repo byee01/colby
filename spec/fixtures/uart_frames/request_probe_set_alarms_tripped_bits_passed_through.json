@@ -1,0 +1,18 @@
+{
+  "description": "Set alarms: tripped/alarming bits are written as given (the probe ignores tripped)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setAlarms",
+    "high": {
+      "t1": {
+        "set": true,
+        "tripped": true,
+        "alarming": true,
+        "temperature": 50.0
+      }
+    }
+  },
+  "expectedHex": "CAFE0BD80B2CE715000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+}

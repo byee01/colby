@@ -1,0 +1,19 @@
+{
+  "description": "Session ID 0 is reported raw by the UART response",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEC0D3030106000000000000",
+  "expected": {
+    "messageType": 3,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "sessionInfo",
+      "probe": null,
+      "sessionId": 0,
+      "samplePeriodMs": 0
+    }
+  }
+}

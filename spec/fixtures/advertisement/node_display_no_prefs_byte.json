@@ -1,0 +1,12 @@
+{
+  "description": "Display packet cut off after the serial (13 bytes): preferences absent",
+  "source": "spec",
+  "hex": "C7090444535030303030303033",
+  "expected": {
+    "kind": "node",
+    "productType": 4,
+    "nodeProductType": "display",
+    "serial": "DSP0000003",
+    "preferences": null
+  }
+}

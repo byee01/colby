@@ -1,0 +1,41 @@
+{
+  "description": "Log record at sequence 0xFFFFFFFF with maximum prediction fields and raw 8191 temperatures",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE9F19040118FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7DD2FFFFFFFF1F",
+  "expected": {
+    "messageType": 4,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "logRecord",
+      "probe": null,
+      "sequence": 4294967295,
+      "temperatures": [
+        389.55,
+        389.55,
+        389.55,
+        389.55,
+        389.55,
+        389.55,
+        389.55,
+        389.55
+      ],
+      "prediction": {
+        "virtualSensors": {
+          "core": "t6",
+          "surface": "t7",
+          "ambient": "t8"
+        },
+        "state": "removalPredictionDone",
+        "mode": "removalAndResting",
+        "type": "resting",
+        "setpoint": 102.3,
+        "rawSecondsRemaining": 131071,
+        "estimatedCore": 184.7
+      }
+    }
+  }
+}

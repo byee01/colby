@@ -1,0 +1,14 @@
+{
+  "description": "Reserved prediction mode 3 cannot be sent",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 60.0,
+    "mode": "reserved"
+  },
+  "expectedError": {
+    "kind": "outOfRange"
+  }
+}

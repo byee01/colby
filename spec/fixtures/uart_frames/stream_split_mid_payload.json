@@ -1,0 +1,22 @@
+{
+  "description": "Split inside the payload",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFE49480401180900000084837010",
+    "0EC241380807E1201CE02945A5096009"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 4,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "09000000848370100EC241380807E1201CE02945A5096009"
+    }
+  ],
+  "expectedErrors": []
+}

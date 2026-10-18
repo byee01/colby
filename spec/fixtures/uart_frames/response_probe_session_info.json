@@ -1,0 +1,19 @@
+{
+  "description": "Read Session Information response",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEC66D0301064D3C2B1A8813",
+  "expected": {
+    "messageType": 3,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "sessionInfo",
+      "probe": null,
+      "sessionId": 439041101,
+      "samplePeriodMs": 5000
+    }
+  }
+}

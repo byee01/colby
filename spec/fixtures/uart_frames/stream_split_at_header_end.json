@@ -1,0 +1,22 @@
+{
+  "description": "Split exactly at the end of the header",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFEC66D030106",
+    "4D3C2B1A8813"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    }
+  ],
+  "expectedErrors": []
+}

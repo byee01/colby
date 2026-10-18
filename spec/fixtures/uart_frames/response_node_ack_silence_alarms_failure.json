@@ -1,0 +1,16 @@
+{
+  "description": "Node Silence Alarms failure",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFECC7E8CBEBAFECA0DF0AD0B0000",
+  "expected": {
+    "messageType": 12,
+    "success": false,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

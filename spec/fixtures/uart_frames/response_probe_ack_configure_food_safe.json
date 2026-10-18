@@ -1,0 +1,16 @@
+{
+  "description": "Response to 0x07 with no payload, success",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE3D7A070100",
+  "expected": {
+    "messageType": 7,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

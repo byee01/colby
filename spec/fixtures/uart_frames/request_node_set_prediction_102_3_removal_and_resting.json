@@ -1,0 +1,14 @@
+{
+  "description": "Set Prediction at the 10-bit maximum 102.3 C, removal and resting (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "10005A3F",
+  "requestId": 1,
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 102.3,
+    "mode": "removalAndResting"
+  },
+  "expectedHex": "CAFED0BB0501000000063F5A0010FF0B"
+}

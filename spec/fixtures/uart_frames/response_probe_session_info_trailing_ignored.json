@@ -1,0 +1,19 @@
+{
+  "description": "Extra payload bytes after the known fields are ignored",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE48520301094D3C2B1A8813010203",
+  "expected": {
+    "messageType": 3,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "sessionInfo",
+      "probe": null,
+      "sessionId": 439041101,
+      "samplePeriodMs": 5000
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "Silence Alarms, no payload (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "10005A3F",
+  "requestId": 305419896,
+  "request": {
+    "type": "silenceAlarms"
+  },
+  "expectedHex": "CAFE9DA80C785634121000013F5A001000000000000000000000"
+}

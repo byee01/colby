@@ -1,0 +1,10 @@
+{
+  "description": "Probe packet with no data after the product type",
+  "source": "hand-built",
+  "hex": "C70901",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 22,
+    "actual": 3
+  }
+}

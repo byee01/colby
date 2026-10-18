@@ -1,0 +1,14 @@
+{
+  "description": "Set point 102.4 C does not fit 10 bits",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 102.4,
+    "mode": "timeToRemoval"
+  },
+  "expectedError": {
+    "kind": "outOfRange"
+  }
+}

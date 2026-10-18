@@ -1,0 +1,14 @@
+{
+  "description": "Set Prediction 63.3 C: 0.1 C resolution (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "10005A3F",
+  "requestId": 0,
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 63.3,
+    "mode": "timeToRemoval"
+  },
+  "expectedHex": "CAFE0A030500000000063F5A00107906"
+}

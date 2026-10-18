@@ -1,0 +1,14 @@
+{
+  "description": "Read Logs of one record (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "FFFFFFFF",
+  "requestId": 4294967295,
+  "request": {
+    "type": "readLogs",
+    "start": 5000,
+    "end": 5000
+  },
+  "expectedHex": "CAFE7E1904FFFFFFFF0CFFFFFFFF8813000088130000"
+}

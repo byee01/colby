@@ -1,0 +1,31 @@
+{
+  "description": "networkInfo 0b1000_0000 = 3 hops, as in ProbeAdvertisingDataTest",
+  "source": "android-test",
+  "hex": "C709027856341200000000000000000000000000B9BB8000",
+  "expected": {
+    "kind": "repeated",
+    "serial": "12345678",
+    "temperatures": [
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0,
+      -20.0
+    ],
+    "mode": "instantRead",
+    "color": "unknown(6)",
+    "probeNumber": 6,
+    "batteryLow": true,
+    "virtualSensors": {
+      "core": "t6",
+      "surface": "t7",
+      "ambient": "t7"
+    },
+    "overheating": [],
+    "preferences": null,
+    "hopCount": 3
+  }
+}

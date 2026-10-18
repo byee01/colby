@@ -1,0 +1,104 @@
+{
+  "description": "Set alarms: every channel high at 799 C and low at -20 C, all set (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "10005A3F",
+  "requestId": 3735928559,
+  "request": {
+    "type": "setAlarms",
+    "high": {
+      "t1": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "t2": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "t3": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "t4": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "t5": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "t6": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "t7": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "t8": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "core": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "surface": {
+        "set": true,
+        "temperature": 799.0
+      },
+      "ambient": {
+        "set": true,
+        "temperature": 799.0
+      }
+    },
+    "low": {
+      "t1": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "t2": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "t3": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "t4": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "t5": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "t6": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "t7": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "t8": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "core": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "surface": {
+        "set": true,
+        "temperature": -20.0
+      },
+      "ambient": {
+        "set": true,
+        "temperature": -20.0
+      }
+    }
+  },
+  "expectedHex": "CAFE62B90BEFBEADDE303F5A0010F1FFF1FFF1FFF1FFF1FFF1FFF1FFF1FFF1FFF1FFF1FF01000100010001000100010001000100010001000100"
+}

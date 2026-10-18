@@ -1,0 +1,10 @@
+{
+  "description": "Silence Alarms, no payload",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "silenceAlarms"
+  },
+  "expectedHex": "CAFE62580C00"
+}

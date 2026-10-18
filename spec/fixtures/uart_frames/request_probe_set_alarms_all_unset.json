@@ -1,0 +1,10 @@
+{
+  "description": "Set alarms: all 22 unset at -20 C",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setAlarms"
+  },
+  "expectedHex": "CAFED2600B2C0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+}

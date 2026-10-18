@@ -1,0 +1,33 @@
+{
+  "description": "Alternating raw 0 and raw 8191 to catch bit-boundary errors",
+  "source": "spec",
+  "hex": "C709013F5A001000E0FF0380FF0F00FE3F00F8FF00C0000000",
+  "expected": {
+    "kind": "probe",
+    "serial": "10005A3F",
+    "temperatures": [
+      -20.0,
+      389.55,
+      -20.0,
+      389.55,
+      -20.0,
+      389.55,
+      -20.0,
+      389.55
+    ],
+    "mode": "normal",
+    "color": "yellow",
+    "probeNumber": 1,
+    "batteryLow": false,
+    "virtualSensors": {
+      "core": "t1",
+      "surface": "t4",
+      "ambient": "t8"
+    },
+    "overheating": [],
+    "preferences": {
+      "powerMode": "normal",
+      "highRadioPower": false
+    }
+  }
+}

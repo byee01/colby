@@ -1,0 +1,19 @@
+{
+  "description": "All-NUL model string decodes to an empty string",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE8B59C8BEBAFECA0DF0AD0B01363F5A00100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "expected": {
+    "messageType": 72,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "revision",
+      "probe": "10005A3F",
+      "kind": "model",
+      "text": ""
+    }
+  }
+}

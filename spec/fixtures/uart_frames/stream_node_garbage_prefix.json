@@ -1,0 +1,23 @@
+{
+  "description": "Garbage before a node frame",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "node",
+  "direction": "response",
+  "chunks": [
+    "010203CAFE12BC84060302010F0C0B0A011C3F5A001003000000E8037DA00FF4813ED007FA401FE02945A5096009"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 4,
+      "requestId": 16909062,
+      "responseId": 168496143,
+      "success": true,
+      "payloadHex": "3F5A001003000000E8037DA00FF4813ED007FA401FE02945A5096009"
+    }
+  ],
+  "expectedErrors": [
+    "badSync"
+  ]
+}

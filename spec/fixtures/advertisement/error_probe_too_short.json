@@ -1,0 +1,10 @@
+{
+  "description": "Probe packet cut off before the battery byte",
+  "source": "hand-built",
+  "hex": "C709013F5A001052836B980DB8A1370887E3C01C00",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 22,
+    "actual": 21
+  }
+}

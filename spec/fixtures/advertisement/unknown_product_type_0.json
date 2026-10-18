@@ -1,0 +1,9 @@
+{
+  "description": "Unknown product type 0 decodes to unknown(productType)",
+  "source": "hand-built",
+  "hex": "C70900000102030405060708090A0B0C0D0E0F10111213",
+  "expected": {
+    "kind": "unknown",
+    "productType": 0
+  }
+}

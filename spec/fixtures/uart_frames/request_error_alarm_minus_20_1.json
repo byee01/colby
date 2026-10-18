@@ -1,0 +1,18 @@
+{
+  "description": "Alarm temperature -20.1 C is below -20",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setAlarms",
+    "low": {
+      "t1": {
+        "set": true,
+        "temperature": -20.1
+      }
+    }
+  },
+  "expectedError": {
+    "kind": "outOfRange"
+  }
+}

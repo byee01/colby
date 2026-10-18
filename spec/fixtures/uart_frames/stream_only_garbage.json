@@ -1,0 +1,14 @@
+{
+  "description": "Nothing but garbage",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "0102030405"
+  ],
+  "expectedFrames": [],
+  "expectedErrors": [
+    "badSync"
+  ]
+}

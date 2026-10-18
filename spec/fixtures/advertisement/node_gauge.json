@@ -1,0 +1,12 @@
+{
+  "description": "Gauge (product type 3): only the serial is decoded in v1",
+  "source": "spec",
+  "hex": "C7090347415547453030303031000000000000000000000000",
+  "expected": {
+    "kind": "node",
+    "productType": 3,
+    "nodeProductType": "gauge",
+    "serial": "GAUGE00001",
+    "preferences": null
+  }
+}

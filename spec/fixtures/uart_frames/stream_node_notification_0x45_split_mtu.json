@@ -1,0 +1,26 @@
+{
+  "description": "0x45 notification split into 20-byte notifications",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "node",
+  "direction": "response",
+  "chunks": [
+    "CAFEE01F45DDCCBBAA693F5A001064000000C800",
+    "000052836B980DB8A1370887E3C01C00C0000000",
+    "0000001900000000000000000000000000000000",
+    "0000400000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000",
+    "0000000000000000004D3C2B1A8813"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "request",
+      "messageType": 69,
+      "requestId": 2864434397,
+      "responseId": null,
+      "success": null,
+      "payloadHex": "3F5A001064000000C800000052836B980DB8A1370887E3C01C00C00000000000001900000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004D3C2B1A8813"
+    }
+  ],
+  "expectedErrors": []
+}

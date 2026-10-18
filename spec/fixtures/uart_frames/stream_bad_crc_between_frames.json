@@ -1,0 +1,32 @@
+{
+  "description": "A frame with a wrong CRC is reported and skipped; neighbours survive",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFEC66D0301064D3C2B1A8813CAFEA214050100CAFE494804011809000000848370100EC241380807E1201CE02945A5096009"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    },
+    {
+      "direction": "response",
+      "messageType": 4,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "09000000848370100EC241380807E1201CE02945A5096009"
+    }
+  ],
+  "expectedErrors": [
+    "badCrc",
+    "badSync"
+  ]
+}

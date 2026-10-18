@@ -1,0 +1,12 @@
+{
+  "description": "Successful Read Logs response with only 10 payload bytes",
+  "source": "hand-built",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEE92C04010A00000000000000000000",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 24,
+    "actual": 10
+  }
+}

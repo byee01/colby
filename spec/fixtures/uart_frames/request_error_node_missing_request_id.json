@@ -1,0 +1,13 @@
+{
+  "description": "Node requests must carry a request ID",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "request": {
+    "type": "readSessionInfo"
+  },
+  "expectedError": {
+    "kind": "missingField"
+  },
+  "probe": "10005A3F"
+}

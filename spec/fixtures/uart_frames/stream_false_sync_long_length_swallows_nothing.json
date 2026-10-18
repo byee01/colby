@@ -1,0 +1,23 @@
+{
+  "description": "Garbage that looks like a header claiming 200 payload bytes must not swallow the real frame behind it",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFE11220301C8CAFEC66D0301064D3C2B1A8813"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    }
+  ],
+  "expectedErrors": [
+    "badSync"
+  ]
+}

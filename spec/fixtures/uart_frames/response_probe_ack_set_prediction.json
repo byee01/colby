@@ -1,0 +1,16 @@
+{
+  "description": "Response to 0x05 with no payload, success",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE5D14050100",
+  "expected": {
+    "messageType": 5,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "description": "Log record with reserved state/mode/type",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE891204011807000000649ECC9379324FE6C93C9927F3B1FF0002000400",
+  "expected": {
+    "messageType": 4,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "logRecord",
+      "probe": null,
+      "sequence": 7,
+      "temperatures": [
+        369.0,
+        369.0,
+        369.0,
+        369.0,
+        369.0,
+        369.0,
+        369.0,
+        369.0
+      ],
+      "prediction": {
+        "virtualSensors": {
+          "core": "t2",
+          "surface": "t6",
+          "ambient": "t6"
+        },
+        "state": "unknown",
+        "mode": "reserved",
+        "type": "reserved",
+        "setpoint": 0.1,
+        "rawSecondsRemaining": 1,
+        "estimatedCore": -19.9
+      }
+    }
+  }
+}

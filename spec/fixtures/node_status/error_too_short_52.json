@@ -1,0 +1,10 @@
+{
+  "description": "0x45 payload of 52 bytes: no room for the network byte after food safe",
+  "source": "hand-built",
+  "hex": "0100000064000000C800000052836B980DB8A1370887E3C01C00C000000000000019000000000000000000000000000000000000",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 53,
+    "actual": 52
+  }
+}

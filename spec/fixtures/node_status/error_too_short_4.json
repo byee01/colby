@@ -1,0 +1,10 @@
+{
+  "description": "0x45 payload of 4 bytes: below the 35-byte minimum",
+  "source": "hand-built",
+  "hex": "01000000",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 35,
+    "actual": 4
+  }
+}

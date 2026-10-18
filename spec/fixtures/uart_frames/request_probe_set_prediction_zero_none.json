@@ -1,0 +1,12 @@
+{
+  "description": "Set Prediction 0 C, mode none (cancel)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 0.0,
+    "mode": "none"
+  },
+  "expectedHex": "CAFEE55605020000"
+}

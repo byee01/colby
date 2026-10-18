@@ -1,0 +1,30 @@
+{
+  "description": "Set alarms: 0.1 C resolution and mixed channels",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setAlarms",
+    "high": {
+      "t2": {
+        "set": true,
+        "temperature": 12.3
+      },
+      "surface": {
+        "set": true,
+        "temperature": 300.7
+      }
+    },
+    "low": {
+      "t8": {
+        "set": false,
+        "temperature": 0.0
+      },
+      "core": {
+        "set": true,
+        "temperature": -5.5
+      }
+    }
+  },
+  "expectedHex": "CAFEDD800B2C0000190A00000000000000000000000000003964000000000000000000000000000000004006890400000000"
+}

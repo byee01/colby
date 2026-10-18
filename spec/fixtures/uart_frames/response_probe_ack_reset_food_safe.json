@@ -1,0 +1,16 @@
+{
+  "description": "Response to 0x08 with no payload, success",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFE0C56080100",
+  "expected": {
+    "messageType": 8,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

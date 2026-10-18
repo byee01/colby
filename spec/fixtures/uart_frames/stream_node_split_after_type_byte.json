@@ -1,0 +1,22 @@
+{
+  "description": "Split right after the type byte",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "node",
+  "direction": "response",
+  "chunks": [
+    "CAFE3EEA83",
+    "040302010D0C0B0A010A3F5A00104D000000E803"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": 16909060,
+      "responseId": 168496141,
+      "success": true,
+      "payloadHex": "3F5A00104D000000E803"
+    }
+  ],
+  "expectedErrors": []
+}

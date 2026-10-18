@@ -1,0 +1,24 @@
+{
+  "description": "One flipped payload bit",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFE494804011809000000848270100EC241380807E1201CE02945A5096009CAFEC66D0301064D3C2B1A8813"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "4D3C2B1A8813"
+    }
+  ],
+  "expectedErrors": [
+    "badCrc",
+    "badSync"
+  ]
+}

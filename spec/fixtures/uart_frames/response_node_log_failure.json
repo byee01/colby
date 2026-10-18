@@ -1,0 +1,16 @@
+{
+  "description": "Node Read Logs failure",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE42DC84BEBAFECA0DF0AD0B0000",
+  "expected": {
+    "messageType": 4,
+    "success": false,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

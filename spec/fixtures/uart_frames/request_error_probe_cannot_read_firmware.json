@@ -1,0 +1,13 @@
+{
+  "description": "0x46-0x48 exist only on nodes",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "readProbeFirmware"
+  },
+  "expectedError": {
+    "kind": "unknownMessageType",
+    "type": 70
+  }
+}

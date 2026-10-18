@@ -1,0 +1,13 @@
+{
+  "description": "Node requests must name the probe",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "request": {
+    "type": "readSessionInfo"
+  },
+  "expectedError": {
+    "kind": "missingField"
+  },
+  "requestId": 7
+}

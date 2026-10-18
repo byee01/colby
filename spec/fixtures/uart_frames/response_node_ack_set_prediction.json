@@ -1,0 +1,16 @@
+{
+  "description": "Node response to 0x05, no payload",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE3A3785BEBAFECA0DF0AD0B0100",
+  "expected": {
+    "messageType": 5,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "description": "Response, notification, failed response and request merged in one notification",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "node",
+  "direction": "response",
+  "chunks": [
+    "CAFE3EEA83040302010D0C0B0A010A3F5A00104D000000E803CAFEE01F45DDCCBBAA693F5A001064000000C800000052836B980DB8A1370887E3C01C00C00000000000001900000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004D3C2B1A8813CAFE0EDE85050302010E0C0B0A0000CAFE2E960544332211063F5A00108A0A"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": 16909060,
+      "responseId": 168496141,
+      "success": true,
+      "payloadHex": "3F5A00104D000000E803"
+    },
+    {
+      "direction": "request",
+      "messageType": 69,
+      "requestId": 2864434397,
+      "responseId": null,
+      "success": null,
+      "payloadHex": "3F5A001064000000C800000052836B980DB8A1370887E3C01C00C00000000000001900000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004D3C2B1A8813"
+    },
+    {
+      "direction": "response",
+      "messageType": 5,
+      "requestId": 16909061,
+      "responseId": 168496142,
+      "success": false,
+      "payloadHex": ""
+    },
+    {
+      "direction": "request",
+      "messageType": 5,
+      "requestId": 287454020,
+      "responseId": null,
+      "success": null,
+      "payloadHex": "3F5A00108A0A"
+    }
+  ],
+  "expectedErrors": []
+}

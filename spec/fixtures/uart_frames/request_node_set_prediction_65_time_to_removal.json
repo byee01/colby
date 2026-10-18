@@ -1,0 +1,14 @@
+{
+  "description": "Set Prediction 65.0 C, time to removal (node: probe serial prefix and request ID)",
+  "source": "spec",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "probe": "10005A3F",
+  "requestId": 305419896,
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 65.0,
+    "mode": "timeToRemoval"
+  },
+  "expectedHex": "CAFE48130578563412063F5A00108A06"
+}

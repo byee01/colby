@@ -1,0 +1,12 @@
+{
+  "description": "Successful session info with no payload",
+  "source": "hand-built",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEFDA6030100",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 6,
+    "actual": 0
+  }
+}

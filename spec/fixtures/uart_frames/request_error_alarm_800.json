@@ -1,0 +1,18 @@
+{
+  "description": "Alarm temperature 800 C is above 799",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "probe",
+  "request": {
+    "type": "setAlarms",
+    "high": {
+      "core": {
+        "set": true,
+        "temperature": 800.0
+      }
+    }
+  },
+  "expectedError": {
+    "kind": "outOfRange"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Node Silence Alarms response carries product type, probe serial and node serial; ignored",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE4E788CBEBAFECA0DF0AD0B010F013F5A001044535030303030303031",
+  "expected": {
+    "messageType": 12,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

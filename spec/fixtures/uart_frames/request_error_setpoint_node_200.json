@@ -1,0 +1,16 @@
+{
+  "description": "Set point 200 C over a node",
+  "source": "hand-built",
+  "kind": "encodeRequest",
+  "variant": "node",
+  "request": {
+    "type": "setPrediction",
+    "setpoint": 200.0,
+    "mode": "none"
+  },
+  "expectedError": {
+    "kind": "outOfRange"
+  },
+  "probe": "10005A3F",
+  "requestId": 1
+}

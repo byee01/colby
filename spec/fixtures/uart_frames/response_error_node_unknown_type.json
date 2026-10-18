@@ -1,0 +1,11 @@
+{
+  "description": "Node response type 0x7E",
+  "source": "hand-built",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFEDC56FEBEBAFECA0DF0AD0B0100",
+  "expectedError": {
+    "kind": "unknownMessageType",
+    "type": 126
+  }
+}

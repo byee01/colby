@@ -1,0 +1,10 @@
+{
+  "description": "Status shorter than the 30-byte minimum",
+  "source": "hand-built",
+  "hex": "64000000C800000052836B980DB8A1370887E3C01C00C0000000000000",
+  "expectedError": {
+    "kind": "tooShort",
+    "expected": 30,
+    "actual": 29
+  }
+}

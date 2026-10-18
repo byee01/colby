@@ -1,0 +1,16 @@
+{
+  "description": "Node session info failure",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFEFFF583BEBAFECA0DF0AD0B0000",
+  "expected": {
+    "messageType": 3,
+    "success": false,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

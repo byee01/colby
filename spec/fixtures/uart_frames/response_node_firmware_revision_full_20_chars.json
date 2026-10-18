@@ -1,0 +1,19 @@
+{
+  "description": "20-character firmware string with no NUL terminator",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE685AC6BEBAFECA0DF0AD0B01183F5A00103132333435363738393031323334353637383930",
+  "expected": {
+    "messageType": 70,
+    "success": true,
+    "requestId": 3405691582,
+    "responseId": 195948557,
+    "body": {
+      "type": "revision",
+      "probe": "10005A3F",
+      "kind": "firmware",
+      "text": "12345678901234567890"
+    }
+  }
+}

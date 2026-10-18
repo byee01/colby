@@ -1,0 +1,197 @@
+{
+  "description": "Session ID 0 with a non-zero sample period: both treated as not supplied",
+  "source": "spec",
+  "hex": "64000000C800000052836B980DB8A1370887E3C01C00C00000000000001900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008813",
+  "expected": {
+    "logRange": {
+      "min": 100,
+      "max": 200
+    },
+    "temperatures": [
+      22.5,
+      23.0,
+      23.5,
+      24.0,
+      24.5,
+      25.0,
+      25.5,
+      26.0
+    ],
+    "mode": "normal",
+    "color": "yellow",
+    "probeNumber": 1,
+    "batteryLow": false,
+    "virtualSensors": {
+      "core": "t1",
+      "surface": "t4",
+      "ambient": "t8"
+    },
+    "prediction": {
+      "state": "notInserted",
+      "mode": "none",
+      "type": "none",
+      "setpoint": 0.0,
+      "heatStart": 0.0,
+      "rawSecondsRemaining": 0,
+      "estimatedCore": 0.0
+    },
+    "foodSafe": {
+      "mode": "simplified",
+      "product": 0,
+      "serving": "servedImmediately",
+      "thresholdTemp": null,
+      "zValue": null,
+      "referenceTemp": null,
+      "dValue": null,
+      "targetLogReduction": 0.0,
+      "state": "notSafe",
+      "logReduction": 0.0,
+      "secondsAboveThreshold": 0,
+      "logSequence": 0
+    },
+    "overheating": [],
+    "preferences": {
+      "powerMode": "normal",
+      "highRadioPower": false
+    },
+    "alarms": {
+      "high": {
+        "t1": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t2": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t3": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t4": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t5": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t6": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t7": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t8": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "core": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "surface": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "ambient": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        }
+      },
+      "low": {
+        "t1": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t2": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t3": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t4": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t5": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t6": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t7": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "t8": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "core": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "surface": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        },
+        "ambient": {
+          "set": false,
+          "tripped": false,
+          "alarming": false,
+          "temperature": -20.0
+        }
+      }
+    },
+    "session": null
+  }
+}

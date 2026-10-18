@@ -1,0 +1,32 @@
+{
+  "description": "Node response with a bad CRC between valid frames",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "node",
+  "direction": "response",
+  "chunks": [
+    "CAFE3EEA83040302010D0C0B0A010A3F5A00104D000000E803CAFE0ECE85050302010E0C0B0A0000CAFE12BC84060302010F0C0B0A011C3F5A001003000000E8037DA00FF4813ED007FA401FE02945A5096009"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": 16909060,
+      "responseId": 168496141,
+      "success": true,
+      "payloadHex": "3F5A00104D000000E803"
+    },
+    {
+      "direction": "response",
+      "messageType": 4,
+      "requestId": 16909062,
+      "responseId": 168496143,
+      "success": true,
+      "payloadHex": "3F5A001003000000E8037DA00FF4813ED007FA401FE02945A5096009"
+    }
+  ],
+  "expectedErrors": [
+    "badCrc",
+    "badSync"
+  ]
+}

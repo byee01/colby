@@ -1,0 +1,16 @@
+{
+  "description": "success = 0 with no payload decodes as a failed ack",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFECC95030000",
+  "expected": {
+    "messageType": 3,
+    "success": false,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

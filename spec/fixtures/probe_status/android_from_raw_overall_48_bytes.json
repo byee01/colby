@@ -1,0 +1,57 @@
+{
+  "description": "48-byte buffer from ProbeStatusTest 'fromRaw overall' (unspecified bytes 0xFF): temps -13.15/67.2/258.4/160.55/225.6/114.5/189.75/22.3, instant read, color 6, ID 6, low battery, prediction 68.1/61.8/89533 s, food safe integrated, safety impossible 18.7 log, 48331 s, seq 0xBEEFFACE",
+  "source": "android-test",
+  "hex": "AAAAAAAA555555558900DA00D70D073305D518741AB9BB93A9AAD9DBB5F979205555555555F9A80ADA5DE675D67FF7FD",
+  "expected": {
+    "logRange": {
+      "min": 2863311530,
+      "max": 1431655765
+    },
+    "temperatures": [
+      -13.15,
+      67.2,
+      258.4,
+      160.55,
+      225.6,
+      114.5,
+      189.75,
+      22.3
+    ],
+    "mode": "instantRead",
+    "color": "unknown(6)",
+    "probeNumber": 6,
+    "batteryLow": true,
+    "virtualSensors": {
+      "core": "t6",
+      "surface": "t7",
+      "ambient": "t7"
+    },
+    "prediction": {
+      "state": "predicting",
+      "mode": "timeToRemoval",
+      "type": "resting",
+      "setpoint": 68.1,
+      "heatStart": 61.8,
+      "rawSecondsRemaining": 89533,
+      "estimatedCore": 179.7
+    },
+    "foodSafe": {
+      "mode": "integrated",
+      "product": 15,
+      "serving": "cookedAndChilled",
+      "thresholdTemp": 273.05,
+      "zValue": 136.5,
+      "referenceTemp": 273.05,
+      "dValue": 229.7,
+      "targetLogReduction": 17.0,
+      "state": "safetyImpossible",
+      "logReduction": 18.7,
+      "secondsAboveThreshold": 48331,
+      "logSequence": 3203398350
+    },
+    "overheating": null,
+    "preferences": null,
+    "alarms": null,
+    "session": null
+  }
+}

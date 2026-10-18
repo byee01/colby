@@ -1,0 +1,10 @@
+{
+  "description": "No chunks",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [],
+  "expectedFrames": [],
+  "expectedErrors": []
+}

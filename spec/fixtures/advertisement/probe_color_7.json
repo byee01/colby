@@ -1,0 +1,33 @@
+{
+  "description": "Color field 7",
+  "source": "spec",
+  "hex": "C709013F5A001052836B980DB8A1370887E3C01C1CC0000000",
+  "expected": {
+    "kind": "probe",
+    "serial": "10005A3F",
+    "temperatures": [
+      22.5,
+      23.0,
+      23.5,
+      24.0,
+      24.5,
+      25.0,
+      25.5,
+      26.0
+    ],
+    "mode": "normal",
+    "color": "unknown(7)",
+    "probeNumber": 1,
+    "batteryLow": false,
+    "virtualSensors": {
+      "core": "t1",
+      "surface": "t4",
+      "ambient": "t8"
+    },
+    "overheating": [],
+    "preferences": {
+      "powerMode": "normal",
+      "highRadioPower": false
+    }
+  }
+}

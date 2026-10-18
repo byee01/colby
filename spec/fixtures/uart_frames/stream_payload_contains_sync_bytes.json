@@ -1,0 +1,21 @@
+{
+  "description": "Payload that itself contains CA FE CA FE is read by length, not rescanned",
+  "source": "hand-built",
+  "kind": "stream",
+  "variant": "probe",
+  "direction": "response",
+  "chunks": [
+    "CAFE1ECF030106CAFECAFECAFE"
+  ],
+  "expectedFrames": [
+    {
+      "direction": "response",
+      "messageType": 3,
+      "requestId": null,
+      "responseId": null,
+      "success": true,
+      "payloadHex": "CAFECAFECAFE"
+    }
+  ],
+  "expectedErrors": []
+}

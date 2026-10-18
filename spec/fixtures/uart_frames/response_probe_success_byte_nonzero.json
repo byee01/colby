@@ -1,0 +1,16 @@
+{
+  "description": "Any non-zero success byte counts as success",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEFBBE050700",
+  "expected": {
+    "messageType": 5,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "ack"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "description": "Vendor ID 0x004C (Apple) is rejected",
+  "source": "hand-built",
+  "hex": "4C000100000000000000000000000000000000000000000000",
+  "expectedError": {
+    "kind": "badSync"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "description": "Serial 0 in a node response means no probe present; passed through",
+  "source": "spec",
+  "kind": "decodeResponse",
+  "variant": "node",
+  "hex": "CAFE9AA5830100000002000000010A000000004D3C2B1A8813",
+  "expected": {
+    "messageType": 3,
+    "success": true,
+    "requestId": 1,
+    "responseId": 2,
+    "body": {
+      "type": "sessionInfo",
+      "probe": "00000000",
+      "sessionId": 439041101,
+      "samplePeriodMs": 5000
+    }
+  }
+}
