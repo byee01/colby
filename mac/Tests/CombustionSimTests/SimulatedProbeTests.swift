@@ -151,6 +151,139 @@ struct SimulatedProbeTests {
         #expect(rig.probe.currentAlarms.high[.core]?.temperature == 70)
     }
 
+    // MARK: Prediction, alarms, silence
+
+    /// Statuses the app would receive, decoded, newest last.
+    private final class StatusLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [ProbeStatusPayload] = []
+        func add(_ s: ProbeStatusPayload) { lock.withLock { items.append(s) } }
+        var all: [ProbeStatusPayload] { lock.withLock { items } }
+    }
+
+    private func listen(_ rig: Rig) async throws -> (any GattConnection, StatusLog) {
+        let connection = try await rig.transport.connect(rig.probe.peripheral, timeout: .seconds(1))
+        let stream = try await connection.subscribe(.probeStatus)
+        let log = StatusLog()
+        Task { for await b in stream { if let s = try? decodeProbeStatus(b) { log.add(s) } } }
+        return (connection, log)
+    }
+
+    @Test func setPredictionStartsACountdownAndStatusShowsItAtOnce() async throws {
+        let rig = Rig()
+        rig.probe.predictionLeadSeconds = 100
+        rig.probe.start()
+        let (connection, statuses) = try await listen(rig)
+        await rig.advance(.seconds(5))
+        let before = statuses.all.count
+        #expect(statuses.all.last?.prediction.state == .notInserted)
+
+        try await rig.request(.setPrediction(setpoint: 63, mode: .timeToRemoval), on: connection)
+        for _ in 0..<50 { await Task.yield() }
+        let now = try #require(statuses.all.dropFirst(before).first, "a status right after the command, not at the next sample")
+        #expect(now.prediction.state == .predicting)
+        #expect(now.prediction.mode == .timeToRemoval && now.prediction.type == .removal)
+        #expect(now.prediction.setpoint == 63)
+        #expect(now.prediction.rawSecondsRemaining == 100)
+
+        await rig.advance(.seconds(30))
+        let later = try #require(statuses.all.last)
+        #expect(later.prediction.rawSecondsRemaining == 70)
+        #expect(later.prediction.estimatedCore > now.prediction.estimatedCore, "the estimate climbs toward the set point")
+        // The log records carry the same prediction.
+        let record = try #require(rig.probe.record(later.logRange.max))
+        #expect(record.prediction.state == .predicting && record.prediction.rawSecondsRemaining == 70)
+    }
+
+    @Test func predictionEndsDoneAndRemovalAndRestingContinuesIntoResting() async throws {
+        let rig = Rig()
+        rig.probe.predictionLeadSeconds = 20
+        rig.probe.restingSeconds = 15
+        rig.probe.start()
+        let (connection, statuses) = try await listen(rig)
+        try await rig.request(.setPrediction(setpoint: 60, mode: .removalAndResting), on: connection)
+        await rig.advance(.seconds(60))
+        let phases = statuses.all.map { "\($0.prediction.state)/\($0.prediction.type)" }
+        var collapsed: [String] = []
+        for p in phases where collapsed.last != p { collapsed.append(p) }
+        #expect(collapsed.suffix(4) == [
+            "predicting/removal", "removalPredictionDone/removal", "predicting/resting", "removalPredictionDone/resting",
+        ], "\(collapsed)")
+    }
+
+    @Test func cancellingThePredictionResetsIt() async throws {
+        let rig = Rig()
+        rig.probe.start()
+        let (connection, statuses) = try await listen(rig)
+        try await rig.request(.setPrediction(setpoint: 60, mode: .timeToRemoval), on: connection)
+        try await rig.request(.setPrediction(setpoint: 0, mode: .none), on: connection)
+        for _ in 0..<50 { await Task.yield() }
+        #expect(statuses.all.last?.prediction.state == .notInserted)
+        #expect(statuses.all.last?.prediction.mode == PredictionMode.none)
+    }
+
+    @Test func alarmTripsWhenTheTemperatureIsReachedAndSilenceQuietsItButKeepsItTripped() async throws {
+        let rig = Rig()
+        rig.probe.setCurve { seq, _ in [Double](repeating: 20 + Double(seq), count: 8) }   // +1 °C per sample
+        rig.probe.start()
+        let (connection, statuses) = try await listen(rig)
+        let config = AlarmConfig(high: [.core: Alarm(isSet: true, temperature: 24), .ambient: Alarm(isSet: true, temperature: 90)],
+                                 low: [.surface: Alarm(isSet: true, temperature: 21)])
+        try await rig.request(.setAlarms(config), on: connection)
+        for _ in 0..<50 { await Task.yield() }
+        // Set while the probe reads 20 °C: the low surface alarm (21) is not reached and the high ones are not either.
+        #expect(statuses.all.last?.alarms?.high[.core]?.alarming == false)
+        #expect(statuses.all.last?.alarms?.high[.core]?.isSet == true)
+
+        await rig.advance(.seconds(25))   // the record reaches 24 and beyond
+        let tripped = try #require(statuses.all.last?.alarms)
+        #expect(tripped.high[.core]?.tripped == true && tripped.high[.core]?.alarming == true)
+        #expect(tripped.high[.ambient]?.tripped == false, "90 °C is not reached")
+
+        try await rig.request(.silenceAlarms, on: connection)
+        for _ in 0..<50 { await Task.yield() }
+        let quiet = try #require(statuses.all.last?.alarms)
+        #expect(quiet.high[.core]?.alarming == false && quiet.high[.core]?.tripped == true)
+        await rig.advance(.seconds(15))
+        #expect(statuses.all.last?.alarms?.high[.core]?.alarming == false, "silenced stays silenced")
+    }
+
+    @Test func alarmsAlreadyBeyondTheirTemperatureTripAtOnce() async throws {
+        let rig = Rig(preload: 10)
+        rig.probe.setCurve { _, _ in [Double](repeating: 50, count: 8) }
+        rig.probe.preload(records: 1)   // a record made with the new curve
+        rig.probe.start()
+        let (connection, statuses) = try await listen(rig)
+        try await rig.request(.setAlarms(AlarmConfig(low: [.core: Alarm(isSet: true, temperature: 60)])), on: connection)
+        for _ in 0..<50 { await Task.yield() }
+        #expect(statuses.all.last?.alarms?.low[.core]?.alarming == true)
+        // Read-only bits sent by the app are ignored.
+        try await rig.request(.setAlarms(AlarmConfig(low: [.core: Alarm(isSet: false, temperature: 60, tripped: true, alarming: true)])), on: connection)
+        for _ in 0..<50 { await Task.yield() }
+        #expect(statuses.all.last?.alarms?.low[.core]?.alarming == false)
+    }
+
+    @Test func batteryAndOverheatAreReportedInAdvertisementAndStatus() async throws {
+        let rig = Rig()
+        rig.probe.batteryLow = true
+        rig.probe.overheating = [.t2]
+        rig.probe.start()
+        await rig.transport.startScan()
+        let ads = rig.transport.advertisements
+        let first = Task { () -> RawAdvertisement? in
+            for await a in ads { return a }
+            return nil
+        }
+        let (_, statuses) = try await listen(rig)
+        await rig.advance(.seconds(5))
+        guard case .probe(let ad) = try decodeAdvertisement(try #require(await first.value).mfrData) else {
+            Issue.record("not a probe packet")
+            return
+        }
+        #expect(ad.batteryLow && ad.overheating == [.t2])
+        #expect(statuses.all.last?.batteryLow == true && statuses.all.last?.overheating == [.t2])
+    }
+
     @Test func outOfRangeDropsTheLinkAndRefusesConnects() async throws {
         let rig = Rig()
         rig.probe.start()
