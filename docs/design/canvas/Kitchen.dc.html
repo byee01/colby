@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colby kitchen mode</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#c7c7c7}a:hover{color:#f5f5f5}
+.num{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.kbtn{background:#f5f5f5;color:#000000;border:0;border-radius:14px;padding:18px 32px;font:700 24px 'Barlow',system-ui,sans-serif;cursor:pointer;min-height:64px}
+.kbtn.ghost{background:transparent;color:#f5f5f5;border:2px solid #f5f5f5}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+<header style="display: flex; align-items: center; gap: 16px; padding: 16px 28px; color: #c7c7c7; font-size: 16px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffb81c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
+<span style="font-weight: 600; color: #f5f5f5">Kitchen mode</span>
+<span class="num">13:20</span>
+<span style="flex: 1 1 auto"></span>
+<a href="Main.dc.html" style="font-size: 16px">Esc · Exit kitchen mode</a>
+</header>
+
+<sc-if value="{{alerting}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 24px; text-align: center; color: #ffffff">
+<div style="display: flex; align-items: center; gap: 16px">
+<span class="num" style="width: 64px; height: 64px; border-radius: 32px; background: #ffffff; color: #8a1c1c; display: inline-flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 700">2</span>
+<span style="font-size: 56px; font-weight: 700">Ribs</span>
+</div>
+<span class="num" style="font-size: 200px; font-weight: 700; line-height: 0.9; letter-spacing: 0.01em">READY</span>
+<span style="font-size: 36px; font-weight: 600">Remove from heat · 203°F</span>
+<div style="display: flex; gap: 16px; margin-top: 12px">
+<button type="button" class="kbtn ghost">Snooze 5 min</button>
+<button type="button" class="kbtn">Acknowledge</button>
+</div>
+<span style="font-size: 18px">Press any key or click to acknowledge</span>
+</div>
+</sc-if>
+
+<sc-if value="{{calmSingle}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1 1 auto; padding: 8px 28px 28px; display: flex; min-height: 0">
+<div style="{{one.frame}}">
+<div style="display: flex; align-items: center; gap: 20px">
+<span class="num" style="{{one.badge}}">{{one.n}}</span>
+<span style="font-size: 56px; font-weight: 700; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{one.name}}</span>
+<span style="display: inline-block; border-radius: 999px; padding: 4px 18px; font-size: 26px; font-weight: 600; color: #000000; background: #4ea1f7; align-self: center">Core</span>
+<span class="num" style="font-size: 104px; font-weight: 500; line-height: 1; color: #f5f5f5">{{one.core}}</span>
+<span class="num" style="font-size: 52px; color: #9b9b9b">{{one.to}}</span>
+</div>
+<span style="{{one.cap}}">{{one.caption}}</span>
+<div style="display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap">
+<span class="num" style="{{one.big}}">{{one.bigText}}</span>
+<span class="num" style="font-size: 72px; font-weight: 500; color: #9b9b9b">{{one.secondary}}</span>
+</div>
+<div style="flex: 1 1 auto"></div>
+<div style="height: 16px; border-radius: 8px; background: #2a2a2a; overflow: hidden; flex: none"><div style="{{one.bar}}"></div></div>
+<svg viewBox="0 0 300 60" preserveAspectRatio="none" style="width: 100%; height: 110px; flex: none" role="img" aria-label="{{one.trendLabel}}"><path d="{{one.trend}}" fill="none" stroke="{{one.color}}" stroke-width="4" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{calm}}" hint-placeholder-val="{{ true }}">
+<div style="{{gridStyle}}">
+<sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
+<div style="{{t.tileStyle}}">
+<div style="display: flex; align-items: center; gap: 14px">
+<span class="num" style="{{t.badgeStyle}}">{{t.n}}</span>
+<span style="{{t.nameStyle}}">{{t.name}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 0">
+<span style="{{t.capStyle}}">{{t.caption}}</span>
+<div style="display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap">
+<span class="num" style="{{t.bigStyle}}">{{t.big}}</span>
+<span class="num" style="{{t.secStyle}}">{{t.secondary}}</span>
+</div>
+</div>
+<div style="display: flex; align-items: baseline; gap: 16px; color: #f5f5f5">
+<span class="num" style="{{t.coreStyle}}">{{t.core}}</span>
+<span class="num" style="{{t.toStyle}}">{{t.to}}</span>
+</div>
+<div style="height: 12px; border-radius: 6px; background: #2a2a2a; overflow: hidden; flex: none"><div style="{{t.barStyle}}"></div></div>
+<svg viewBox="0 0 300 60" preserveAspectRatio="none" style="{{t.trendStyle}}" role="img" aria-label="{{t.trendLabel}}"><path d="{{t.trend}}" fill="none" stroke="{{t.color}}" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"probes":{"editor":"enum","options":["1","4","8"],"default":"4","section":"State"},"alerting":{"editor":"boolean","default":false,"section":"State"},"timeFormat":{"editor":"enum","options":["Ready in","Ready at"],"default":"Ready in","section":"Settings"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const alerting = this.props.alerting ?? false;
+    const abs = (this.props.timeFormat ?? 'Ready in') === 'Ready at';
+    const count = parseInt(this.props.probes ?? '4', 10);
+    const PAL = ['#4ea1f7','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+    const ALL = [
+      { n: 1, name: 'Brisket', core: 165, target: 203, state: 'predicting', ready: '3:42', at: '17:02', pct: 77 },
+      { n: 2, name: 'Ribs', core: 203, target: 203, state: 'done', ready: 'Ready', pct: 100 },
+      { n: 3, name: 'Chicken thighs', core: 141, target: 175, state: 'predicting', ready: '0:38', at: '13:58', pct: 75 },
+      { n: 4, name: 'Pork shoulder', core: 158, target: 200, state: 'predicting', ready: '5:10', at: '18:30', pct: 74 },
+      { n: 5, name: 'Probe 5', core: null, target: null, state: 'notInserted', ready: '—', pct: 0 },
+      { n: 6, name: 'Salmon', core: 118, target: 125, state: 'predicting', ready: '0:12', at: '13:32', pct: 88 },
+      { n: 7, name: 'Lamb rack', core: 96, target: 135, state: 'warming', ready: '…', pct: 59 },
+      { n: 8, name: 'Turkey breast', core: 132, target: 160, state: 'predicting', ready: '1:48', at: '15:08', pct: 77 }
+    ];
+    const list = count === 1 ? [ALL[0]] : count === 4 ? ALL.slice(0, 4) : ALL;
+    const cols = count === 1 ? 1 : count === 4 ? 2 : 4;
+    const scale = count === 1 ? 1.5 : count === 4 ? 1 : 0.62;
+    const hero = count === 1 ? 2.7 : scale;
+    const px = (v) => Math.round(v * scale) + 'px';
+    const hx = (v) => Math.round(v * hero) + 'px';
+    const tiles = list.map((p, i) => {
+      const pts = [];
+      for (let k = 0; k <= 30; k++) {
+        const f = k / 30;
+        const v = p.core === null ? 0 : (p.core - 40) * (1 - Math.exp(-3 * f)) / (1 - Math.exp(-3));
+        pts.push((k * 10) + ',' + (56 - (v / Math.max(1, (p.target || 200) - 40)) * 50).toFixed(1));
+      }
+      const done = p.state === 'done';
+      return {
+        n: p.n, name: p.name, color: '#4ea1f7',
+        caption: done ? 'Remove now' : p.state === 'predicting' ? (abs ? 'Ready at' : 'Ready in') : p.state === 'warming' ? 'Warming up' : 'Not inserted',
+        big: p.state === 'predicting' && abs ? p.at : p.ready,
+        secondary: p.state === 'predicting' ? (abs ? 'in ' + p.ready : 'at ' + p.at) : '',
+        secStyle: 'font-size:' + hx(28) + ';font-weight:500;color:#9b9b9b;padding-bottom:' + hx(12),
+        trendStyle: 'width:100%;flex:none;height:' + (count === 1 ? 140 : count === 4 ? 48 : 32) + 'px',
+        core: p.core === null ? '—' : p.core + '°',
+        to: p.target ? '→ ' + p.target + '°' : '',
+        trend: p.core === null ? 'M0,56' : 'M' + pts.join(' L'),
+        trendLabel: 'Core temperature trend for ' + p.name,
+        tileStyle: 'background:#161616;border:2px solid ' + (done ? '#5fd17a' : '#2c2c2c') + ';border-radius:24px;padding:' + px(28) + ';display:flex;flex-direction:column;justify-content:space-between;gap:' + px(10) + ';min-width:0;overflow:hidden',
+        badgeStyle: 'width:' + px(44) + ';height:' + px(44) + ';border-radius:50%;background:#2a2a2a;box-shadow:0 0 0 ' + px(3) + ' #e9c440;color:#f5f5f5;display:inline-flex;align-items:center;justify-content:center;font-size:' + px(26) + ';font-weight:700;flex:none',
+        nameStyle: 'font-size:' + px(34) + ';font-weight:700;color:#f5f5f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis',
+        capStyle: 'font-size:' + px(24) + ';font-weight:600;color:' + (done ? '#5fd17a' : '#c7c7c7'),
+        bigStyle: 'font-size:' + hx(done ? 100 : 116) + ';font-weight:600;line-height:1;color:' + (done ? '#5fd17a' : '#f5f5f5'),
+        coreStyle: 'font-size:' + hx(44) + ';font-weight:500;color:#4ea1f7',
+        toStyle: 'font-size:' + hx(28) + ';color:#9b9b9b',
+        barStyle: 'height:12px;border-radius:6px;width:' + p.pct + '%;background:#4ea1f7'
+      };
+    });
+    return {
+      alerting, calm: !alerting && count > 1, calmSingle: !alerting && count === 1, tiles,
+      one: (() => { const t = tiles[0]; const done = list[0].state === 'done'; return {
+        n: t.n, name: t.name, core: t.core, to: t.to, caption: t.caption, bigText: t.big, secondary: t.secondary, trend: t.trend, trendLabel: t.trendLabel, color: t.color,
+        frame: 'flex:1 1 auto;background:#161616;border:2px solid ' + (done ? '#5fd17a' : '#2c2c2c') + ';border-radius:28px;padding:36px 44px;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:hidden',
+        badge: 'width:64px;height:64px;border-radius:50%;background:#2a2a2a;box-shadow:0 0 0 4px #e9c440;color:#f5f5f5;display:inline-flex;align-items:center;justify-content:center;font-size:38px;font-weight:700;flex:none',
+        cap: 'font-size:40px;font-weight:600;color:' + (done ? '#5fd17a' : '#c7c7c7'),
+        big: 'font-size:' + (done ? 320 : 400) + 'px;font-weight:600;line-height:0.88;letter-spacing:-0.01em;color:' + (done ? '#5fd17a' : '#f5f5f5'),
+        bar: 'height:16px;border-radius:8px;width:' + list[0].pct + '%;background:' + t.color
+      }; })(),
+      rootStyle: 'width:1440px;height:900px;box-sizing:border-box;display:flex;flex-direction:column;font-family:Barlow,system-ui,sans-serif;color:#f5f5f5;background:' + (alerting ? '#a32020' : '#000000'),
+      gridStyle: 'flex:1 1 auto;display:grid;grid-template-columns:repeat(' + cols + ',minmax(0,1fr));gap:20px;padding:8px 28px 28px;min-height:0'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colby settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#f5f5f5}a:hover{color:#ffffff}
+.num{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.nav{background:transparent;border:0;border-radius:8px;padding:10px 12px;text-align:left;cursor:pointer;color:#c7c7c7;font:500 15px 'Barlow',system-ui,sans-serif;display:flex;align-items:center;gap:10px;width:100%;min-height:40px}
+.nav.on{background:#2e2e2b;color:#f5f5f5;font-weight:600}
+.row{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #2a2a2a;min-height:44px}
+.lab{display:flex;flex-direction:column;gap:2px;flex:1 1 auto}
+.lt{font-weight:600;font-size:15px;color:#f5f5f5}
+.ls{font-size:13px;color:#9b9b9b}
+.seg{display:flex;border:1px solid #2c2c2c;border-radius:8px;overflow:hidden;flex:none}
+.seg button{background:transparent;color:#c7c7c7;border:0;padding:8px 14px;font:500 14px 'Barlow',system-ui,sans-serif;cursor:pointer;min-height:36px}
+.seg button.on{background:#2e2e2b;color:#f5f5f5}
+.tog{width:44px;height:26px;border-radius:13px;border:0;position:relative;flex:none;cursor:pointer}
+.knob{position:absolute;top:3px;width:20px;height:20px;border-radius:10px;background:#f5f5f5}
+.btn{background:#1f1f1f;color:#f5f5f5;border:1px solid #2c2c2c;border-radius:8px;padding:8px 14px;font:600 14px 'Barlow',system-ui,sans-serif;cursor:pointer;min-height:36px;display:inline-flex;align-items:center;gap:8px}
+.btn.danger{color:#ff8f87;border-color:#5a2a26}
+select{background:#000000;color:#f5f5f5;border:1px solid #444444;border-radius:8px;padding:6px 10px;font:500 14px 'Barlow',system-ui,sans-serif;min-height:36px}
+h2{margin:0 0 4px;font-size:22px}
+h3{margin:18px 0 0;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#c7c7c7}
+.b{width:22px;height:22px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;font:700 12px 'Barlow Condensed',system-ui,sans-serif;color:#000000;flex:none}
+.b{background:#2a2a2a !important;color:#f5f5f5 !important;box-shadow:0 0 0 2px #e9c440}
+.b.grey{box-shadow:0 0 0 2px #a3a3a3}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #000000; padding: 40px 120px; font-family: 'Barlow', system-ui, sans-serif; color: #f5f5f5">
+<div style="height: 820px; background: #161616; border: 1px solid #2c2c2c; border-radius: 14px; display: flex; overflow: hidden">
+<nav aria-label="Settings sections" style="width: 240px; flex: none; background: #151514; border-right: 1px solid #2c2c2c; padding: 16px 10px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 18px; font-weight: 700; padding: 4px 12px 14px">Settings</span>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+<button type="button" class="{{n.cls}}" onClick="{{n.pick}}" aria-current="{{n.current}}">{{n.label}}</button>
+</sc-for>
+</nav>
+<div style="flex: 1 1 auto; padding: 24px 36px; overflow: auto; min-width: 0">
+
+<sc-if value="{{isGeneral}}" hint-placeholder-val="{{ true }}">
+<h2>General</h2>
+<div class="row"><div class="lab"><span class="lt">Temperature units</span><span class="ls">Follows your region until you choose.</span></div><div class="seg" role="group" aria-label="Units"><button type="button" class="on">Region (°F)</button><button type="button">°F</button><button type="button">°C</button></div></div>
+<div class="row"><div class="lab"><span class="lt">Prediction time</span><span class="ls">Shown large. The other format appears smaller where there is room.</span></div><div class="seg" role="group" aria-label="Prediction time"><button type="button" class="{{relCls}}" onClick="{{setRel}}">Ready in</button><button type="button" class="{{absCls}}" onClick="{{setAbs}}">Ready at</button></div></div>
+<div class="row" style="border-bottom: 0"><div class="lab"><span class="ls">Preview</span></div><div style="display: flex; align-items: baseline; gap: 10px; background: #1f1f1f; border: 1px solid #2c2c2c; border-radius: 10px; padding: 8px 14px"><span class="num" style="font-size: 32px; font-weight: 600">{{previewBig}}</span><span class="num" style="font-size: 15px; color: #9b9b9b">{{previewSmall}}</span></div></div>
+<h3>Background</h3>
+<div class="row"><div class="lab"><span class="lt">Show in menu bar</span><span class="ls">Needed for alerts while the window is closed.</span></div><button type="button" class="tog" style="background: #4ea1f7" aria-pressed="true" aria-label="Show in menu bar"><span class="knob" style="left: 21px"></span></button></div>
+<div class="row"><div class="lab"><span class="lt">Start Colby at login</span><span class="ls">Off by default.</span></div><button type="button" class="tog" style="background: #444444" aria-pressed="false" aria-label="Start at login"><span class="knob" style="left: 3px"></span></button></div>
+<div class="row"><div class="lab"><span class="lt">Keep computer awake during a cook</span><span class="ls">Sleep stops Bluetooth and alarms.</span></div><button type="button" class="tog" style="background: #4ea1f7" aria-pressed="true" aria-label="Keep awake"><span class="knob" style="left: 21px"></span></button></div>
+</sc-if>
+
+<sc-if value="{{isAlerts}}" hint-placeholder-val="{{ false }}">
+<h2>Alerts and sounds</h2>
+<div class="row"><div class="lab"><span class="lt">Alarm volume</span></div><input type="range" min="0" max="100" defaultValue="80" aria-label="Alarm volume" style="width: 220px; accent-color: #4ea1f7"><span class="num" style="width: 40px">80%</span></div>
+<div class="row"><div class="lab"><span class="lt">Alert during Do Not Disturb</span><span class="ls">Uses time-sensitive notifications.</span></div><button type="button" class="tog" style="background: #4ea1f7" aria-pressed="true" aria-label="Alert during Do Not Disturb"><span class="knob" style="left: 21px"></span></button></div>
+<h3>Sounds · built-in</h3>
+<sc-for list="{{sounds}}" as="s" hint-placeholder-count="6">
+<div class="row"><div class="lab"><span class="lt">{{s.e}}</span><span class="ls">{{s.r}}</span></div><select aria-label="{{s.aria}}"><option>{{s.m}}</option></select><button type="button" class="btn">Preview</button></div>
+</sc-for>
+<h3>New probes start with</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 8px 20px; padding-top: 10px; font-size: 15px">
+<sc-for list="{{defaults}}" as="d" hint-placeholder-count="5">
+<label style="display: inline-flex; align-items: center; gap: 8px; min-height: 36px"><input type="checkbox" defaultChecked="{{ true }}" style="width: 18px; height: 18px; accent-color: #4ea1f7">{{d}}</label>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isDevices}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center"><h2 style="flex: 1 1 auto">Devices</h2><button type="button" class="btn">Scan for devices</button></div>
+<h3>Followed probes</h3>
+<sc-for list="{{probes}}" as="p" hint-placeholder-count="4">
+<div class="row"><span class="b" style="{{p.badge}}">{{p.n}}</span><div class="lab"><span class="lt">{{p.name}}</span><span class="ls">{{p.sub}}</span></div><span style="font-size: 13px; color: #9b9b9b">{{p.link}}</span><button type="button" class="btn">Unfollow</button></div>
+</sc-for>
+<h3>MeatNet nodes</h3>
+<div class="row"><div class="lab"><span class="lt">Display (Timer)</span><span class="ls">Relays 3 probes · firmware 2.4.1</span></div><span style="font-size: 13px; color: #9b9b9b">Connected</span></div>
+<div class="row"><div class="lab"><span class="lt">Booster (Charger)</span><span class="ls">Relays 1 probe · firmware 2.4.1</span></div><span style="font-size: 13px; color: #9b9b9b">In range</span></div>
+</sc-if>
+
+<sc-if value="{{isData}}" hint-placeholder-val="{{ false }}">
+<h2>History and data</h2>
+<div class="row"><div class="lab"><span class="lt">Saved cooks</span><span class="ls">Kept until you delete them. Stored only on this computer.</span></div><span class="num" style="font-size: 18px">38 cooks · 4.2 MB</span></div>
+<div class="row"><div class="lab"><span class="lt">Delete all history</span><span class="ls">Removes every saved cook. Cannot be undone.</span></div><button type="button" class="btn danger">Delete all…</button></div>
+</sc-if>
+
+<sc-if value="{{isDiag}}" hint-placeholder-val="{{ false }}">
+<h2>Diagnostics</h2>
+<sc-for list="{{links}}" as="l" hint-placeholder-count="4">
+<div class="row"><div class="lab"><span class="lt">{{l.name}}</span><span class="ls">{{l.path}}</span></div><span class="num" style="font-size: 15px; color: #c7c7c7">{{l.rssi}}</span></div>
+</sc-for>
+<div class="row"><div class="lab"><span class="lt">Record session</span><span class="ls">Saves raw Bluetooth traffic to a file on this computer. Share it only if you choose.</span></div><button type="button" class="btn">Start recording</button></div>
+</sc-if>
+
+<sc-if value="{{isAbout}}" hint-placeholder-val="{{ false }}">
+<h2>About</h2>
+<div class="row"><div class="lab"><span class="lt">Colby</span><span class="ls">Desktop monitor for Combustion thermometers</span></div><span class="num">Version 1.0 (42)</span></div>
+<div class="row"><div class="lab"><span class="lt">Not affiliated with Combustion Inc.</span><span class="ls">Combustion is a trademark of its owner.</span></div></div>
+<div class="row"><div class="lab"><span class="lt">Privacy</span><span class="ls">No account. No data leaves this computer except crash reports you allow.</span></div><a href="#">Privacy policy</a></div>
+<div class="row"><div class="lab"><span class="lt">Fonts</span><span class="ls">Barlow, SIL Open Font License 1.1</span></div><a href="#">Licenses</a></div>
+</sc-if>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"section":{"editor":"enum","options":["General","Alerts and sounds","Devices","History and data","Diagnostics","About"],"default":"General","section":"State"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sec: null, abs: false };
+  }
+  renderVals() {
+    const PAL = ['#4ea1f7','#d95926','#199e70','#c98500'];
+    const SECS = ['General', 'Alerts and sounds', 'Devices', 'History and data', 'Diagnostics', 'About'];
+    const sec = this.state.sec ?? this.props.section ?? 'General';
+    const nav = SECS.map((s) => ({ label: s, cls: 'nav' + (s === sec ? ' on' : ''), current: s === sec ? 'page' : 'false', pick: () => this.setState({ sec: s }) }));
+    const abs = this.state.abs;
+    return {
+      nav,
+      isGeneral: sec === 'General', isAlerts: sec === 'Alerts and sounds', isDevices: sec === 'Devices', isData: sec === 'History and data', isDiag: sec === 'Diagnostics', isAbout: sec === 'About',
+      relCls: abs ? '' : 'on', absCls: abs ? 'on' : '',
+      setRel: () => this.setState({ abs: false }), setAbs: () => this.setState({ abs: true }),
+      previewBig: abs ? '17:02' : '3:42', previewSmall: abs ? 'in 3:42' : 'at 17:02',
+      sounds: [
+        { e: 'Ready', m: 'Glass', r: 'Repeats until acknowledged' },
+        { e: 'Overheat', m: 'Sosumi', r: 'Repeats until acknowledged' },
+        { e: 'Probe alarm', m: 'Hero', r: 'Repeats until acknowledged' },
+        { e: '5-minute warning', m: 'Ping', r: 'Once' },
+        { e: 'Disconnected, low battery', m: 'Basso', r: 'Once' },
+        { e: 'Custom alerts', m: 'Submarine', r: 'Once' }
+      ].map((s) => ({ ...s, aria: s.e + ' sound' })),
+      defaults: ['Ready', '5-minute warning', 'Overheat', 'Disconnected (60 s)', 'Low battery'],
+      probes: [
+        { n: 1, name: 'Probe 1 · yellow', sub: 'Serial 10005A3F · battery OK', link: 'Via Display' },
+        { n: 2, name: 'Probe 2 · grey', sub: 'Serial 10007B12 · battery OK', link: 'Direct' },
+        { n: 3, name: 'Probe 3 · yellow', sub: 'Serial 1000C044 · battery low', link: 'Via Display' },
+        { n: 4, name: 'Probe 4 · grey', sub: 'Serial 1000D9E1 · last seen Sep 27', link: 'Offline' }
+      ].map((p) => ({ ...p, badge: p.n % 2 === 0 ? 'box-shadow:0 0 0 2px #a3a3a3' : '' })),
+      links: [
+        { name: 'Probe 1', path: 'Via Display · 2 hops', rssi: '−71 dBm' },
+        { name: 'Probe 2', path: 'Direct connection', rssi: '−62 dBm' },
+        { name: 'Display (Timer)', path: 'Direct connection · heartbeat OK', rssi: '−55 dBm' },
+        { name: 'Bluetooth', path: 'On · scanning', rssi: '' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

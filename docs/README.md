@@ -10,7 +10,9 @@ Planning and documentation only. No code yet.
 | [03-roadmap.md](03-roadmap.md) | Milestones, estimates, risks, decisions log |
 | [04-release-and-beta.md](04-release-and-beta.md) | TestFlight / package flight path, CI, crash reporting, release checklist |
 | [05-test-strategy.md](05-test-strategy.md) | Test layers, parity traces, replays, hardware matrix, emulator rig |
-| [06-ux-plan.md](06-ux-plan.md) | UX decisions, screens, graph spec, alerts, kitchen mode, design system, accessibility; screenshots in `design/screenshots/` |
+| [06-ux-plan.md](06-ux-plan.md) | UX decisions, screens, graph spec, alerts, kitchen mode, design system, accessibility |
+| [design/](design/) | `tokens.json`, `components.md`, canvas source (`canvas/`), render tools (`tools/`), screenshots |
+| [HANDOFF.md](HANDOFF.md) | Current state and how to continue in a new session |
 
 ## Decisions so far
 

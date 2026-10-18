@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colby main window</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#f5f5f5}a:hover{color:#ffffff}
+.c{--bg:#000000;--card:#161616;--card2:#1f1f1f;--line:#2c2c2c;--grid:#2a2a2a;--text:#f5f5f5;--text2:#c7c7c7;--muted:#9b9b9b;--core:#4ea1f7;--surf:#ffb81c;--amb:#f5701f;--ready:#5fd17a;--critical:#e5484d;--criticalBg:#3a1214}
+.num{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;color:var(--text2);border:0;padding:8px 14px;font:500 14px 'Barlow',system-ui,sans-serif;cursor:pointer;min-height:36px}
+.seg button.on{background:var(--card2);color:var(--text)}
+.btn{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font:600 14px 'Barlow',system-ui,sans-serif;cursor:pointer;min-height:36px;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn.primary{background:var(--text);color:#000000;border-color:var(--text)}
+.pill{display:inline-block;border-radius:999px;padding:3px 14px;font:600 15px 'Barlow',system-ui,sans-serif;color:#000000}
+.badge{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;font:600 15px 'Barlow Condensed',system-ui,sans-serif;color:var(--text);background:#2a2a2a;flex:none}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;text-align:left;cursor:pointer;color:var(--text);font-family:'Barlow',system-ui,sans-serif;display:flex;flex-direction:column;gap:6px;min-height:44px}
+.chip.on{border-color:var(--text2);background:var(--card2)}
+.chip.alerting{border-color:var(--critical)}
+.lbl{position:absolute;pointer-events:none;white-space:nowrap}
+</style>
+</helmet>
+<div class="c" style="min-height: 900px; background: var(--bg); color: var(--text); font-family: 'Barlow', system-ui, sans-serif; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line)">
+<div style="display: flex; align-items: center; gap: 10px; margin-right: 8px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb81c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
+<span style="font-weight: 700; font-size: 18px">Colby</span>
+</div>
+<div class="seg" role="group" aria-label="Time range"><button type="button">Live</button><button type="button">1h</button><button type="button" class="on" aria-pressed="true">4h</button><button type="button">All</button></div>
+<div class="seg" role="group" aria-label="Sensors shown"><button type="button" class="on" aria-pressed="true">Core · Surface · Ambient</button><button type="button">All 8</button></div>
+<div style="flex: 1 1 20px"></div>
+<button type="button" class="btn" aria-label="Active alerts"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg><span class="num">{{alertCount}}</span></button>
+<a class="btn" href="Kitchen.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>Kitchen mode</a>
+<a class="btn" href="Settings.dc.html" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M4.9 4.9l2.1 2.1"></path><path d="M17 17l2.1 2.1"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><path d="M4.9 19.1L7 17"></path><path d="M17 7l2.1-2.1"></path></svg></a>
+</header>
+
+<sc-if value="{{alerting}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 14px 20px; background: var(--criticalBg); border-bottom: 2px solid var(--critical)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb4b6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px"><span style="font-weight: 700; font-size: 18px">Probe 2 · Ribs is ready</span><span style="font-size: 14px; color: #ffd6d7">Reached 203°F at 13:18. Remove from heat. Alarm repeats until acknowledged.</span></div>
+<button type="button" class="btn">Snooze 5 min</button>
+<button type="button" class="btn primary">Acknowledge</button>
+</div>
+</sc-if>
+
+<main style="display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 20px 20px; flex: 1 1 auto; align-items: stretch">
+<section aria-label="Selected probe" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 300px">
+<div style="display: flex; align-items: center; gap: 10px"><span class="badge" style="{{sel.ring}}">{{sel.n}}</span><h1 style="margin: 0; font-size: 32px; font-weight: 700">{{sel.name}}</h1></div>
+<span style="font-size: 14px; color: var(--muted)">{{sel.kind}}</span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end">
+<span style="font-size: 14px; color: var(--text2)">{{sel.readyCaption}}</span>
+<div style="display: flex; align-items: baseline; gap: 10px"><span class="num" style="{{sel.readyStyle}}">{{sel.ready}}</span><span class="num" style="font-size: 22px; color: var(--muted)">{{sel.secondary}}</span></div>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0">
+<sc-for list="{{readouts}}" as="r" hint-placeholder-count="3">
+<div style="{{r.cell}}">
+<span class="pill" style="{{r.pill}}">{{r.label}}</span>
+<span class="num" style="font-size: 72px; font-weight: 500; line-height: 1">{{r.value}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="background: var(--card); border: 1px solid var(--line); border-radius: 28px; padding: 18px 22px 12px; display: flex; flex-direction: column">
+<div style="display: flex; flex-direction: column; align-items: center; min-height: 46px">
+<span style="font-size: 18px; color: var(--text2)">{{scrubState}}</span>
+<span class="num" style="font-size: 20px; font-weight: 600">{{scrubTime}}</span>
+</div>
+<div style="position: relative">
+<svg viewBox="0 0 1000 440" style="width: 100%; height: auto; display: block" role="img" aria-label="{{graphLabel}}">
+<sc-for list="{{yTicks}}" as="t" hint-placeholder-count="5">
+<line x1="60" x2="940" y1="{{t.y}}" y2="{{t.y}}" stroke="var(--grid)" stroke-width="1.5"></line>
+</sc-for>
+<sc-for list="{{xTicks}}" as="t" hint-placeholder-count="4">
+<line x1="{{t.x}}" x2="{{t.x}}" y1="10" y2="400" stroke="var(--grid)" stroke-width="1.5"></line>
+</sc-for>
+<rect x="60" y="10" width="880" height="390" fill="none" stroke="var(--grid)" stroke-width="1.5"></rect>
+<line x1="60" x2="940" y1="{{targetY}}" y2="{{targetY}}" stroke="#d9d9d9" stroke-width="1.5" opacity="{{targetOp}}"></line>
+<sc-for list="{{paths}}" as="p" hint-placeholder-count="3">
+<path d="{{p.d}}" fill="none" stroke="{{p.color}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="{{p.op}}"></path>
+</sc-for>
+<line x1="{{cx}}" x2="{{cx}}" y1="10" y2="400" stroke="#d9d9d9" stroke-width="2.5"></line>
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="3">
+<circle cx="{{cx}}" cy="{{d.y}}" r="10" fill="{{d.color}}" stroke="#ffffff" stroke-width="3"></circle>
+</sc-for>
+<rect x="60" y="10" width="880" height="390" fill="transparent" onMouseMove="{{onMove}}" onMouseLeave="{{onLeave}}"></rect>
+</svg>
+<sc-for list="{{yTicks}}" as="t" hint-placeholder-count="5">
+<span class="lbl num" style="{{t.style}}">{{t.label}}</span>
+</sc-for>
+<sc-for list="{{xTicks}}" as="t" hint-placeholder-count="4">
+<span class="lbl num" style="{{t.style}}">{{t.label}}</span>
+</sc-for>
+<span class="lbl num" style="{{targetLabelStyle}}">{{targetLabel}}</span>
+</div>
+</div>
+
+<sc-if value="{{multi}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="3">
+<button type="button" class="{{c.cls}}" onClick="{{c.pick}}" aria-label="{{c.aria}}">
+<span style="display: flex; align-items: center; gap: 8px; width: 100%"><span class="badge" style="{{c.ring}}">{{c.n}}</span><span style="font-weight: 600; font-size: 15px; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.name}}</span></span>
+<span style="display: flex; align-items: baseline; gap: 8px; width: 100%"><span class="num" style="font-size: 30px; font-weight: 500; color: var(--core)">{{c.core}}</span><span class="num" style="font-size: 15px; color: var(--muted)">{{c.target}}</span><span style="flex: 1 1 auto"></span><span class="num" style="{{c.statusStyle}}">{{c.status}}</span></span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+</section>
+
+<aside aria-label="Probe details" style="flex: 1 1 300px; max-width: 380px; min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 28px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 14px; color: var(--text2)"><span>{{sel.cookingTo}}</span><span>{{sel.pctLabel}}</span></div>
+<div style="height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden"><div style="{{sel.bar}}"></div></div>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap"><a class="btn primary" href="Sheets.dc.html">Set target</a><a class="btn" href="Sheets.dc.html">Alarms &amp; alerts</a></div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 600; color: var(--text2)">Sensors, tip to handle</span>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{sel.sensors}}" as="s" hint-placeholder-count="8">
+<div style="{{s.style}}"><span style="font-size: 12px; color: var(--muted)">{{s.label}}</span><span class="num" style="font-size: 22px; font-weight: 500">{{s.v}}</span><span style="{{s.roleStyle}}">{{s.role}}</span></div>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--text2); border-top: 1px solid var(--line); padding-top: 14px">
+<div style="display: flex; justify-content: space-between"><span>Probe</span><span style="color: var(--text)">{{sel.phys}}</span></div>
+<div style="display: flex; justify-content: space-between"><span>Battery</span><span style="color: var(--text)">OK</span></div>
+<div style="display: flex; justify-content: space-between"><span>Connection</span><span style="color: var(--text)">{{sel.link}}</span></div>
+<div style="display: flex; justify-content: space-between"><span>Start</span><span class="num" style="color: var(--text); font-size: 16px">{{sel.started}}</span></div>
+</div>
+</aside>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"probes":{"editor":"enum","options":["1","3","8"],"default":"3","section":"State"},"alerting":{"editor":"boolean","default":false,"section":"State"},"timeFormat":{"editor":"enum","options":["Ready in","Ready at"],"default":"Ready in","section":"Settings"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: null, hover: null };
+  }
+  renderVals() {
+    const alerting = this.props.alerting ?? false;
+    const abs = (this.props.timeFormat ?? 'Ready in') === 'Ready at';
+    const count = parseInt(this.props.probes ?? '3', 10);
+    const COL = { core: '#4ea1f7', surf: '#ffb81c', amb: '#f5701f' };
+    const RING = { yellow: '#e9c440', grey: '#a3a3a3' };
+    const NOW = 200;
+    const ALL = [
+      { n: 1, name: 'Brisket', phys: 'yellow', start: 0, c0: 40, cN: 165, amb: 250, target: 203, state: 'predicting', secs: 13320, heat: 40 },
+      { n: 2, name: 'Ribs', phys: 'grey', start: 30, c0: 42, cN: 203, amb: 250, target: 203, state: 'done', secs: 0, heat: 42 },
+      { n: 3, name: 'Chicken thighs', phys: 'yellow', start: 150, c0: 40, cN: 141, amb: 325, target: 175, state: 'predicting', secs: 2280, heat: 40 },
+      { n: 4, name: 'Pork shoulder', phys: 'grey', start: 20, c0: 40, cN: 158, amb: 250, target: 200, state: 'predicting', secs: 18600, heat: 40 },
+      { n: 5, name: 'Probe 5', phys: 'yellow', state: 'notInserted' },
+      { n: 6, name: 'Salmon', phys: 'grey', start: 172, c0: 38, cN: 118, amb: 275, target: 125, state: 'predicting', secs: 720, heat: 38 },
+      { n: 7, name: 'Lamb rack', phys: 'yellow', start: 184, c0: 40, cN: 96, amb: 350, target: 135, state: 'warming', heat: 40 },
+      { n: 8, name: 'Turkey breast', phys: 'grey', start: 120, c0: 40, cN: 132, amb: 325, target: 160, state: 'predicting', secs: 6480, heat: 40 }
+    ];
+    const probes = count === 1 ? [ALL[0]] : count === 3 ? ALL.slice(0, 3) : ALL;
+    const selN = this.state.sel ?? (alerting ? 2 : 1);
+    const sel = probes.find((p) => p.n === selN) || probes[0];
+    const clock = (min) => { const m = Math.round(600 + min); return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+    const hmm = (s) => { const h = Math.floor(s / 3600); const m = Math.round((s % 3600) / 60); return h + ':' + String(m).padStart(2, '0'); };
+    const series = (p, t) => {
+      const span = Math.max(1, NOW - p.start);
+      const f = Math.min(1, Math.max(0, (t - p.start) / span));
+      const core = p.c0 + (p.cN - p.c0) * (1 - Math.exp(-3 * f)) / (1 - Math.exp(-3));
+      const ramp = Math.min(1, (t - p.start) / 12);
+      const amb = 72 + (p.amb - 72) * ramp + 3 * Math.sin((t + p.n * 7) / 6) + 1.5 * Math.sin(t / 1.7 + p.n);
+      const surf = core + (amb - core) * 0.32 * (1 - 0.5 * f) * Math.min(1, (t - p.start) / 6 + 0.2);
+      return { core, amb, surf };
+    };
+    const W = 1000, H = 440, L = 60, R = 60, T = 10, B = 40;
+    const PX = (x) => (x / W * 100).toFixed(2) + '%';
+    const PY = (y) => (y / H * 100).toFixed(2) + '%';
+    const has = sel.state !== 'notInserted';
+    const t0 = has ? sel.start : 0, t1 = NOW;
+    const X = (t) => L + ((t - t0) / Math.max(1, t1 - t0)) * (W - L - R);
+    const ymax = has ? Math.ceil((Math.max(sel.amb, sel.target || 0) + 30) / 50) * 50 : 300;
+    const ymin = 50;
+    const Y = (v) => T + (1 - (v - ymin) / (ymax - ymin)) * (H - T - B);
+    const paths = [], dots = [];
+    if (has) {
+      const pts = { core: [], surf: [], amb: [] };
+      for (let t = t0; t <= t1 + 0.01; t += Math.max(0.5, (t1 - t0) / 220)) {
+        const s = series(sel, t);
+        pts.amb.push(X(t).toFixed(1) + ',' + Y(Math.max(ymin, s.amb)).toFixed(1));
+        pts.surf.push(X(t).toFixed(1) + ',' + Y(Math.max(ymin, s.surf)).toFixed(1));
+        pts.core.push(X(t).toFixed(1) + ',' + Y(Math.max(ymin, s.core)).toFixed(1));
+      }
+      paths.push({ d: 'M' + pts.amb.join(' L'), color: COL.amb, op: 1 });
+      paths.push({ d: 'M' + pts.surf.join(' L'), color: COL.surf, op: 1 });
+      paths.push({ d: 'M' + pts.core.join(' L'), color: COL.core, op: 1 });
+    }
+    const step = ymax - ymin > 300 ? 100 : 50;
+    const yTicks = [];
+    for (let v = Math.ceil(ymin / step) * step; v <= ymax; v += step) yTicks.push({ y: Y(v), label: v + '°', style: 'font-size:16px;color:#9b9b9b;left:0;width:' + PX(L - 10) + ';text-align:right;top:' + PY(Y(v)) + ';transform:translateY(-50%)' });
+    const span = t1 - t0, xs = span > 150 ? 60 : span > 40 ? 15 : 5;
+    const xTicks = [];
+    for (let t = Math.ceil((600 + t0) / xs) * xs - 600; t <= t1; t += xs) xTicks.push({ x: X(t), label: clock(t), style: 'font-size:16px;color:#9b9b9b;left:' + PX(X(t)) + ';top:' + PY(H - B + 10) + ';transform:translateX(-50%)' });
+    const h = this.state.hover;
+    const at = has ? (h !== null ? Math.max(t0, Math.min(t1, h)) : t1) : null;
+    const cur = has ? series(sel, at) : null;
+    if (has) { dots.push({ y: Y(Math.max(ymin, cur.amb)), color: COL.amb }); dots.push({ y: Y(Math.max(ymin, cur.surf)), color: COL.surf }); dots.push({ y: Y(Math.max(ymin, cur.core)), color: COL.core }); }
+    const stateAt = (p, t) => { if (p.state === 'notInserted') return 'Not inserted'; if (t - p.start < 15) return 'Warming'; if (p.state === 'done' && t >= NOW - 2) return 'Ready'; if (p.state === 'warming') return 'Warming'; return 'Predicting'; };
+    const cell = (i) => 'display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:4px 24px;' + (i > 0 ? 'border-left:3px solid #2c2c2c' : 'padding-left:4px');
+    const readouts = [
+      { label: 'Core', v: cur ? cur.core : null, c: COL.core },
+      { label: 'Surface', v: cur ? cur.surf : null, c: COL.surf },
+      { label: 'Ambient', v: cur ? cur.amb : null, c: COL.amb }
+    ].map((r, i) => ({ label: r.label, value: r.v === null ? '—' : Math.round(r.v), pill: 'background:' + r.c, cell: cell(i) }));
+    const ring = (p) => 'box-shadow:0 0 0 2px ' + RING[p.phys];
+    const statusOf = (p) => {
+      if (p.state === 'notInserted') return { text: 'Not inserted', style: 'font-size:15px;color:#9b9b9b;font-family:Barlow,sans-serif' };
+      if (p.state === 'warming') return { text: 'Warming', style: 'font-size:15px;color:#c7c7c7;font-family:Barlow,sans-serif' };
+      if (p.state === 'done') return { text: 'Ready', style: 'font-size:20px;font-weight:600;color:#5fd17a' };
+      return { text: abs ? clock(NOW + p.secs / 60) : hmm(p.secs), style: 'font-size:24px;font-weight:500' };
+    };
+    const chips = probes.map((p) => {
+      const st = statusOf(p); const c = p.state === 'notInserted' ? null : series(p, NOW);
+      return { n: p.n, name: p.name, ring: ring(p), core: c ? Math.round(c.core) + '°' : '—', target: p.target ? '→ ' + p.target + '°' : '', status: st.text, statusStyle: st.style,
+        cls: 'chip' + (p.n === sel.n ? ' on' : '') + (alerting && p.n === 2 ? ' alerting' : ''), aria: 'Probe ' + p.n + ', ' + p.name + ', ' + st.text,
+        pick: () => this.setState({ sel: p.n, hover: null }) };
+    });
+    const now = has ? series(sel, NOW) : { core: 0, surf: 0, amb: 0 };
+    const pct = sel.state === 'done' ? 100 : sel.target ? Math.round(100 * (now.core - sel.heat) / (sel.target - sel.heat)) : 0;
+    let ready = '—', readyCaption = 'No prediction', secondary = '', readyStyle = 'font-size:64px;font-weight:600;line-height:1';
+    if (sel.state === 'predicting') { ready = abs ? clock(NOW + sel.secs / 60) : hmm(sel.secs); readyCaption = abs ? 'Ready at' : 'Ready in'; secondary = abs ? 'in ' + hmm(sel.secs) : 'at ' + clock(NOW + sel.secs / 60); }
+    if (sel.state === 'done') { ready = 'Ready'; readyCaption = 'Remove now'; secondary = 'since 13:18'; readyStyle += ';color:#5fd17a'; }
+    if (sel.state === 'warming') { ready = 'Warming'; readyCaption = 'Prediction starts soon'; readyStyle = 'font-size:44px;font-weight:600;line-height:1'; }
+    const vs = { core: 1, surf: 4, amb: 7 };
+    const sensors = [];
+    for (let i = 0; i < 8; i++) {
+      let v;
+      if (i === 0) v = now.core + 1.2; else if (i <= 4) v = now.core + (now.surf - now.core) * (i - 1) / 3; else v = now.surf + (now.amb - now.surf) * (i - 4) / 3;
+      const role = i === vs.core ? 'Core' : i === vs.surf ? 'Surface' : i === vs.amb ? 'Ambient' : '';
+      const rc = i === vs.core ? COL.core : i === vs.surf ? COL.surf : i === vs.amb ? COL.amb : 'transparent';
+      sensors.push({ label: 'T' + (i + 1), v: has ? Math.round(v) : '—', role,
+        roleStyle: 'font-size:11px;font-weight:600;min-height:14px;border-radius:999px;padding:0 6px;color:#000;background:' + rc,
+        style: 'display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;border-radius:12px;background:#1f1f1f;border:1px solid ' + (role ? rc : '#2c2c2c') });
+    }
+    return {
+      alerting, alertCount: alerting ? '1' : '', multi: probes.length > 1,
+      readouts, paths, dots, yTicks, xTicks, cx: has ? X(at) : -20,
+      scrubState: has ? stateAt(sel, at) : 'Not inserted',
+      scrubTime: has ? (h === null ? 'Now · ' + clock(at) : clock(at)) : '',
+      targetY: sel.target ? Y(sel.target) : -20, targetOp: sel.target ? 1 : 0,
+      targetLabel: sel.target ? sel.target + '°' : '',
+      targetLabelStyle: 'font-size:18px;color:#f5f5f5;left:' + PX(W - R + 8) + ';top:' + PY(sel.target ? Y(sel.target) : -40) + ';transform:translateY(-50%)',
+      graphLabel: 'Core, surface and ambient temperature for ' + sel.name + '. Move the pointer over the graph to read past values.',
+      onMove: (e) => { const r = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - r.left) / r.width; this.setState({ hover: t0 + fx * (t1 - t0) }); },
+      onLeave: () => this.setState({ hover: null }),
+      chips,
+      sel: {
+        n: sel.n, name: sel.name, ring: ring(sel), phys: sel.phys === 'yellow' ? 'Yellow · ' + (sel.n === 2 ? 'direct' : 'via Display') : 'Grey · direct',
+        kind: (sel.target ? 'Predictive Cook' : 'Manual Cook') + (has ? ' · started ' + clock(sel.start) : ''),
+        ready, readyCaption, secondary, readyStyle,
+        cookingTo: sel.target ? 'Cooking to ' + sel.target + '°F' : 'No target',
+        pctLabel: has ? pct + '% to target' : '',
+        bar: 'height:8px;border-radius:4px;width:' + Math.max(0, Math.min(100, pct)) + '%;background:#4ea1f7',
+        sensors, link: sel.n % 2 === 0 ? 'Direct · −62 dBm' : 'Via Display · 2 hops', started: has ? clock(sel.start) : '—'
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

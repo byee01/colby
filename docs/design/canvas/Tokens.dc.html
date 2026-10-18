@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colby design tokens</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.num{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.cap{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#c7c7c7}
+.sw{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#c7c7c7}
+.chipc{height:56px;border-radius:12px;border:1px solid #2c2c2c}
+.pill{display:inline-block;border-radius:999px;padding:3px 14px;font:600 15px 'Barlow',system-ui,sans-serif;color:#000000}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #222222;font-size:14px;vertical-align:top}
+th{color:#c7c7c7;font-weight:600}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; background: #000000; padding: 40px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; font-family: 'Barlow', system-ui, sans-serif; color: #f5f5f5">
+<div style="display: flex; flex-direction: column; gap: 26px">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span class="cap">Surfaces and text · dark only</span>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{neutrals}}" as="c" hint-placeholder-count="6"><div class="sw"><div class="chipc" style="{{c.style}}"></div><span style="font-weight: 600; color: #f5f5f5">{{c.name}}</span><span class="num" style="font-size: 15px">{{c.hex}}</span></div></sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span class="cap">Sensors · same colors as the official app</span>
+<div style="display: flex; gap: 28px; align-items: flex-end">
+<sc-for list="{{sensors}}" as="s" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 8px"><span class="pill" style="{{s.style}}">{{s.name}}</span><span class="num" style="font-size: 56px; font-weight: 500; line-height: 1">{{s.v}}</span><svg width="140" height="10" aria-hidden="true"><line x1="0" y1="5" x2="140" y2="5" stroke="{{s.hex}}" stroke-width="3" stroke-linecap="round"></line></svg><span class="num" style="font-size: 15px; color: #c7c7c7">{{s.hex}}</span></div>
+</sc-for>
+</div>
+<span style="font-size: 13px; color: #9b9b9b">Lines 3 px, solid. Identity is always also carried by the labeled pill, so color is never the only signal. Contrast ≥ 3:1 on #161616; color-blind separation passes.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span class="cap">Status</span>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{status}}" as="c" hint-placeholder-count="4"><div class="sw"><div class="chipc" style="{{c.style}}"></div><span style="font-weight: 600; color: #f5f5f5">{{c.name}}</span><span class="num" style="font-size: 15px">{{c.hex}}</span></div></sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span class="cap">Probe badge and buttons</span>
+<div style="display: flex; align-items: center; gap: 22px">
+<span class="num" style="width: 32px; height: 32px; border-radius: 16px; background: #2a2a2a; box-shadow: 0 0 0 2px #e9c440; display: inline-flex; align-items: center; justify-content: center; font-size: 18px">1</span>
+<span class="num" style="width: 32px; height: 32px; border-radius: 16px; background: #2a2a2a; box-shadow: 0 0 0 2px #a3a3a3; display: inline-flex; align-items: center; justify-content: center; font-size: 18px">2</span>
+<span style="font-size: 13px; color: #9b9b9b; max-width: 220px">Number = probe ID. Ring = physical probe color (yellow, grey).</span>
+<span style="flex: 1 1 auto"></span>
+<span style="background: #f5f5f5; color: #000000; border-radius: 10px; padding: 9px 16px; font-weight: 600; font-size: 14px">Primary</span>
+<span style="background: #1f1f1f; color: #f5f5f5; border: 1px solid #2c2c2c; border-radius: 10px; padding: 9px 16px; font-weight: 600; font-size: 14px">Secondary</span>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 26px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span class="cap">Type · bundled Barlow and Barlow Condensed (SIL OFL)</span>
+<div style="display: flex; align-items: baseline; gap: 24px"><span class="num" style="font-size: 150px; font-weight: 600; line-height: 1">3:42</span><div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #c7c7c7"><span>Kitchen countdown</span><span>Condensed 600 · 116–400 px</span><span>Tabular figures</span></div></div>
+<div style="display: flex; align-items: baseline; gap: 24px"><span class="num" style="font-size: 72px; font-weight: 500; line-height: 1">165</span><span style="font-size: 13px; color: #c7c7c7">Readout · Condensed 500 · 64–72</span></div>
+<div style="display: flex; align-items: baseline; gap: 24px"><span style="font-size: 32px; font-weight: 700">Brisket</span><span style="font-size: 13px; color: #c7c7c7">Title · Barlow 700 · 32</span></div>
+<div style="display: flex; align-items: baseline; gap: 24px"><span style="font-size: 15px">Cooking to 203°F · Ready in 3:42</span><span style="font-size: 13px; color: #c7c7c7">Body · Barlow 400–600 · 15</span></div>
+<div style="display: flex; align-items: baseline; gap: 24px"><span class="num" style="font-size: 16px; color: #9b9b9b">13:20 · 250°</span><span style="font-size: 13px; color: #c7c7c7">Axis · Condensed 500 · 16</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span class="cap">Sounds · built-in only</span>
+<table style="border-collapse: collapse; width: 100%">
+<thead><tr><th>Event</th><th>macOS</th><th>Windows toast</th><th>Repeats</th></tr></thead>
+<tbody>
+<sc-for list="{{sounds}}" as="s" hint-placeholder-count="6"><tr><td style="font-weight: 600">{{s.e}}</td><td>{{s.m}}</td><td style="font-size: 13px">{{s.w}}</td><td>{{s.r}}</td></tr></sc-for>
+</tbody>
+</table>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span class="cap">Radius</span>
+<div style="display: flex; gap: 12px; font-size: 12px; color: #c7c7c7">
+<div style="width: 70px; height: 46px; border: 1px solid #c7c7c7; border-radius: 10px; display: flex; align-items: center; justify-content: center">10 controls</div>
+<div style="width: 70px; height: 46px; border: 1px solid #c7c7c7; border-radius: 16px; display: flex; align-items: center; justify-content: center">16 chips</div>
+<div style="width: 90px; height: 46px; border: 1px solid #c7c7c7; border-radius: 28px; display: flex; align-items: center; justify-content: center">28 cards</div>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sw = (name, hex) => ({ name, hex, style: 'background:' + hex });
+    return {
+      neutrals: [sw('Window', '#000000'), sw('Card', '#161616'), sw('Raised', '#1f1f1f'), sw('Line', '#2c2c2c'), sw('Text', '#f5f5f5'), sw('Muted', '#9b9b9b')],
+      sensors: [{ name: 'Core', v: '165', hex: '#4ea1f7' }, { name: 'Surface', v: '178', hex: '#ffb81c' }, { name: 'Ambient', v: '249', hex: '#f5701f' }].map((s) => ({ ...s, style: 'background:' + s.hex })),
+      status: [sw('Ready', '#5fd17a'), sw('Critical', '#e5484d'), sw('Warning', '#fab219'), sw('Brand mark', '#ffb81c')],
+      sounds: [
+        { e: 'Ready', m: 'Glass', w: 'Looping.Alarm', r: 'Until acknowledged' },
+        { e: 'Overheat', m: 'Sosumi', w: 'Looping.Alarm2', r: 'Until acknowledged' },
+        { e: 'Probe alarm', m: 'Hero', w: 'Looping.Alarm3', r: 'Until acknowledged' },
+        { e: '5-minute warning', m: 'Ping', w: 'Reminder', r: 'Once' },
+        { e: 'Disconnected, low battery', m: 'Basso', w: 'Default', r: 'Once' },
+        { e: 'Custom alert', m: 'Submarine', w: 'Reminder', r: 'Once' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

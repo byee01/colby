@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colby Windows live surfaces</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#f5f5f5}a:hover{color:#ffffff}
+.num{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.cap{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#c7c7c7}
+.note{font-size:13px;color:#c7c7c7}
+.muted{color:#9b9b9b}
+.pbtn{background:#2a2a2a;color:#f5f5f5;border:1px solid #333333;border-radius:6px;padding:8px 10px;white-space:nowrap;font:600 14px 'Barlow',system-ui,sans-serif;min-height:36px;cursor:pointer}
+.b{width:20px;height:20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font:700 12px 'Barlow Condensed',system-ui,sans-serif;color:#000000;flex:none}
+.b{background:#2a2a2a !important;color:#f5f5f5 !important;box-shadow:0 0 0 2px #e9c440}
+.b.grey{box-shadow:0 0 0 2px #a3a3a3}
+.flyout{background:#161616;border:1px solid #333333;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.tip{background:#2b2b2b;border:1px solid #454545;border-radius:6px;padding:8px 12px;font-size:14px;display:flex;flex-direction:column;gap:2px;width:max-content}
+.wcard{background:#202020;border:1px solid #3a3a3a;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; background: #23262c; padding: 36px 40px; display: grid; grid-template-columns: 400px 430px minmax(0, 1fr); gap: 40px; font-family: 'Barlow', system-ui, sans-serif; color: #f5f5f5">
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span class="cap">Tray icon · three states</span>
+<div style="display: flex; gap: 14px">
+<sc-for list="{{icons}}" as="i" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="width: 48px; height: 48px; border-radius: 8px; background: #1b1c1f; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{i.color}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg></div>
+<span class="note">{{i.label}}</span>
+</div>
+</sc-for>
+</div>
+<span class="cap" style="margin-top: 6px">Tray tooltip · 1 probe</span>
+<div class="tip"><span style="font-weight: 600">Colby</span><span class="num">1 Brisket · 165° · ready in 3:42 (17:02)</span></div>
+<span class="cap" style="margin-top: 6px">Tray tooltip · several probes</span>
+<div class="tip"><span style="font-weight: 600">Colby</span><span class="num">3 Chicken thighs · 141° · ready in 0:38 (13:58)</span><span class="num">2 Ribs · Ready since 13:18</span><span class="num">+2 more</span></div>
+<span class="note" style="max-width: 380px">Tray icons cannot show text. Status lives in the icon color, the tooltip, the flyout and toasts.</span>
+
+<span class="cap" style="margin-top: 14px">Tray flyout · 1 probe</span>
+<div class="flyout">
+<div style="display: flex; align-items: center; gap: 10px"><span class="b" style="background: #4ea1f7">1</span><span style="font-weight: 700; font-size: 16px; flex: 1 1 auto">Brisket</span><span class="num muted" style="font-size: 14px">165° → 203°</span></div>
+<div style="display: flex; align-items: baseline; gap: 10px"><span class="num" style="font-size: 40px; font-weight: 600; line-height: 1">3:42</span><span class="num muted" style="font-size: 16px">at 17:02</span></div>
+<div style="display: flex; gap: 6px"><button type="button" class="pbtn" style="background: #f5f5f5; color: #000000; border-color: #f5f5f5">Open</button><button type="button" class="pbtn">Kitchen mode</button><button type="button" class="pbtn">Live window</button><button type="button" class="pbtn">Exit</button></div>
+</div>
+<div style="margin-top: auto; height: 48px; background: #1b1c1f; border-radius: 8px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 13px; color: #d6d6d6">
+<span style="flex: 1 1 auto"></span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffb81c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Colby, cooking"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
+<span>ENG</span><span class="num" style="text-align: right">13:20<br>10/18/2026</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span class="cap">Tray flyout · 4 probes</span>
+<div class="flyout">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid #2a2a2a">
+<span class="b" style="{{r.badge}}">{{r.n}}</span>
+<div style="display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0"><span style="font-weight: 600; font-size: 15px">{{r.name}}</span><span class="num muted" style="font-size: 13px">{{r.sub}}</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 64px"><span class="num" style="{{r.rightStyle}}">{{r.right}}</span><span class="num muted" style="font-size: 12px">{{r.at}}</span></div>
+</div>
+</sc-for>
+<div style="display: flex; gap: 6px; padding-top: 4px"><button type="button" class="pbtn" style="background: #f5f5f5; color: #000000; border-color: #f5f5f5">Open</button><button type="button" class="pbtn">Kitchen mode</button><button type="button" class="pbtn">Live window</button><button type="button" class="pbtn">Exit</button></div>
+</div>
+<span class="cap" style="margin-top: 14px">Alarm toast · loops until dismissed</span>
+<div role="alert" style="width: 400px; background: #2b2b2b; border: 1px solid #4a4a4a; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45)">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #c7c7c7"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffb81c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg><span>Colby</span><span style="flex: 1 1 auto"></span><span>17:02</span></div>
+<div style="display: flex; align-items: center; gap: 10px"><span class="b" style="background: #4ea1f7; width: 32px; height: 32px; border-radius: 16px; font-size: 16px">1</span><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700; font-size: 16px">Brisket is ready</span><span style="font-size: 14px; color: #d6d6d6">Core reached 203°F at 17:02. Remove from heat.</span></div></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px"><button type="button" class="pbtn">Snooze 5 min</button><button type="button" class="pbtn" style="background: #f5f5f5; color: #000000; border-color: #f5f5f5">Acknowledge</button></div>
+</div>
+<span class="note">Alarm-scenario toast with the built-in looping alarm sound.</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span class="cap">Widgets board · 1 probe</span>
+<div class="wcard" style="max-width: 420px">
+<span class="note" style="font-weight: 600">Colby</span>
+<div style="display: flex; align-items: center; gap: 10px"><span class="b" style="background: #4ea1f7">1</span><span style="font-weight: 700; font-size: 16px; flex: 1 1 auto">Brisket</span><span class="num" style="font-size: 22px; font-weight: 600">165°<span class="muted" style="font-size: 14px"> → 203°</span></span></div>
+<div style="display: flex; align-items: baseline; gap: 10px"><span style="font-size: 13px; color: #c7c7c7">Ready in</span><span class="num" style="font-size: 44px; font-weight: 600; line-height: 1">3:42</span><span class="num muted" style="font-size: 16px">at 17:02</span></div>
+<svg viewBox="0 0 120 44" preserveAspectRatio="none" style="width: 100%; height: 48px" aria-hidden="true"><path d="M0,42 L12,38 L24,33 L36,28 L48,24 L60,20 L72,17 L84,14 L96,12 L108,10 L120,9" fill="none" stroke="#4ea1f7" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linecap="round"></path></svg>
+</div>
+<span class="cap" style="margin-top: 6px">Widgets board · several probes</span>
+<div class="wcard" style="max-width: 420px">
+<span class="note" style="font-weight: 600">Colby</span>
+<sc-for list="{{widgetRows}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 10px">
+<span class="b" style="{{r.badge}}">{{r.n}}</span>
+<span style="font-weight: 600; font-size: 14px; flex: 1 1 auto">{{r.name}}</span>
+<span class="num" style="font-size: 15px; color: #c7c7c7">{{r.core}}</span>
+<div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 64px"><span class="num" style="{{r.rightStyle}}">{{r.right}}</span><span class="num muted" style="font-size: 11px">{{r.at}}</span></div>
+</div>
+</sc-for>
+</div>
+<span class="cap" style="margin-top: 6px">Floating live window · same as macOS</span>
+<div style="background: #141414; border: 1px solid #333333; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; width: 380px; box-sizing: border-box">
+<div style="display: flex; align-items: center; gap: 10px"><span class="b" style="background: #4ea1f7">1</span><span style="font-weight: 700; font-size: 16px">Brisket</span><span style="flex: 1 1 auto"></span><span class="note">Cooking to 203°</span></div>
+<div style="display: flex; align-items: flex-end; gap: 16px">
+<div style="display: flex; flex-direction: column"><span class="note">Ready in</span><span class="num" style="font-size: 44px; font-weight: 600; line-height: 1">3:42</span><span class="num muted" style="font-size: 15px; margin-top: 2px">at 17:02</span></div>
+<div style="display: flex; flex-direction: column"><span class="note">Core</span><span class="num" style="font-size: 30px; font-weight: 600; line-height: 1">165°</span><span class="num muted" style="font-size: 15px; margin-top: 2px">77%</span></div>
+<svg viewBox="0 0 120 44" style="flex: 1 1 auto; height: 56px" role="img" aria-label="Brisket core temperature rising"><path d="M0,42 L12,38 L24,33 L36,28 L48,24 L60,20 L72,17 L84,14 L96,12 L108,10 L120,9" fill="none" stroke="#4ea1f7" stroke-width="2.5" stroke-linecap="round"></path><line x1="0" x2="120" y1="3" y2="3" stroke="#9b9b9b" stroke-width="1" stroke-dasharray="4 4"></line></svg>
+</div>
+<div style="height: 6px; border-radius: 3px; background: #2a2a2a; overflow: hidden"><div style="height: 6px; width: 77%; background: #4ea1f7; border-radius: 3px"></div></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const PAL = ['#4ea1f7','#d95926','#199e70','#c98500'];
+    const P = [
+      { n: 3, name: 'Chicken thighs', core: 141, target: 175, right: '0:38', at: 'at 13:58', done: false },
+      { n: 2, name: 'Ribs', core: 203, target: 203, right: 'Ready', at: 'since 13:18', done: true },
+      { n: 1, name: 'Brisket', core: 165, target: 203, right: '3:42', at: 'at 17:02', done: false },
+      { n: 4, name: 'Pork shoulder', core: 158, target: 200, right: '5:10', at: 'at 18:30', done: false }
+    ];
+    const rows = P.map((p) => ({
+      n: p.n, name: p.name, badge: p.n % 2 === 0 ? 'box-shadow:0 0 0 2px #a3a3a3' : '',
+      sub: p.core + '° → ' + p.target + '°', core: p.core + '°', right: p.right, at: p.at,
+      rightStyle: p.done ? 'font-size:16px;font-weight:700;color:#5fd17a;line-height:1.1' : 'font-size:18px;font-weight:600;line-height:1.1'
+    }));
+    const icons = [{ color: '#9b9b9b', label: 'Idle' }, { color: '#ffb81c', label: 'Cooking' }, { color: '#e66767', label: 'Alarm' }];
+    return { rows, widgetRows: rows.slice(0, 3), icons };
+  }
+}
+</script>
+</body>
+</html>

@@ -260,8 +260,9 @@ Build impact (custom look vs. placeholder UI already in M7/W6): about +4 weeks m
 
 | # | Question |
 |---|---|
-| 1 | Logo / app icon for "Colby" (canvas uses a placeholder thermometer glyph) |
-| 2 | Confirm Barlow tabular figures render identically in SwiftUI and WinUI (U2 check); fallback: Archivo (OFL) |
+| 1 | App icon / logo for "Colby" (canvas uses a placeholder thermometer) |
+| 2 | Confirm Barlow Condensed tabular figures render identically in SwiftUI and WinUI (first SwiftUI spike, M2) |
+| 3 | Usability test (U5): 5 people, real cook or demo replay, across-the-room readability |
 
 ## 17. Design pass 1 (canvas)
 
@@ -322,6 +323,8 @@ macOS notification banners use `UNNotificationSound.default` (system sound names
 | Onboarding · 4 steps | Welcome (demo link, not-affiliated line), Bluetooth (with denied-state banner), find thermometers (follow checkboxes, Display listed as relay), background (menu bar, login opt-in; notification permission deferred to first alert) |
 | History | Cook list (title, date, duration, peak); detail with stat tiles, read-only graph, alert events on the timeline and as a list; Rename, Delete |
 | Settings | Sections: General (units, prediction time with preview, menu bar, login, keep awake), Alerts and sounds (volume, Do Not Disturb, sound per event, default alerts for new probes), Devices (followed probes, MeatNet nodes), History and data, Diagnostics (links, Record session), About |
+| Instant Read · main window / kitchen | Tip temperature only, large; last 30 s sparkline; outline "Instant Read" pill |
+| Empty, error and edge states | Bluetooth off / not allowed, nothing found, probe offline, prediction stale, loading history, probe busy, command not confirmed, overheat, low battery, food safe (read-only), All 8 sensors |
 | Design tokens | Colors, validated probe palette (dark + light), type scale, sound map, spacing |
 
 Completion time: the chosen format is primary; the other is always shown beside or under it, muted and smaller. Applies to every surface:
@@ -339,7 +342,7 @@ Completion time: the chosen format is primary; the other is always shown beside 
 
 Single probe is the most common case. Every surface has a 1-probe version, listed first. Kitchen mode with 1 probe uses a dedicated full-window layout: name and core temperature in the header, 400 px countdown with 72 px secondary time, progress bar and wide trend line.
 
-Screenshots: `docs/design/screenshots/`, regenerated together from the current canvas every time (`render-all.sh` in the scratchpad). Set: Main1, Main1-hover, Main1At, Main, MainAlert, Main8, Kitchen1, Kitchen1At, Kitchen, KitchenAlert, LiveActivity, WindowsSurfaces, Sheets, Tokens, Onboarding, History, History-hover, Settings, SettingsAlerts, SettingsDevices.
+Screenshots: `docs/design/screenshots/`, regenerated together from the current canvas every time. Set: Main1, Main1-hover, Main1At, Main, MainAlert, Main8, Kitchen1, Kitchen1At, Kitchen, KitchenAlert, LiveActivity, WindowsSurfaces, Sheets, Tokens, Onboarding, History, History-hover, Settings, SettingsAlerts, SettingsDevices, InstantRead, KitchenInstant, States. Regenerate: `docs/design/tools/render-all.sh <dc-runtime.js>`.
 
 ### 17.5 Alignment with the official app (design pass 2)
 
@@ -363,4 +366,13 @@ From user-supplied screenshots of the official Combustion app (primary).
 Palette check: contrast ≥ 3:1 on `#161616` and color-blind separation pass; the lightness-band check fails because the official colors are brighter than the reference band. Accepted: every line is also labeled by its pill.
 
 
-Next: empty and error states board; then U2 (tokens.json + component specs).
+Status: U1 (wireframes) and U2 (tokens + component specs) done; U3 hi-fi largely covered by the canvas. Remaining: U4 interactive prototype (optional), U5 usability test, app icon.
+
+## 18. Instant Read
+
+Boards: `InstantRead`, `KitchenInstant`. While `ProbeSnapshot.mode = instantRead` the probe sends only the tip temperature (T1), so the cook view (readouts, prediction, graph) is replaced by:
+- "Instant Read" outline pill next to the probe name.
+- Tip temperature, one decimal: integer part 300 px (kitchen 460 px), decimal and degree smaller in `text2`.
+- Main window only: last 30 s sparkline. Other probes stay as chips in the side panel.
+- Returns to the cook view automatically when the probe reports normal mode.
+- Values come through the Instant Read filter (02 §3, iOS `InstantReadFilter`), updated at up to 10 Hz.

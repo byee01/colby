@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colby states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#f5f5f5}a:hover{color:#ffffff}
+.num{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.cap{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#c7c7c7}
+.card{background:#161616;border:1px solid #2c2c2c;border-radius:28px;padding:22px 24px;height:290px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.center{align-items:center;justify-content:center;text-align:center}
+.btn{background:#1f1f1f;color:#f5f5f5;border:1px solid #2c2c2c;border-radius:10px;padding:8px 14px;font:600 14px 'Barlow',system-ui,sans-serif;cursor:pointer;min-height:36px;display:inline-flex;align-items:center;gap:8px}
+.btn.primary{background:#f5f5f5;color:#000000;border-color:#f5f5f5}
+.badge{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;font:600 15px 'Barlow Condensed',system-ui,sans-serif;color:#f5f5f5;background:#2a2a2a;box-shadow:0 0 0 2px #e9c440;flex:none}
+.pill{display:inline-block;border-radius:999px;padding:2px 12px;font:600 14px 'Barlow',system-ui,sans-serif;color:#000000}
+.t{font-size:22px;font-weight:700}
+.s{font-size:15px;color:#c7c7c7}
+.m{font-size:13px;color:#9b9b9b}
+.slot{display:flex;flex-direction:column;gap:10px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1400px; box-sizing: border-box; background: #000000; color: #f5f5f5; font-family: 'Barlow', system-ui, sans-serif; padding: 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 24px">
+
+<div class="slot"><span class="cap">Bluetooth off</span>
+<div class="card center">
+<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#9b9b9b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10-5 5V2l5 5L7 17"></path><path d="M3 3l18 18"></path></svg>
+<span class="t">Bluetooth is off</span><span class="s">Turn on Bluetooth to see your thermometers.</span>
+<button type="button" class="btn primary">Open Bluetooth settings</button>
+</div></div>
+
+<div class="slot"><span class="cap">Bluetooth not allowed</span>
+<div class="card center">
+<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fab219" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+<span class="t">Colby can't use Bluetooth</span><span class="s">Allow it in System Settings › Privacy &amp; Security › Bluetooth.</span>
+<button type="button" class="btn primary">Open Privacy settings</button>
+<span class="m">Windows: Settings › Privacy &amp; security › Radios</span>
+</div></div>
+
+<div class="slot"><span class="cap">Nothing found</span>
+<div class="card center">
+<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffb81c" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg>
+<span class="t">Looking for thermometers</span><span class="s">Take a probe out of its charger to wake it, and keep it within about 10 m.</span>
+<button type="button" class="btn">Try demo mode</button>
+</div></div>
+
+<div class="slot"><span class="cap">Probe offline</span>
+<div class="card">
+<div style="display: flex; align-items: center; gap: 10px"><span class="badge">1</span><span style="font-size: 20px; font-weight: 700; flex: 1 1 auto">Brisket</span><span style="background: #2a2a2a; color: #c7c7c7; border-radius: 999px; padding: 2px 12px; font-size: 14px; font-weight: 600">Offline 3 min</span></div>
+<div style="display: flex; gap: 22px; opacity: 0.45"><div style="display: flex; flex-direction: column; gap: 4px"><span class="pill" style="background: #4ea1f7">Core</span><span class="num" style="font-size: 44px">161</span></div><div style="display: flex; flex-direction: column; gap: 4px"><span class="pill" style="background: #ffb81c">Surface</span><span class="num" style="font-size: 44px">176</span></div><div style="display: flex; flex-direction: column; gap: 4px"><span class="pill" style="background: #f5701f">Ambient</span><span class="num" style="font-size: 44px">251</span></div></div>
+<svg viewBox="0 0 380 60" style="width: 100%; height: 60px" aria-hidden="true"><path d="M0,10 L250,10" stroke="#f5701f" stroke-width="2.5" fill="none"></path><path d="M0,50 C80,35 160,26 250,22" stroke="#4ea1f7" stroke-width="2.5" fill="none"></path><line x1="250" x2="250" y1="0" y2="60" stroke="#9b9b9b" stroke-dasharray="3 3"></line></svg>
+<span class="m">Last reading 13:17. Values greyed. Disconnected alert fired after 60 s.</span>
+</div></div>
+
+<div class="slot"><span class="cap">Prediction stale</span>
+<div class="card">
+<div style="display: flex; align-items: center; gap: 10px"><span class="badge">1</span><span style="font-size: 20px; font-weight: 700">Brisket</span></div>
+<span class="s">Ready in</span>
+<div style="display: flex; align-items: baseline; gap: 12px"><span class="num" style="font-size: 72px; font-weight: 600; line-height: 1; color: #6b6b6b">3:42</span><span class="num" style="font-size: 22px; color: #6b6b6b">at 17:02</span></div>
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: #fab219"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Stale · no update for 20 s</span>
+<span class="m">Countdown stops ticking and greys out until the next status arrives.</span>
+</div></div>
+
+<div class="slot"><span class="cap">Loading history</span>
+<div class="card">
+<span class="s">Connected mid-cook. Filling the graph from the probe's log.</span>
+<svg viewBox="0 0 380 120" style="width: 100%; height: 120px" aria-hidden="true">
+<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#3a3a3a" stroke-width="3"></line></pattern></defs>
+<rect x="0" y="0" width="230" height="120" fill="url(#hatch)"></rect>
+<path d="M230,30 L380,26" stroke="#f5701f" stroke-width="2.5" fill="none"></path><path d="M230,62 L380,58" stroke="#ffb81c" stroke-width="2.5" fill="none"></path><path d="M230,82 L380,74" stroke="#4ea1f7" stroke-width="2.5" fill="none"></path>
+</svg>
+<div style="height: 6px; border-radius: 3px; background: #2a2a2a; overflow: hidden"><div style="height: 6px; width: 64%; background: #f5f5f5"></div></div>
+<span class="m">Loading history · 64% · newest first</span>
+</div></div>
+
+<div class="slot"><span class="cap">Probe busy</span>
+<div class="card">
+<div style="display: flex; align-items: center; gap: 10px"><span class="badge">1</span><span style="font-size: 20px; font-weight: 700">Brisket</span><span class="num" style="margin-left: auto; font-size: 30px; color: #4ea1f7">165°</span></div>
+<div style="background: #1f1f1f; border: 1px solid #2c2c2c; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-weight: 600">Live temperatures only</span>
+<span class="s">The probe already has 3 connections. Predictions, history and target changes need a free connection, a Display or a Booster.</span>
+</div>
+<span class="m">Colby keeps reading the probe's broadcast and retries every 30 s.</span>
+</div></div>
+
+<div class="slot"><span class="cap">Command not confirmed</span>
+<div class="card">
+<span class="t">Set target</span>
+<div style="display: flex; align-items: center; gap: 10px"><span style="background: #000000; border: 1px solid #444444; border-radius: 10px; padding: 6px 12px" class="num"><span style="font-size: 28px">203</span></span><span class="num" style="font-size: 22px; color: #c7c7c7">°F</span></div>
+<div role="alert" style="display: flex; align-items: center; gap: 10px; background: #3a1214; border: 1px solid #e5484d; border-radius: 12px; padding: 10px 12px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff9a9d" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg><span style="flex: 1 1 auto; font-size: 15px">The probe didn't confirm the new target.</span><button type="button" class="btn">Retry</button></div>
+<span class="m">Shown after 5 s without a matching status. Nothing changes on the probe.</span>
+</div></div>
+
+<div class="slot"><span class="cap">Overheat</span>
+<div class="card">
+<div role="alert" style="display: flex; align-items: center; gap: 12px; background: #3a1214; border: 1px solid #e5484d; border-radius: 16px; padding: 12px 14px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff9a9d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+<div style="display: flex; flex-direction: column"><span style="font-weight: 700">Probe 1 is overheating</span><span style="font-size: 14px; color: #ffd6d7">Sensor T8 is above its safe limit. Move the probe away from the heat.</span></div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px"><span class="badge">1</span><span style="font-weight: 600">Brisket</span><span style="margin-left: auto; background: #e5484d; color: #ffffff; border-radius: 999px; padding: 2px 12px; font-size: 14px; font-weight: 700">Overheat</span></div>
+<span class="m">Cannot be silenced on the probe. Colby's sound can be muted; the banner stays until the sensor cools.</span>
+</div></div>
+
+<div class="slot"><span class="cap">Low battery</span>
+<div class="card">
+<div style="background: #161616; display: flex; flex-direction: column; gap: 8px; border: 1px solid #2c2c2c; border-radius: 16px; padding: 12px 14px">
+<span style="display: flex; align-items: center; gap: 8px"><span class="badge" style="box-shadow: 0 0 0 2px #a3a3a3">3</span><span style="font-weight: 600; flex: 1 1 auto">Chicken thighs</span><span style="display: inline-flex; align-items: center; gap: 6px; color: #fab219; font-size: 14px; font-weight: 600"><svg width="20" height="14" viewBox="0 0 26 14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="1" y="1" width="21" height="12" rx="2"></rect><rect x="3.5" y="3.5" width="4" height="7" fill="currentColor" stroke="none"></rect><path d="M24.5 5v4"></path></svg>Low battery</span></span>
+<span style="display: flex; align-items: baseline; gap: 8px"><span class="num" style="font-size: 30px; color: #4ea1f7">141°</span><span class="num" style="color: #9b9b9b">→ 175°</span><span style="flex: 1 1 auto"></span><span class="num" style="font-size: 24px">0:38</span></span>
+</div>
+<span class="m">The probe reports only OK or low. Notification once per cook; charge before the next cook.</span>
+</div></div>
+
+<div class="slot"><span class="cap">Food safe · read-only</span>
+<div class="card">
+<div style="display: flex; align-items: center; gap: 10px"><span style="font-size: 18px; font-weight: 700; flex: 1 1 auto">Food safe</span><span style="background: #5fd17a; color: #000000; border-radius: 999px; padding: 2px 12px; font-size: 14px; font-weight: 700">Safe</span></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; font-size: 14px">
+<span class="m">Program</span><span>Integrated</span>
+<span class="m">Product</span><span>Meats</span>
+<span class="m">Serving</span><span>Served immediately</span>
+<span class="m">Log reduction</span><span class="num" style="font-size: 17px">7.2 of 6.5</span>
+<span class="m">Above threshold</span><span class="num" style="font-size: 17px">14:20 min</span>
+</div>
+<span class="m">Shown in the probe panel when the probe has a food safe program. Set it up in the Combustion app.</span>
+</div></div>
+
+<div class="slot"><span class="cap">All 8 sensors</span>
+<div class="card" style="gap: 6px">
+<svg viewBox="0 0 380 200" style="width: 100%; height: 200px" role="img" aria-label="All eight sensor lines, tip to handle">
+<path d="M0,180 C100,150 200,128 330,118" stroke="#6b6b6b" stroke-width="1.5" fill="none"></path>
+<path d="M0,182 C100,152 200,131 330,121" stroke="#4ea1f7" stroke-width="3" fill="none"></path>
+<path d="M0,178 C100,145 200,120 330,108" stroke="#6b6b6b" stroke-width="1.5" fill="none"></path>
+<path d="M0,176 C100,140 200,112 330,98" stroke="#6b6b6b" stroke-width="1.5" fill="none"></path>
+<path d="M0,174 C100,132 200,102 330,88" stroke="#ffb81c" stroke-width="3" fill="none"></path>
+<path d="M0,170 C100,110 200,80 330,66" stroke="#6b6b6b" stroke-width="1.5" fill="none"></path>
+<path d="M0,165 C100,80 200,50 330,40" stroke="#6b6b6b" stroke-width="1.5" fill="none"></path>
+<path d="M0,160 L20,30 L330,24" stroke="#f5701f" stroke-width="3" fill="none"></path>
+<text x="336" y="28" font-size="12" fill="#c7c7c7" font-family="Barlow Condensed, sans-serif">T8</text>
+<text x="336" y="92" font-size="12" fill="#c7c7c7" font-family="Barlow Condensed, sans-serif">T5</text>
+<text x="336" y="125" font-size="12" fill="#c7c7c7" font-family="Barlow Condensed, sans-serif">T2</text>
+</svg>
+<span class="m">T1–T8 thin grey; the sensors chosen as core, surface and ambient keep their colors and are labeled.</span>
+</div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

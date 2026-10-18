@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colby set target and alarms</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#f5f5f5}a:hover{color:#ffffff}
+.num{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.btn{background:#1f1f1f;color:#f5f5f5;border:1px solid #2c2c2c;border-radius:8px;padding:10px 16px;font:600 15px 'Barlow',system-ui,sans-serif;cursor:pointer;min-height:44px;text-decoration:none;display:inline-flex;align-items:center}
+.btn.primary{background:#f5f5f5;color:#000000;border-color:#f5f5f5}
+.field{background:#000000;color:#f5f5f5;border:1px solid #444444;border-radius:8px;padding:8px 12px;font:600 28px 'Barlow Condensed',system-ui,sans-serif;width:120px;min-height:44px;box-sizing:border-box}
+.field.small{font-size:18px;width:90px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #2a2a2a;min-height:44px}
+.tog{width:44px;height:26px;border-radius:13px;border:0;cursor:pointer;position:relative;flex:none}
+.opt{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #2c2c2c;border-radius:10px;cursor:pointer;min-height:44px}
+select{background:#000000;color:#f5f5f5;border:1px solid #444444;border-radius:8px;padding:8px 10px;font:500 15px 'Barlow',system-ui,sans-serif;min-height:40px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1140px; box-sizing: border-box; background: #000000; padding: 40px; display: flex; gap: 40px; font-family: 'Barlow', system-ui, sans-serif; color: #f5f5f5; align-items: flex-start">
+
+<form style="width: 520px; background: #161616; border: 1px solid #2c2c2c; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 18px" aria-label="Set target">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 24px; height: 24px; border-radius: 12px; background: #2a2a2a; box-shadow: 0 0 0 2px #e9c440; color: #f5f5f5; display: inline-flex; align-items: center; justify-content: center; font: 700 14px 'Barlow Condensed', sans-serif">1</span>
+<h2 style="margin: 0; font-size: 22px">Set target</h2>
+</div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #c7c7c7">Name this cook (optional)
+<input type="text" defaultValue="Brisket" style="background: #000000; color: #f5f5f5; border: 1px solid #444444; border-radius: 8px; padding: 10px 12px; font: 500 16px 'Barlow', sans-serif; min-height: 44px; box-sizing: border-box">
+</label>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="tgt" style="font-size: 14px; color: #c7c7c7">Cooking to</label>
+<div style="display: flex; align-items: center; gap: 10px">
+<input id="tgt" class="field" type="text" inputmode="decimal" value="{{tval}}" onChange="{{onT}}" aria-describedby="tgt-help">
+<span class="num" style="font-size: 24px; color: #c7c7c7">°F</span>
+<span style="flex: 1 1 auto"></span>
+<span class="num" style="font-size: 15px; color: #9b9b9b">Core now 165.2°F</span>
+</div>
+<span id="tgt-help" style="{{helpStyle}}">{{help}}</span>
+</div>
+<fieldset style="border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px">
+<legend style="font-size: 14px; color: #c7c7c7; margin-bottom: 6px">Prediction</legend>
+<label class="opt" style="{{m1Style}}"><input type="radio" name="mode" checked="{{m1}}" onChange="{{pick1}}"><span style="display: flex; flex-direction: column"><span style="font-weight: 600">Ready in</span><span style="font-size: 13px; color: #9b9b9b">Time until it reaches the target</span></span></label>
+<label class="opt" style="{{m2Style}}"><input type="radio" name="mode" checked="{{m2}}" onChange="{{pick2}}"><span style="display: flex; flex-direction: column"><span style="font-weight: 600">Ready in + rest</span><span style="font-size: 13px; color: #9b9b9b">Pull early; reaches target while resting</span></span></label>
+</fieldset>
+<div style="display: flex; gap: 10px; flex-wrap: wrap; padding-top: 4px">
+<button type="button" class="btn">Clear target</button>
+<span style="flex: 1 1 auto"></span>
+<a class="btn" href="Main.dc.html">Cancel</a>
+<a class="btn primary" href="Main.dc.html">Set</a>
+</div>
+</form>
+
+<div style="flex: 1 1 auto; background: #161616; border: 1px solid #2c2c2c; border-radius: 16px; padding: 24px; display: flex; gap: 32px; flex-wrap: wrap">
+<section style="flex: 1 1 340px; display: flex; flex-direction: column" aria-labelledby="pa">
+<h2 id="pa" style="margin: 0 0 4px; font-size: 22px">Probe alarms</h2>
+<span style="font-size: 13px; color: #9b9b9b; margin-bottom: 8px">Saved on the probe. Also ring on your Display and phone app.</span>
+<sc-for list="{{alarms}}" as="a" hint-placeholder-count="5">
+<div class="row">
+<button type="button" class="tog" style="{{a.togStyle}}" onClick="{{a.toggle}}" aria-pressed="{{a.on}}" aria-label="{{a.aria}}"><span style="{{a.knob}}"></span></button>
+<span style="flex: 1 1 auto; font-weight: 600">{{a.label}}</span>
+<input class="field small" type="text" defaultValue="{{a.temp}}" aria-label="{{a.tempAria}}">
+<span class="num" style="color: #9b9b9b">°F</span>
+</div>
+</sc-for>
+<button type="button" class="btn" style="margin-top: 12px; align-self: flex-start">Show T1–T8 sensor alarms</button>
+</section>
+<section style="flex: 1 1 340px; display: flex; flex-direction: column" aria-labelledby="aa">
+<h2 id="aa" style="margin: 0 0 4px; font-size: 22px">Desktop alerts</h2>
+<span style="font-size: 13px; color: #9b9b9b; margin-bottom: 8px">Checked by Colby while it runs, in the menu bar or tray.</span>
+<sc-for list="{{rules}}" as="r" hint-placeholder-count="7">
+<div class="row">
+<button type="button" class="tog" style="{{r.togStyle}}" onClick="{{r.toggle}}" aria-pressed="{{r.on}}" aria-label="{{r.aria}}"><span style="{{r.knob}}"></span></button>
+<span style="display: flex; flex-direction: column; flex: 1 1 auto"><span style="font-weight: 600">{{r.label}}</span><span style="font-size: 13px; color: #9b9b9b">{{r.sub}}</span></span>
+</div>
+</sc-for>
+<label style="display: flex; align-items: center; gap: 12px; margin-top: 14px; font-size: 14px; color: #c7c7c7">Alarm sound
+<select aria-label="Alarm sound">
+<option>Glass (macOS)</option>
+<option>Sosumi (macOS)</option>
+<option>Submarine (macOS)</option>
+<option>Alarm 1 (Windows)</option>
+<option>Alarm 2 (Windows)</option>
+</select>
+<button type="button" class="btn">Preview</button>
+</label>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1140}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { t: '203', mode: 1, a: [true, false, true, false, false], r: [true, true, true, true, true, false, false] };
+  }
+  renderVals() {
+    const v = parseFloat(this.state.t);
+    const ok = !isNaN(v) && v >= 32 && v <= 216.1;
+    const tog = (on) => 'background:' + (on ? '#4ea1f7' : '#444444');
+    const knob = (on) => 'position:absolute;top:3px;left:' + (on ? '21px' : '3px') + ';width:20px;height:20px;border-radius:10px;background:#f5f5f5';
+    const AL = [['Core high', '203'], ['Surface high', '250'], ['Ambient high', '275'], ['Ambient low', '200'], ['Surface low', '150']];
+    const alarms = AL.map((x, i) => {
+      const on = this.state.a[i];
+      return { label: x[0], temp: x[1], on, togStyle: tog(on), knob: knob(on), aria: x[0] + ' alarm', tempAria: x[0] + ' temperature', toggle: () => { const a = this.state.a.slice(); a[i] = !a[i]; this.setState({ a }); } };
+    });
+    const RL = [
+      ['Ready', 'Repeats until acknowledged'],
+      ['5-minute warning', 'When ready in reaches 5:00'],
+      ['Overheat', 'Sensor too hot. Cannot be silenced on the probe'],
+      ['Disconnected', 'No data for 60 seconds during a cook'],
+      ['Low battery', 'Probe battery low'],
+      ['Ambient out of range', 'Outside 225–275°F for 5 minutes'],
+      ['Stall', 'Core rose less than 2°F in 30 minutes']
+    ];
+    const rules = RL.map((x, i) => {
+      const on = this.state.r[i];
+      return { label: x[0], sub: x[1], on, togStyle: tog(on), knob: knob(on), aria: x[0] + ' alert', toggle: () => { const r = this.state.r.slice(); r[i] = !r[i]; this.setState({ r }); } };
+    });
+    const sel = 'border-color:#4ea1f7;background:#0f1e2e';
+    return {
+      tval: this.state.t,
+      onT: (e) => this.setState({ t: e.target.value }),
+      help: ok ? 'Range 32–216°F. The probe accepts targets up to 102.3°C.' : 'Enter a value from 32 to 216°F.',
+      helpStyle: 'font-size:13px;color:' + (ok ? '#9b9b9b' : '#ff8f87'),
+      m1: this.state.mode === 1, m2: this.state.mode === 2,
+      m1Style: this.state.mode === 1 ? sel : '', m2Style: this.state.mode === 2 ? sel : '',
+      pick1: () => this.setState({ mode: 1 }), pick2: () => this.setState({ mode: 2 }),
+      alarms, rules
+    };
+  }
+}
+</script>
+</body>
+</html>

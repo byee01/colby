@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colby macOS live surfaces</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#f5f5f5}a:hover{color:#ffffff}
+.num{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.cap{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#c7c7c7}
+.note{font-size:13px;color:#c7c7c7}
+.mb{height:30px;background:#1f2023;border-radius:8px;display:flex;align-items:center;gap:18px;padding:0 14px;color:#e6e6e6;font-size:14px}
+.pill{display:inline-flex;align-items:center;gap:6px;background:#34363b;border-radius:6px;padding:2px 8px}
+.pbtn{background:#2a2a2a;color:#f5f5f5;border:1px solid #333333;border-radius:8px;padding:8px 10px;white-space:nowrap;font:600 14px 'Barlow',system-ui,sans-serif;min-height:36px;cursor:pointer}
+.b{width:20px;height:20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font:700 12px 'Barlow Condensed',system-ui,sans-serif;color:#000000;flex:none}
+.b{background:#2a2a2a !important;color:#f5f5f5 !important;box-shadow:0 0 0 2px #e9c440}
+.b.grey{box-shadow:0 0 0 2px #a3a3a3}
+.panel{background:#161616;border:1px solid #333333;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.live{background:#141414;border:1px solid #333333;border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+.muted{color:#9b9b9b}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; background: #2a2d33; padding: 36px 40px; display: grid; grid-template-columns: 400px 430px minmax(0, 1fr); gap: 40px; font-family: 'Barlow', system-ui, sans-serif; color: #f5f5f5">
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span class="cap">Menu bar · 1 probe</span>
+<div class="mb"><span style="opacity: 0.8">Wi-Fi</span><span style="flex: 1 1 auto"></span>
+<span class="pill"><span class="b" style="background: #4ea1f7">1</span><span class="num" style="font-size: 15px; font-weight: 600">165°</span><span style="opacity: 0.5">·</span><span class="num" style="font-size: 15px; font-weight: 600">3:42</span><span class="num muted" style="font-size: 13px">17:02</span></span>
+<span class="num">13:20</span></div>
+<span class="note">Core · countdown · completion time (muted)</span>
+<span class="cap" style="margin-top: 6px">Menu bar · ready and alarm</span>
+<div class="mb"><span style="opacity: 0.8">Wi-Fi</span><span style="flex: 1 1 auto"></span>
+<span class="pill" style="background: #5fd17a; color: #000000"><span class="b" style="background: #000000; color: #5fd17a">1</span><span style="font-size: 15px; font-weight: 700">Ready</span><span class="num" style="font-size: 13px; opacity: 0.75">17:02</span></span>
+<span class="num">17:02</span></div>
+<div class="mb"><span style="opacity: 0.8">Wi-Fi</span><span style="flex: 1 1 auto"></span>
+<span class="pill" style="background: #d03b3b; color: #ffffff"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg><span style="font-size: 15px; font-weight: 700">Brisket ready</span></span>
+<span class="num">17:02</span></div>
+
+<span class="cap" style="margin-top: 14px">Floating live window · 1 probe</span>
+<div class="live" style="width: 380px">
+<div style="display: flex; align-items: center; gap: 10px"><span class="b" style="background: #4ea1f7">1</span><span style="font-weight: 700; font-size: 16px">Brisket</span><span style="flex: 1 1 auto"></span><span class="note">Cooking to 203°</span></div>
+<div style="display: flex; align-items: flex-end; gap: 16px">
+<div style="display: flex; flex-direction: column"><span class="note">Ready in</span><span class="num" style="font-size: 44px; font-weight: 600; line-height: 1">3:42</span><span class="num muted" style="font-size: 15px; margin-top: 2px">at 17:02</span></div>
+<div style="display: flex; flex-direction: column"><span class="note">Core</span><span class="num" style="font-size: 30px; font-weight: 600; line-height: 1">165°</span><span class="num muted" style="font-size: 15px; margin-top: 2px">77%</span></div>
+<svg viewBox="0 0 120 44" style="flex: 1 1 auto; height: 56px" role="img" aria-label="Brisket core temperature rising"><path d="M0,42 L12,38 L24,33 L36,28 L48,24 L60,20 L72,17 L84,14 L96,12 L108,10 L120,9" fill="none" stroke="#4ea1f7" stroke-width="2.5" stroke-linecap="round"></path><line x1="0" x2="120" y1="3" y2="3" stroke="#9b9b9b" stroke-width="1" stroke-dasharray="4 4"></line></svg>
+</div>
+<div style="height: 6px; border-radius: 3px; background: #2a2a2a; overflow: hidden"><div style="height: 6px; width: 77%; background: #4ea1f7; border-radius: 3px"></div></div>
+</div>
+<span class="note">Always on top, draggable. ⌥⌘L.</span>
+
+<span class="cap" style="margin-top: 14px">Popover · 1 probe</span>
+<div class="panel">
+<div style="display: flex; align-items: center; gap: 10px"><span class="b" style="background: #4ea1f7">1</span><span style="font-weight: 700; font-size: 16px; flex: 1 1 auto">Brisket</span><span class="num muted" style="font-size: 14px">165° → 203°</span></div>
+<div style="display: flex; align-items: baseline; gap: 10px"><span class="num" style="font-size: 40px; font-weight: 600; line-height: 1">3:42</span><span class="num muted" style="font-size: 16px">at 17:02</span><span style="flex: 1 1 auto"></span>
+<svg viewBox="0 0 60 24" style="width: 90px; height: 30px" aria-hidden="true"><path d="M0,22 L5,19 L10,16 L15,13.5 L20,11.5 L25,10 L30,8.6 L35,7.5 L40,6.6 L45,5.9 L50,5.3 L55,4.9 L60,4.5" fill="none" stroke="#4ea1f7" stroke-width="2" stroke-linecap="round"></path></svg></div>
+<div style="display: flex; gap: 6px"><button type="button" class="pbtn" style="background: #f5f5f5; color: #000000; border-color: #f5f5f5">Open</button><button type="button" class="pbtn">Kitchen mode</button><button type="button" class="pbtn">Live window</button><button type="button" class="pbtn">Quit</button></div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span class="cap">Popover · 4 probes</span>
+<div class="panel">
+<div role="alert" style="background: #3b1515; border: 1px solid #d03b3b; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px">
+<span class="b grey">2</span><span style="font-weight: 700; flex: 1 1 auto; color: #ffd9d6">Ribs ready · 203°</span><button type="button" class="pbtn">Acknowledge</button>
+</div>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid #2a2a2a">
+<span class="b" style="{{r.badge}}">{{r.n}}</span>
+<div style="display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0"><span style="font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span><span class="num muted" style="font-size: 13px">{{r.sub}}</span></div>
+<svg viewBox="0 0 60 24" style="width: 60px; height: 24px" aria-hidden="true"><path d="{{r.trend}}" fill="none" stroke="{{r.color}}" stroke-width="2" stroke-linecap="round"></path></svg>
+<div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 64px"><span class="num" style="{{r.rightStyle}}">{{r.right}}</span><span class="num muted" style="font-size: 12px">{{r.at}}</span></div>
+</div>
+</sc-for>
+<div style="display: flex; gap: 6px; padding-top: 4px"><button type="button" class="pbtn" style="background: #f5f5f5; color: #000000; border-color: #f5f5f5">Open</button><button type="button" class="pbtn">Kitchen mode</button><button type="button" class="pbtn">Live window</button><button type="button" class="pbtn">Quit</button></div>
+</div>
+<span class="note">Menu bar with several probes shows the soonest finish: 3 · 141° · 0:38 · 13:58</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span class="cap">Desktop widgets · small (1 probe) and medium</span>
+<div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start">
+<div style="width: 170px; height: 170px; box-sizing: border-box; background: #141414; border-radius: 22px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between">
+<div style="display: flex; align-items: center; gap: 8px"><span class="b" style="background: #4ea1f7">1</span><span style="font-weight: 700; font-size: 14px">Brisket</span></div>
+<div style="display: flex; flex-direction: column"><span style="font-size: 12px; color: #c7c7c7">Ready in</span><span class="num" style="font-size: 40px; font-weight: 600; line-height: 1">3:42</span><span class="num muted" style="font-size: 14px">at 17:02</span></div>
+<span class="num" style="font-size: 15px; color: #c7c7c7">165° → 203°</span>
+</div>
+<div style="width: 360px; height: 170px; box-sizing: border-box; background: #141414; border-radius: 22px; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px">
+<sc-for list="{{widgetRows}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 10px; flex: 1 1 0">
+<span class="b" style="{{r.badge}}">{{r.n}}</span>
+<span style="font-weight: 600; font-size: 14px; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span>
+<span class="num" style="font-size: 15px; color: #c7c7c7">{{r.core}}</span>
+<div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 60px"><span class="num" style="{{r.rightStyle}}">{{r.right}}</span><span class="num muted" style="font-size: 11px">{{r.at}}</span></div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="width: 360px; height: 170px; box-sizing: border-box; background: #141414; border-radius: 22px; padding: 16px; display: flex; gap: 14px">
+<div style="display: flex; flex-direction: column; justify-content: space-between">
+<div style="display: flex; align-items: center; gap: 8px"><span class="b" style="background: #4ea1f7">1</span><span style="font-weight: 700; font-size: 14px">Brisket</span></div>
+<div style="display: flex; flex-direction: column"><span style="font-size: 12px; color: #c7c7c7">Ready in</span><span class="num" style="font-size: 44px; font-weight: 600; line-height: 1">3:42</span><span class="num muted" style="font-size: 14px">at 17:02</span></div>
+</div>
+<div style="flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end">
+<span class="num" style="font-size: 26px; font-weight: 600">165°<span class="muted" style="font-size: 15px"> → 203°</span></span>
+<svg viewBox="0 0 120 44" style="width: 100%; height: 64px" aria-hidden="true"><path d="M0,42 L12,38 L24,33 L36,28 L48,24 L60,20 L72,17 L84,14 L96,12 L108,10 L120,9" fill="none" stroke="#4ea1f7" stroke-width="2.5" stroke-linecap="round"></path></svg>
+</div>
+</div>
+<span class="note">Medium widget, 1 probe. Countdown and completion time tick on their own; temperatures refresh on a 1° change.</span>
+
+<span class="cap" style="margin-top: 14px">Floating live window · 3 probes</span>
+<div class="live" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; max-width: 560px">
+<sc-for list="{{pillTiles}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<div style="display: flex; align-items: center; gap: 8px"><span class="b" style="{{r.badge}}">{{r.n}}</span><span style="font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span></div>
+<span style="font-size: 12px; color: #c7c7c7">{{r.caption}}</span>
+<span class="num" style="{{r.bigStyle}}">{{r.right}}</span>
+<span class="num muted" style="font-size: 13px">{{r.at}}</span>
+<span class="num" style="font-size: 14px; color: #c7c7c7">{{r.sub}}</span>
+<svg viewBox="0 0 60 24" style="width: 100%; height: 28px" aria-hidden="true"><path d="{{r.trend}}" fill="none" stroke="{{r.color}}" stroke-width="2" stroke-linecap="round"></path></svg>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const PAL = ['#4ea1f7','#d95926','#199e70','#c98500'];
+    const P = [
+      { n: 3, name: 'Chicken thighs', core: 141, target: 175, right: '0:38', at: 'at 13:58', done: false, k: 2.5 },
+      { n: 2, name: 'Ribs', core: 203, target: 203, right: 'Ready', at: 'since 13:18', done: true, k: 3.5 },
+      { n: 1, name: 'Brisket', core: 165, target: 203, right: '3:42', at: 'at 17:02', done: false, k: 2.2 },
+      { n: 4, name: 'Pork shoulder', core: 158, target: 200, right: '5:10', at: 'at 18:30', done: false, k: 2 }
+    ];
+    const trend = (k) => { const pts = []; for (let i = 0; i <= 12; i++) { const f = i / 12; pts.push((i * 5) + ',' + (22 - 20 * (1 - Math.exp(-k * f)) / (1 - Math.exp(-k))).toFixed(1)); } return 'M' + pts.join(' L'); };
+    const rows = P.map((p) => ({
+      n: p.n, name: p.name, badge: p.n % 2 === 0 ? 'box-shadow:0 0 0 2px #a3a3a3' : '', color: '#4ea1f7', trend: trend(p.k),
+      sub: p.core + '° → ' + p.target + '°', right: p.right, at: p.at, core: p.core + '°',
+      rightStyle: p.done ? 'font-size:16px;font-weight:700;color:#5fd17a;line-height:1.1' : 'font-size:18px;font-weight:600;line-height:1.1',
+      caption: p.done ? 'Remove now' : 'Ready in',
+      bigStyle: 'font-size:32px;font-weight:600;line-height:1;color:' + (p.done ? '#5fd17a' : '#f5f5f5')
+    }));
+    return { rows, widgetRows: rows.slice(0, 3), pillTiles: rows.slice(0, 3) };
+  }
+}
+</script>
+</body>
+</html>
