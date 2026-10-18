@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Combustion.Transport.WinRT"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Combustion.Sim.Tests", "tests\Combustion.Sim.Tests\Combustion.Sim.Tests.csproj", "{42280E4F-FB9B-42FA-BCA7-8D5B7A7B772A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Combustion.Windows.Platform", "src\Combustion.Windows.Platform\Combustion.Windows.Platform.csproj", "{82DE1A62-7334-4311-B329-23514A055279}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -58,6 +60,10 @@ Global
 		{42280E4F-FB9B-42FA-BCA7-8D5B7A7B772A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{42280E4F-FB9B-42FA-BCA7-8D5B7A7B772A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{42280E4F-FB9B-42FA-BCA7-8D5B7A7B772A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82DE1A62-7334-4311-B329-23514A055279}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82DE1A62-7334-4311-B329-23514A055279}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82DE1A62-7334-4311-B329-23514A055279}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82DE1A62-7334-4311-B329-23514A055279}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8C633902-41AA-4B97-B759-38E69E71EF7E} = {EEEE8DA8-F2FE-4661-A6BF-63301B5984C6}
@@ -67,5 +73,6 @@ Global
 		{7A7C99BA-2835-4986-AB18-29A899B7D012} = {FD7050A7-487D-432D-BF9E-A8E5E63A0B40}
 		{6A202021-66D2-4DF4-962E-03C2C9728085} = {EEEE8DA8-F2FE-4661-A6BF-63301B5984C6}
 		{42280E4F-FB9B-42FA-BCA7-8D5B7A7B772A} = {FD7050A7-487D-432D-BF9E-A8E5E63A0B40}
+		{82DE1A62-7334-4311-B329-23514A055279} = {EEEE8DA8-F2FE-4661-A6BF-63301B5984C6}
 	EndGlobalSection
 EndGlobal
