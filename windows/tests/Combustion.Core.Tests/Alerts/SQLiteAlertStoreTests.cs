@@ -81,10 +81,9 @@ public class SqliteAlertStoreTests
         Assert.Equal([new AlertRule("x", new K.BatteryLow())], await store.LoadRulesAsync(AF.Other));
     });
 
-    [Fact(Skip = "Needs HistoryStore (parallel port)")]
+    [Fact]
     public void RulesSurviveAReopenAndShareTheFileWithHistory() => Det.Run(async () =>
     {
-#if HISTORY_STORE
         var path = TempPath();
         try
         {
@@ -102,9 +101,6 @@ public class SqliteAlertStoreTests
         {
             Remove(path);
         }
-#else
-        await Task.CompletedTask;
-#endif
     });
 
     [Fact]
