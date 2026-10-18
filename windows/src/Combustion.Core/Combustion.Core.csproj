@@ -2,8 +2,16 @@
   <PropertyGroup>
     <RootNamespace>Combustion.Core</RootNamespace>
     <AssemblyName>Combustion.Core</AssemblyName>
+    <Description>Links, stores, presenter, alert engine, clock and transport interfaces. Port of mac/Sources/CombustionCore.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Combustion.Codec\Combustion.Codec.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Combustion.Core.Tests" />
+    <InternalsVisibleTo Include="Combustion.Sim" />
   </ItemGroup>
 </Project>

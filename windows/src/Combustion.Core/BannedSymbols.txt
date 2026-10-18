@@ -1,0 +1,12 @@
+P:System.DateTime.Now;Use IClock.Now (docs/02 §15)
+P:System.DateTime.UtcNow;Use IClock.Now (docs/02 §15)
+P:System.DateTimeOffset.Now;Use IClock.Now (docs/02 §15)
+P:System.DateTimeOffset.UtcNow;Use IClock.Now (docs/02 §15)
+M:System.Threading.Tasks.Task.Delay(System.TimeSpan);Use IClock.SleepAsync (docs/02 §15)
+M:System.Threading.Tasks.Task.Delay(System.Int32);Use IClock.SleepAsync (docs/02 §15)
+M:System.Threading.Tasks.Task.Delay(System.TimeSpan,System.Threading.CancellationToken);Use IClock.SleepAsync (docs/02 §15)
+M:System.Threading.Tasks.Task.Delay(System.Int32,System.Threading.CancellationToken);Use IClock.SleepAsync (docs/02 §15)
+T:System.Threading.Timer;Use IClock.Timer (docs/02 §15)
+T:System.Timers.Timer;Use IClock.Timer (docs/02 §15)
+M:System.Threading.Tasks.Task.ConfigureAwait(System.Boolean);Core is single-threaded: continuations must return to the core context
+M:System.Threading.Tasks.Task`1.ConfigureAwait(System.Boolean);Core is single-threaded: continuations must return to the core context
