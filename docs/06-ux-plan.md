@@ -16,8 +16,8 @@ Built on the facade in 02 §13. The UI only reads `ProbeSnapshot`, `PredictionVi
 | Units | Follow OS region (°F for US locale, °C elsewhere); user override in Settings |
 | Probe identity | Probe number + color (as on Display/phone); optional nickname per cook |
 | Kitchen mode | Toggle (toolbar button + shortcut) → full screen; Esc exits |
-| Theme | Dark only (light theme removed from tokens and boards) |
-| Font | Bundled Barlow + Barlow Semi Condensed (SIL OFL 1.1), tabular figures for all numbers |
+| Theme | Dark only, pure black window, official-app sensor colors (§17.5) |
+| Font | Bundled Barlow + Barlow Condensed (SIL OFL 1.1), tabular figures for all numbers |
 | Sounds | Built-in OS sounds only; nothing bundled (§17.3) |
 | Live Activity equivalents | Menu bar item, popover, floating live window, desktop widgets (macOS); tray, flyout, alarm toast, widgets board, floating live window (Windows) (§17.2) |
 | Design canvas | [Colby Desktop Design](https://claude.ai/artifact/SptGVDutqLHwzLb7hUJeGU) (U1 wireframes + first hi-fi pass) |
@@ -49,63 +49,64 @@ Built on the facade in 02 §13. The UI only reads `ProbeSnapshot`, `PredictionVi
 
 ## 4. Main window (graph-first)
 
+Matches the official app's layout (§17.5). Board: `Main1` (1 probe), `Main`, `MainAlert`, `Main8`.
+
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ [Kitchen] [Live | 1h | 4h | All]  [Sensors: C/S/A | All 8]   ⏰2   ⚙     │ toolbar
-├──────────────────────────────────────────────────────┬───────────────────┤
-│ °F                                         now ┆     │ INSPECTOR         │
-│ 203 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ target ┄┄ ①   │ ① Brisket  ●yellow│
-│                                                ┆ ◆ ① │ 3:42 to removal   │
-│ 250 ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ambient ①  │ core 165.2°F      │
-│                                        ___/    ┆     │ ████████░░ 72%    │
-│ 150                               ____/  core ①      │ target 203°F      │
-│                         _________/             ┆     │ [Set target]      │
-│  50 ___________________/                       ┆     │ [Alarms]          │
-│     10:00        11:00        12:00        13:00     │ T1…T8 table       │
-├──────────────────────────────────────────────────────┤ battery OK        │
-│ ① Brisket 165°→203° 3:42 │ ② Ribs 180° 0:42 ⏰ │ ③ —  │ via Display, 2 hop│
-└──────────────────────────────────────────────────────┴───────────────────┘
-                     probe strip (one chip per followed probe)
+│ Colby [Live|1h|4h|All] [C·S·A | All 8]                ⏰  Kitchen mode ⚙ │ toolbar
+├───────────────────────────────────────────────────────┬──────────────────┤
+│ (1) Brisket                              Ready in      │ Cooking to 203°F │
+│ Predictive Cook · started 10:00          3:42 at 17:02 │ ████████░░  77%  │
+│ [Core]      │ [Surface]    │ [Ambient]                 │ [Set target]     │
+│ 165         │ 178          │ 249        ← scrub values │ [Alarms & alerts]│
+│ ┌───────────── Predicting / Now · 13:20 ─────────────┐ │ T1..T8 (C/S/A)   │
+│ │ 300°                                          ●    │ │ Probe · Battery  │
+│ │ 200° ───────────────── target ──────────────── 203°│ │ Connection       │
+│ │ 100°  blue core / yellow surface / orange ambient  │ │ Start            │
+│ │      10:00     11:00     12:00     13:00           │ │                  │
+│ └────────────────────────────────────────────────────┘ │                  │
+│ [(1) Brisket 165° 3:42] [(2) Ribs 203° Ready] ...      │  (chips: >1 probe)│
+└───────────────────────────────────────────────────────┴──────────────────┘
 ```
 
-- Graph ~70% of height. Probe strip below. Inspector on the right, collapsible.
-- Toolbar range: `Live` follows now with a 30 min window; `1h`, `4h`, `All` fixed; drag/scroll to pan and zoom pauses Live until "Back to live".
-- `◆` = predicted removal time on the time axis, per probe. Dashed horizontal = target.
-- `⏰2` = active alert count; click opens the alerts list.
+- Header: badge + name, cook type + start; ready block right (primary format large, secondary muted).
+- Readout row: Core / Surface / Ambient pills over large condensed numbers. Show live values; while scrubbing, the values under the pointer.
+- Graph: the selected probe only. Probe chips (shown when > 1 probe) switch the selection.
+- Toolbar range: `Live` follows now with a 30 min window; `1h`, `4h`, `All`; drag/scroll to pan and zoom pauses Live until "Back to live".
+- `⏰n` = active alert count (hidden at 0).
 
 ### 4.1 Graph spec
 
 | Element | Rule |
 |---|---|
-| Series per probe | Core: solid, 2.5 px. Surface: dashed, 1.5 px. Ambient: dotted, 1.5 px. All 8 mode: thin solid T1–T8 with a lightness ramp |
-| Probe color | App palette indexed by probe number 1–8 (physical colors are only yellow/grey). Physical color shown as a dot on the chip |
-| Labels | Probe number badge at the right end of each core line |
-| Focus | Hover or select a probe: its lines full opacity, others 25%. With > 3 probes, non-focused probes show core only |
-| Target | Dashed horizontal at setpoint, probe color, labeled |
-| Prediction | `◆` marker at predicted removal time; resting shown as a second marker |
-| Now | Vertical line; future region shaded lightly |
-| Gaps | Missing data drawn as a break, not interpolated; gap region hatched while backfill runs |
-| Stale | Lines after last sample stop; chip shows "stale" |
-| Hover | Crosshair; tooltip with time, core/surface/ambient for focused probe |
-| Y axis | Auto range with 10% padding; includes target lines |
+| Series | Core `#4ea1f7`, Surface `#ffb81c`, Ambient `#f5701f`; 3 px solid. "All 8" mode: T1–T8 thin lines, core/surface/ambient sensors in their colors, others grey |
+| Frame | Rounded card `#161616`, radius 28; light grid `#2a2a2a`; y labels `250°`, x labels per OS clock (`13:00`) |
+| Target | Light horizontal line `#d9d9d9`, labeled at the right edge outside the plot (`203°`) |
+| Scrub | Pointer over plot: vertical line + white-ringed dot per series; readout row shows the values at that time; label above graph = prediction state + time (`Predicting / 11:24`). Off the plot: `Now · 13:20` and live values. Keyboard: ←/→ moves the scrub point when the graph has focus |
+| X range | Selected probe's start to now (range buttons narrow it) |
+| Y range | 50° to max(ambient, target) + 30, rounded to 50; ticks every 50 (every 100 if span > 300) |
+| Gaps | Missing data is a break, not interpolated; hatched while backfilling |
+| Stale | Lines stop at the last sample; header shows "stale" |
 | Data | `TemperatureSeries.downsampled(maxPoints = pixel width × 2)` (02 §6.3) |
-| Rendering | Custom renderer on both platforms for identical output: SwiftUI `Canvas` / Win2D `CanvasControl`. Not Swift Charts / third-party charts. |
+| Rendering | Custom renderer on both platforms: SwiftUI `Canvas` / Win2D `CanvasControl` |
 
 ### 4.2 Probe chip
 
-`[number badge] [nickname or "Probe N"] [core°] [→ target°] [countdown] [state icon]`
+`[badge] [name] / [core°, blue] [→ target°] [status]`
 
-| Prediction state | Chip text |
+| Prediction state | Status text |
 |---|---|
 | notInserted | "Not inserted" |
-| inserted (no target) | core temp only |
-| warming | "Warming up" |
-| predicting | countdown `H:MM` (from `PredictionView.secondsRemaining`) |
-| removalPredictionDone | "Remove now" (accent) |
-| resting | "Resting H:MM" |
+| inserted (no target) | none |
+| warming | "Warming" |
+| predicting | primary time format (`3:42` or `17:02`) |
+| removalPredictionDone | "Ready" (green `#5fd17a`) |
+| resting | "Resting 0:12" |
 | stale / offline | grey, "Stale" / "Offline 3m" |
 | batteryLow | battery icon |
-| overheating | red badge "Overheat" |
+| overheating | red "Overheat" |
+
+Badge: neutral `#2a2a2a` circle with probe number; 2 px ring in the physical probe color (yellow `#e9c440`, grey `#a3a3a3`).
 
 ## 5. Set target sheet (manual)
 
@@ -148,29 +149,19 @@ Order when several fire: overheat > probe alarms > prediction done > other rules
 
 ## 8. Kitchen mode
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  ① BRISKET                      ② RIBS                     │
-│     3:42                           REMOVE NOW              │
-│     165°  → 203°                   181°                    │
-│  ███████████░░░░ 72%                                       │
-│                                                            │
-│  ③ CHICKEN                       ④ —                       │
-│     0:58                           Not inserted            │
-│     152°  → 162°                                           │
-└────────────────────────────────────────────────────────────┘
-```
-- 1 probe: single tile + mini graph. 2: side by side. 3–4: 2×2. 5–8: 2×4.
-- Countdown ≥ 120 pt at 1 probe, ≥ 72 pt at 8 on a 13" laptop; core temp ~50% of countdown size.
-- Keeps display awake while shown (`IOPMAssertion` display sleep / `SetThreadExecutionState(ES_DISPLAY_REQUIRED)`).
-- High-contrast dark by default; follows light/dark setting optionally.
-- Esc exits; mouse movement shows a minimal overlay (exit, probe focus).
+Boards: `Kitchen1` (1 probe), `Kitchen` (4), `KitchenAlert`.
+
+- **1 probe**: dedicated full-window layout. Header: badge, name, Core pill + core temp (104 px) → target. Body: caption, countdown 400 px with secondary time 72 px beside it, progress bar, wide core trend line.
+- **2–4 probes**: 2×2 tiles; **5–8**: 2×4. Each tile: badge, name, caption, countdown + secondary time, core (blue) → target, progress bar, core trend line.
+- Ready tile: green border, "Remove now" caption, "Ready" in green.
+- Alarm: whole screen red, probe name, "READY", Snooze / Acknowledge; any key acknowledges.
+- Keeps the display awake while shown (`IOPMAssertion` / `SetThreadExecutionState(ES_DISPLAY_REQUIRED)`). Esc exits.
 
 ## 9. Menu bar (macOS) / tray (Windows)
 
 | | macOS | Windows |
 |---|---|---|
-| Resting text | `54° · 0:42` = soonest-finishing probe's core + countdown. No prediction: most recently active probe's core temp. Nothing followed: icon only. | Tray icons cannot show text. Icon reflects state (idle / cooking / alert); tooltip shows `54° · 0:42`. |
+| Resting text | `(1) 165° · 3:42 17:02` = soonest-finishing probe: core, countdown, completion time (muted). No prediction: most recently active probe's core. Nothing followed: icon only. | Tray icons cannot show text. Icon color = state (grey idle / yellow cooking / red alarm); tooltip `1 Brisket · 165° · ready in 3:42 (17:02)`. |
 | Click | Popover: compact probe list, active alerts, buttons: Open, Kitchen mode, Quit | Flyout with same content (H.NotifyIcon / custom XAML flyout) |
 | Alert | Text and icon red | Icon red + toast |
 
@@ -199,10 +190,13 @@ First launch:
 
 ## 11. History
 
-- List: date, nickname(s), duration, peak core, target; per row: probes in that cook.
-- Detail: same graph component, read-only, with prediction markers and alert events on the timeline.
-- Delete with confirm. No export in v1.
-- API impact: add `nickname TEXT` to the `session` table (02 §11).
+Board: `History` (+ `History-hover` screenshot).
+
+- List row: probe icon, title (nickname, else "Predictive Cook" / "Manual Cook"), duration with stacked unit (`hrs/min`, `min/sec`), target with gauge icon (predictive only), `7d ago • 11 Oct 06:10`, thumbnail with the 3 sensor lines.
+- One entry per probe session (a multi-probe cook is several entries).
+- Detail: title + cook type, readout row, scrubbable graph (same component and rules as §4.1; off the plot it shows the end of the cook), Start · date / End / Duration card, alerts during the cook.
+- Rename, Delete (with confirm). No export in v1.
+- API impact: `nickname` and `kind` on the session; thumbnail series (02 §6.3).
 
 ## 12. Settings
 
@@ -210,34 +204,32 @@ First launch:
 |---|---|
 | Prediction time | "Ready in" (countdown) primary, "Ready at" (clock) secondary; setting swaps them. No toggle in the main UI |
 | Units | Follow region |
+| Clock | Follow OS 12/24 h (no in-app setting) |
 | Alarm sound / volume | Built-in per event (§17.3), 80% |
 | Alert when Do Not Disturb is on | On (macOS time-sensitive; Windows alarm toast) |
 | Start at login | Off |
-| Kitchen mode theme | Dark |
 | Keep computer awake during cook | On |
 | Show in menu bar / tray | On (required for background alerts; warn if turned off) |
 
 ## 13. Custom shared design system
 
-Tokens defined once, generated for both platforms.
+Tokens defined once in `docs/design/tokens.json`, generated for both platforms. Component specs: `docs/design/components.md`.
 
 ```
-design/
-  tokens.json          # color, type scale, spacing, radius, motion, probe palette 1–8, alert colors
-  components.md        # spec per component: anatomy, states, sizes, a11y labels
-  build/               # generated: Swift (Color/Font extensions), XAML ResourceDictionary
+docs/design/
+  tokens.json          # color, type, spacing, radius, motion, sensor colors, status, badge
+  components.md        # anatomy, states, sizes, a11y labels per component
+  build/               # (implementation) generated Swift + XAML ResourceDictionary
 ```
 
 | Token group | Notes |
 |---|---|
-| Color | Light + dark sets; probe palette 1–8 checked for ≥ 3:1 against both backgrounds and for color-blind separation; alert red/amber; stale grey |
-| Type | One scale incl. kitchen sizes (72–160 pt); tabular numerals for temps and countdowns |
-| Spacing / radius | 4 pt grid |
+| Color | Dark only. Window `#000000`, card `#161616`, raised `#1f1f1f`, line `#2c2c2c`, text `#f5f5f5`, muted `#9b9b9b`; sensors core/surface/ambient; status ready/critical/warning; brand mark `#ffb81c` |
+| Type | Barlow (text), Barlow Condensed (numbers, tabular); scale up to 400 px for kitchen 1-probe |
+| Spacing / radius | 4 px grid; radius 10 controls, 16 chips, 28 cards |
 | Motion | Pulse for alerting chip; respects Reduce Motion / Windows animation setting |
 
-Fonts: bundled Barlow (text) and Barlow Semi Condensed (numbers), SIL OFL 1.1, which allows embedding in apps. Tabular figures on for every number.
-
-Components (each with Swift + WinUI implementation): `ProbeChip`, `ProbeTile` (kitchen), `TempGraph`, `Countdown`, `ProgressBar`, `AlertBand`, `TempField` (unit-aware input), `SensorTable`, `MenuBarSummary`.
+Fonts: bundled Barlow and Barlow Condensed, SIL OFL 1.1 (embedding allowed). Tabular figures on every number.
 
 Gallery screen in debug builds renders every component in every state on both platforms, for visual parity checks (screenshot diff in CI optional).
 

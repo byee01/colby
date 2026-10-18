@@ -42,7 +42,7 @@ Rules:
 | `Seq` | u32 | Log sequence number within a session. |
 | Temperature | `double` °C | Core is Celsius-only. °F is a UI concern. |
 | Duration | seconds (`TimeInterval` / `TimeSpan`) | |
-| Time | wall clock UTC (`Date` / `DateTimeOffset`) | Assigned by the app on receipt, plus derived times for log records (§6.3). |
+| Time | wall clock UTC (`Date` / `DateTimeOffset`) | Assigned by the app on receipt, plus derived times for log records (§6.3). Displayed in the OS 12/24 h format and time zone; never formatted in the core. |
 
 ## 3. Domain model
 
@@ -81,6 +81,8 @@ PredictionView                   # what the UI shows; output of PredictionPresen
   state, mode, type, setpoint, estimatedCore, percentToRemoval
   secondsRemaining: u32?         # smoothed/rounded; nil if not predicting or > 4 h
   isStale: bool                  # no status for 15 s
+  readyAt: time?                 # now + secondsRemaining; the completion time shown beside the countdown
+  readySince: time?              # when state became removalPredictionDone ("Ready since 13:18")
 
 AlarmConfig
   high: [AlarmChannel: Alarm]    # AlarmChannel = t1..t8, core, surface, ambient (11)
@@ -247,7 +249,11 @@ Merge rules (one probe, many sources):
 ### 6.3 HistoryStore
 ```
 series(session: SessionKey) -> observable<TemperatureSeries>
-sessions(serial?) -> [SessionSummary]          # start, end, peak core, setpoint, sample count
+sessions(serial?) -> [SessionSummary]          # start, end, peak core, setpoint, kind, nickname, sample count, thumbnail
+  SessionSummary.kind: predictive | manual       # predictive if a setpoint was set at any point
+  SessionSummary.thumbnail: [(core, surface, ambient)] x 60   # precomputed on session end for list rows
+rename(session, nickname?)
+valueAt(session, time) -> (core, surface, ambient, predictionState)   # backs the graph scrub readouts
 backfill(session) async                        # fills gaps via Read Logs
 delete(session)                                # retention: keep all until the user deletes
 # export(session, format) deferred past v1
@@ -357,6 +363,7 @@ spec/fixtures/
 probe(serial INTEGER PRIMARY KEY, nickname TEXT, followed INTEGER, last_seen INTEGER)
 session(id INTEGER PRIMARY KEY, serial INTEGER, session_id INTEGER, sample_period_ms INTEGER,
         started_at INTEGER, ended_at INTEGER, anchor_seq INTEGER, anchor_time INTEGER, nickname TEXT,
+        kind TEXT, ready_since INTEGER, thumbnail BLOB,
         UNIQUE(serial, session_id, started_at))
 sample(session INTEGER, seq INTEGER, t1..t8 REAL, vs INTEGER, pred_state INTEGER, pred_mode INTEGER,
        pred_type INTEGER, setpoint REAL, pred_seconds INTEGER, est_core REAL,
@@ -504,3 +511,14 @@ colby/
     src/Colby.App/                  # WinUI 3 (later)
     tests/
 ```
+
+## 18. UI-facing additions (from UX design)
+
+| Addition | Where | Why |
+|---|---|---|
+| `PredictionView.readyAt`, `readySince` | §3, §7 | Completion time beside every countdown; "Ready since 13:18" |
+| `SessionSummary.kind`, `nickname`, `thumbnail`; `rename` | §6.3, §11 | History list rows |
+| `HistoryStore.valueAt` | §6.3 | Scrub readouts and "Predicting / 11:24" label |
+| `LiveSnapshot` writer | new | Widgets (WidgetKit extension via App Group container on macOS; widget provider in MSIX on Windows). Fields: probe n, name, core, target, state, readyAt, last 30 core samples. Written at most every 5 s and on state change |
+| Display formatting | UI layer | Units (°F/°C) and clock (12/24 h) are formatted only in the UI, from OS settings and the units setting |
+| Instant Read | §3 `ProbeSnapshot.instantRead` | Kitchen and main window switch to the Instant Read view while `mode = instantRead` (06 §18) |
