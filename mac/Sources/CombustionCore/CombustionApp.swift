@@ -16,8 +16,7 @@ public struct DiagnosticsSnapshot: Sendable, Equatable {
     public var logFetchesInFlight: Int
 }
 
-/// The facade a UI talks to (docs/02 §13). Only the parts that exist so far: probes, history, follow,
-/// diagnostics. Commands, predictions and alerts arrive with M5/M6.
+/// The facade a UI talks to (docs/02 §13): probes, history, follow, diagnostics, predictions, commands, alerts.
 ///
 /// Wiring:
 /// - `AdvertisementSource` -> `ProbeStore`.
@@ -29,6 +28,9 @@ public struct DiagnosticsSnapshot: Sendable, Equatable {
 public actor CombustionApp {
     public nonisolated let probes: ProbeStore
     public nonisolated let history: HistoryStore
+    public nonisolated let commands: Commands
+    public nonisolated let alerts: AlertEngine
+    public nonisolated let predictionPresenter: PredictionPresenter
     /// MeatNet nodes in range or connected (`ProbeStore.nodes`).
     public nonisolated var nodes: AsyncStream<[NodeSerial: NodeSnapshot]> { probes.nodes }
 
@@ -51,12 +53,15 @@ public actor CombustionApp {
     private var bluetooth: BluetoothState = .poweredOff
 
     /// - Parameters:
+    ///   - alertSinks: where alert events go (notification, sound); none by default.
+    ///   - keepAwake: held while a followed probe is in a cook.
     ///   - databasePath: a file path or `":memory:"`.
     ///   - policy: defaults to `DirectConnectionPolicy`.
     ///   - trace: optional parity trace (docs/05 §3): `probe`, `session` and `link` events.
     public init(
         transport: any BleTransport, clock: any Clock, databasePath: String = ":memory:",
-        policy: (any ConnectionPolicy)? = nil, trace: (any TraceSink)? = nil
+        policy: (any ConnectionPolicy)? = nil, trace: (any TraceSink)? = nil,
+        alertSinks: [any AlertSink] = [], keepAwake: (any KeepAwake)? = nil
     ) throws {
         let history = try HistoryStore(path: databasePath, clock: clock, logFetcher: router)
         self.transport = transport
@@ -67,6 +72,16 @@ public actor CombustionApp {
         self.policy = policy ?? DirectConnectionPolicy()
         self.trace = trace
         self.coordinator = LinkCoordinator(probes: probes, history: history, clock: clock, router: router, trace: trace)
+        let commands = Commands(probes: probes, routing: router, clock: clock, trace: trace)
+        self.commands = commands
+        self.predictionPresenter = PredictionPresenter(probes: probes, clock: clock)
+        self.alerts = AlertEngine(
+            clock: clock, sinks: alertSinks, keepAwake: keepAwake, silencer: commands, trace: trace)
+    }
+
+    /// One probe's prediction for the UI: the latest view first, then every change. docs/02 §7.
+    public nonisolated func predictions(_ serial: ProbeSerial) -> AsyncStream<PredictionView> {
+        predictionPresenter.predictions(serial)
     }
 
     // MARK: Lifecycle
@@ -95,6 +110,9 @@ public actor CombustionApp {
             for await s in bluetoothChanges { await self.bluetoothChanged(s) }
         })
 
+        await predictionPresenter.start()
+        await alerts.start(probes: probes.probes, predictions: predictionPresenter.updates, followed: probes.followed)
+
         await advertisements.start()
         await policy.start(ConnectionPolicyInput(
             transport: transport, clock: clock, sightings: sightings, followed: followed, delegate: coordinator,
@@ -107,6 +125,8 @@ public actor CombustionApp {
         started = false
         for t in tasks { t.cancel() }
         tasks = []
+        await alerts.stop()
+        await predictionPresenter.stop()
         await policy.stop()
         await coordinator.shutdown()
         for c in lanes.values { c.finish() }
@@ -181,9 +201,9 @@ public actor CombustionApp {
 
 // MARK: - Link plumbing
 
-/// Routes log fetches to the current link of each probe: its direct link if it has one, else a node that
-/// is relaying it (nearest first).
-final class LinkRouter: LogFetcher, @unchecked Sendable {
+/// Routes log fetches and commands to the current link of each probe: its direct link if it has one, else
+/// a node that is relaying it (nearest first).
+final class LinkRouter: LogFetcher, CommandRouting, @unchecked Sendable {
     private let lock = NSLock()
     private var links: [ProbeSerial: DirectProbeLink] = [:]
     private var nodes: [NodeSerial: NodeLink] = [:]
@@ -196,15 +216,24 @@ final class LinkRouter: LogFetcher, @unchecked Sendable {
         lock.withLock { nodes[serial] = link }
     }
 
+    func commandRoute(for probe: ProbeSerial) -> (any CommandRoute)? {
+        let (direct, nodeLinks) = lock.withLock { (links[probe], Array(nodes.values)) }
+        return direct ?? nearestNode(relaying: probe, among: nodeLinks)
+    }
+
     func readLogs(probe: ProbeSerial, start: UInt32, end: UInt32) -> AsyncThrowingStream<LogRecord, any Error> {
         let (direct, nodeLinks) = lock.withLock { (links[probe], Array(nodes.values)) }
         if let direct { return direct.readLogs(probe: probe, start: start, end: end) }
-        let relaying = nodeLinks.compactMap { n in n.hops(to: probe).map { (n, $0) } }
-            .sorted { ($0.1, $0.0.serial) < ($1.1, $1.0.serial) }
-        guard let node = relaying.first?.0 else {
+        guard let node = nearestNode(relaying: probe, among: nodeLinks) else {
             return AsyncThrowingStream { $0.finish(throwing: UartError.disconnected) }
         }
         return node.readLogs(probe: probe, start: start, end: end)
+    }
+
+    private func nearestNode(relaying probe: ProbeSerial, among nodeLinks: [NodeLink]) -> NodeLink? {
+        nodeLinks.compactMap { n in n.hops(to: probe).map { (n, $0) } }
+            .sorted { ($0.1, $0.0.serial) < ($1.1, $1.0.serial) }
+            .first?.0
     }
 }
 
