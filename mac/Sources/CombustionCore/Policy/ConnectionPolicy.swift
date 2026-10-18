@@ -11,6 +11,8 @@ public enum ProbeConnectionState: Sendable, Equatable {
     case backoff(attempt: Int, retryAt: Duration)
     /// Absent from advertisements for the give-up interval. Resumes when it advertises again.
     case gaveUp
+    /// A connected MeatNet node covers this probe, so no direct connection is held (probe slots stay free).
+    case viaNode(NodeSerial)
 }
 
 /// Receives the links a policy creates. All calls for one probe are sequential.
@@ -72,18 +74,19 @@ public protocol ConnectionPolicy: Sendable {
     func nodeStates() async -> [NodeSerial: ProbeConnectionState]
 }
 
-/// Default policy:
+/// Default policy (docs/02 §5.6):
 /// 1. Scanning is the app's job (always on); this policy reacts to what the scan hears.
-/// 2. Connect directly to each followed probe once its own advertisement has been heard. Direct wins:
-///    a probe that is connected (or on its first attempt) never needs a node.
-/// 3. MeatNet node step: when a followed probe is not directly connectable (no advertisement of its own,
-///    a retry after a failure, or given up) but a node repeats its advertisement, connect to that node
-///    after a short grace period. One node connection serves every probe on its network, and its statuses
-///    and logs fill in while the probe is out of range. It stays up until it drops; the node is retried
-///    (same backoff) only while a followed probe is still heard through it and still lacks a direct link.
-/// 4. Reconnect with backoff 1, 2, 4 ... 30 s. Give up on a probe when it has been absent from advertisements
-///    for 5 min (absence counts from the later of the last advertisement and the end of the last link);
-///    resume as soon as it advertises again.
+/// 2. MeatNet node step: when a node repeats the advertisement of a followed probe, connect to the node
+///    (one connection gets every probe on its network and keeps probe slots free for the phone app).
+///    While a node is connected and covers a probe, that probe gets no direct connection, and an existing
+///    one is closed. A node whose first connect attempt is still under way holds direct connects back.
+/// 3. Otherwise connect directly to each followed probe once its own advertisement has been heard. If the
+///    node link drops (or stops repeating the probe) the probe falls back to direct, starting from the
+///    initial backoff.
+/// 4. Reconnect with backoff 1, 2, 4 ... 30 s, for probes and nodes alike. Give up on a probe when it has
+///    been absent from advertisements for 5 min (absence counts from the later of the last advertisement
+///    and the end of the last link); resume as soon as it advertises again. A node is left alone once no
+///    followed probe is heard through it.
 /// 5. At most one connection per probe: one supervisor task per followed probe, and one per node.
 public actor DirectConnectionPolicy: ConnectionPolicy {
     public struct Timing: Sendable {
@@ -93,9 +96,8 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
         public var connectTimeout: Duration = .seconds(10)
         /// A link that lasted this long counts as healthy: the next reconnect starts from `initialBackoff`.
         public var stableAfter: Duration = .seconds(10)
-        /// How long a probe must stay without a direct link before its node is connected, so a direct
-        /// connection that is about to succeed wins.
-        public var nodeGrace: Duration = .seconds(3)
+        /// How often a probe supervisor re-checks whether a node covers it.
+        public var coverageCheck: Duration = .seconds(1)
         /// A probe counts as heard through a node for this long after the node's last repeated advertisement.
         public var viaNodeFresh: Duration = .seconds(15)
         public init() {}
@@ -236,6 +238,19 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
         var backoff = timing.initialBackoff
 
         while !Task.isCancelled {
+            // Node first: no direct connection while a node covers the probe (or is about to).
+            if let node = coveringNode(serial) {
+                set(serial, .viaNode(node))
+                attempt = 0
+                backoff = timing.initialBackoff
+                do { try await clock.sleep(for: timing.coverageCheck) } catch { return }
+                continue
+            }
+            if nodePending(serial) {
+                set(serial, .waitingForAdvertisement)
+                do { try await clock.sleep(for: timing.coverageCheck) } catch { return }
+                continue
+            }
             guard let peripheral = peripherals[serial], let seen = lastSeen[serial] else {
                 set(serial, .waitingForAdvertisement)
                 await waitForSighting(serial)
@@ -262,6 +277,7 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
                 }
             }
             guard !Task.isCancelled else { return }
+            if coveringNode(serial) != nil { continue } // closed because a node took over: no backoff
 
             // Wait out the backoff, but never past the give-up deadline.
             let now = clock.monotonic()
@@ -296,12 +312,27 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
         }
         set(serial, .connected)
         await input.delegate.linkEstablished(link)
-        var reason = DisconnectReason.linkLost
-        for await r in drops {
-            reason = r
-            break
+        // Ends when the link drops, or when a node connects and covers this probe (we close the link then).
+        let clock = input.clock
+        let check = timing.coverageCheck
+        let dropped: DisconnectReason? = await withTaskGroup(of: DisconnectReason?.self) { group in
+            group.addTask {
+                for await r in drops { return r }
+                return .linkLost
+            }
+            group.addTask {
+                while !Task.isCancelled {
+                    if await self.coveringNode(serial) != nil { return nil }
+                    do { try await clock.sleep(for: check) } catch { return nil }
+                }
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
         }
         await link.close()
+        var reason = dropped ?? .requested
         if Task.isCancelled { reason = .requested }
         await input.delegate.linkEnded(serial: serial, reason: reason)
         return input.clock.monotonic()
@@ -321,22 +352,37 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
 
     private func nodeHearsFollowed(_ serial: NodeSerial) -> Bool { !followedViaNode(serial).isEmpty }
 
-    /// A followed probe heard through the node has no usable direct link: not connected, and not on its
-    /// first direct attempt (which may be about to succeed).
-    private func nodeWanted(_ serial: NodeSerial) -> Bool {
-        followedViaNode(serial).contains { probe in
-            switch stateByProbe[probe] {
-            case .connected?, .connecting(attempt: 1)?: return false
-            default: return true
+    /// A connected node that repeats `probe` right now.
+    private func coveringNode(_ probe: ProbeSerial) -> NodeSerial? {
+        nodesHearing(probe).first { stateByNode[$0] == .connected }
+    }
+
+    /// A node that repeats `probe` is waiting to connect or on its first attempt.
+    private func nodePending(_ probe: ProbeSerial) -> Bool {
+        nodesHearing(probe).contains { n in
+            switch stateByNode[n] {
+            case .waitingForAdvertisement?, .connecting(attempt: 1)?: return true
+            default: return false
             }
         }
     }
+
+    private func nodesHearing(_ probe: ProbeSerial) -> [NodeSerial] {
+        guard let input, let heard = viaNode[probe] else { return [] }
+        let now = input.clock.monotonic()
+        return nodes.filter { _, info in
+            heard[info.peripheral].map { now - $0 < timing.viaNodeFresh } ?? false
+        }.keys.sorted()
+    }
+
+    /// A followed probe is heard through the node: worth a connection.
+    private func nodeWanted(_ serial: NodeSerial) -> Bool { nodeHearsFollowed(serial) }
 
     /// Starts a supervisor for every node that is wanted and has none. Cheap; called on every input.
     private func evaluateNodes() {
         guard input != nil else { return }
         for serial in nodes.keys where nodeSupervisors[serial] == nil && nodeWanted(serial) {
-            stateByNode[serial] = .waitingForAdvertisement // waiting out the grace period
+            stateByNode[serial] = .connecting(attempt: 1)
             nodeSupervisors[serial] = Task { await self.superviseNode(serial) }
         }
     }
@@ -352,7 +398,6 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
         let clock = input.clock
         var attempt = 0
         var backoff = timing.initialBackoff
-        do { try await clock.sleep(for: timing.nodeGrace) } catch { return }
 
         while !Task.isCancelled {
             guard nodeWanted(serial), let node = nodes[serial] else {

@@ -90,57 +90,95 @@ private final class PolicyRig: @unchecked Sendable {
 }
 
 struct NodePolicyTests {
-    @Test func connectsToTheNodeAfterTheGraceWhenTheProbeIsOnlyHeardThroughIt() async throws {
+    @Test func connectsToTheNodeAtOnceWhenAFollowedProbeIsRepeatedByIt() async throws {
         let rig = PolicyRig()
         await rig.start()
         rig.follow([linkProbe])
         rig.nodeHeard()
         rig.repeatedHeard()
-        await rig.settle()
-        #expect(await rig.policy.nodeStates()["DISPLAY001"] == .waitingForAdvertisement)
         await rig.run(2)
-        #expect(rig.spy.attempts.isEmpty, "still inside the 3 s grace period")
-        await rig.run(3)
         #expect(await rig.policy.nodeStates()["DISPLAY001"] == .connected)
         #expect(rig.delegate.nodesEstablished == ["DISPLAY001"])
         #expect(rig.spy.attempts.count == 1)
         #expect(rig.transport.isConnected(PolicyRig.nodePeripheral))
-        #expect(await rig.policy.states()[linkProbe] == .waitingForAdvertisement)
+        #expect(await rig.policy.states()[linkProbe] == .viaNode("DISPLAY001"))
         await rig.policy.stop()
         #expect(!rig.transport.isConnected(PolicyRig.nodePeripheral))
         #expect(rig.delegate.nodesEnded.map(\.1) == [.requested])
     }
 
-    @Test func directConnectionWinsWhenTheProbeIsConnectable() async throws {
+    @Test func nodeCoveringTheProbeMeansNoDirectConnection() async throws {
         let rig = PolicyRig()
         await rig.start()
         rig.follow([linkProbe])
         rig.nodeHeard()
         rig.repeatedHeard()
-        rig.probeHeard() // the probe's own advertisement too; the transport lets the connect succeed
+        rig.probeHeard() // the probe's own advertisement too, yet the node wins
         await rig.run(30)
-        #expect(await rig.policy.states()[linkProbe] == .connected)
-        #expect(rig.delegate.probesEstablished == [linkProbe])
-        #expect(rig.delegate.nodesEstablished.isEmpty)
-        #expect(await rig.policy.nodeStates().isEmpty)
-        #expect(!rig.transport.isConnected(PolicyRig.nodePeripheral))
+        #expect(await rig.policy.states()[linkProbe] == .viaNode("DISPLAY001"))
+        #expect(rig.delegate.probesEstablished.isEmpty)
+        #expect(rig.delegate.nodesEstablished == ["DISPLAY001"])
+        #expect(!rig.transport.isConnected(PolicyRig.probePeripheral))
+        #expect(rig.spy.attempts.count == 1)
         await rig.policy.stop()
     }
 
-    @Test func aProbeWhoseDirectConnectKeepsFailingFallsBackToTheNode() async throws {
+    @Test func probeNotRepeatedByAnyNodeIsConnectedDirectly() async throws {
         let rig = PolicyRig()
-        rig.transport.blockConnects(to: PolicyRig.probePeripheral)
+        await rig.start()
+        rig.follow([linkProbe])
+        rig.nodeHeard() // a node is in range, but does not repeat this probe
+        rig.probeHeard()
+        await rig.run(10, repeating: false)
+        #expect(await rig.policy.states()[linkProbe] == .connected)
+        #expect(rig.delegate.nodesEstablished.isEmpty)
+        await rig.policy.stop()
+    }
+
+    @Test func unreachableNodeLetsTheProbeFallBackToDirect() async throws {
+        let rig = PolicyRig()
+        rig.transport.blockConnects(to: PolicyRig.nodePeripheral)
         await rig.start()
         rig.follow([linkProbe])
         rig.nodeHeard()
         rig.repeatedHeard()
         rig.probeHeard()
         await rig.run(20)
-        #expect(await rig.policy.nodeStates()["DISPLAY001"] == .connected)
-        guard case .backoff = try #require(await rig.policy.states()[linkProbe]) else {
-            Issue.record("direct side should be backing off, got \(String(describing: await rig.policy.states()[linkProbe]))")
+        #expect(await rig.policy.states()[linkProbe] == .connected)
+        guard case .backoff = try #require(await rig.policy.nodeStates()["DISPLAY001"]) else {
+            Issue.record("node side should be backing off")
             return
         }
+        await rig.policy.stop()
+    }
+
+    @Test func nodeDropFallsBackToDirectThenNodeReturnsAndReleasesTheDirectLink() async throws {
+        let rig = PolicyRig()
+        await rig.start()
+        rig.follow([linkProbe])
+        rig.nodeHeard()
+        rig.repeatedHeard()
+        rig.probeHeard()
+        await rig.run(5)
+        #expect(await rig.policy.states()[linkProbe] == .viaNode("DISPLAY001"))
+
+        // The node goes away (drops and is unreachable): direct, from the initial backoff.
+        rig.transport.blockConnects(to: PolicyRig.nodePeripheral)
+        rig.transport.forceDisconnect(PolicyRig.nodePeripheral, reason: .linkLost)
+        await rig.run(8, repeating: false)
+        for _ in 0..<5 {
+            rig.probeHeard()
+            await rig.run(1, repeating: false)
+        }
+        #expect(await rig.policy.states()[linkProbe] == .connected)
+        #expect(rig.transport.isConnected(PolicyRig.probePeripheral))
+
+        // The node comes back: it takes over and the direct link is closed.
+        rig.transport.allowConnects(to: PolicyRig.nodePeripheral)
+        await rig.run(30)
+        #expect(await rig.policy.nodeStates()["DISPLAY001"] == .connected)
+        #expect(!rig.transport.isConnected(PolicyRig.probePeripheral))
+        #expect(await rig.policy.states()[linkProbe] == .viaNode("DISPLAY001"))
         await rig.policy.stop()
     }
 
@@ -181,10 +219,10 @@ struct NodePolicyTests {
         rig.nodeHeard()
         rig.repeatedHeard()
         await rig.run(30)
-        // Grace 3 s, then refused at once, +1, +2, +4 (the 4th attempt works).
+        // Refused at once, +1, +2, +4 (the 4th attempt works).
         let t = rig.spy.attempts.map(\.totalSeconds)
         expectSchedule(t.map { $0 - t[0] }, [0, 1, 3, 7])
-        #expect(t[0] >= 3 && t[0] <= 8)
+        #expect(t[0] <= 3)
         #expect(await rig.policy.nodeStates()["DISPLAY001"] == .connected)
         await rig.policy.stop()
     }

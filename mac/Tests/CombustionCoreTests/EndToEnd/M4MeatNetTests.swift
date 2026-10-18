@@ -37,16 +37,15 @@ struct M4MeatNetTests {
         await rig.app.start()
         await rig.app.follow(serialA)
         await rig.run(.seconds(30))
-        #expect(await rig.connected(serialA))
-        #expect(!(await rig.nodeConnected()), "direct wins: no node connection while the probe is connectable")
-        #expect(!rig.transport.isConnected(display.peripheral))
+        // Node first: the Display covers the probe, so the probe's connection slot stays free.
+        #expect(await rig.nodeConnected())
+        #expect(await rig.app.diagnostics().links[serialA] == .viaNode(displayD))
+        #expect(!rig.transport.isConnected(probe.peripheral))
         #expect(try await rig.storedSeqs(serialA).count >= 60)
-        let directReads = readLogCount(probe)
 
         // Out of the Mac's range for 3 minutes of cooking; the Display still hears the probe.
         probe.setInRange(false)
         await rig.drain()
-        #expect(await rig.run(until: { await rig.nodeConnected() }, limit: .seconds(30)))
         await rig.run(.seconds(180))
 
         // Live data arrives through the node.
@@ -60,12 +59,12 @@ struct M4MeatNetTests {
         #expect(abs((snap.temperatures[0] ?? 0) - record.temperatures[.t1]) < 0.1)
         #expect(abs(snap.receivedAt.timeIntervalSince(rig.clock.now())) < 10)
 
-        // History is complete, filled through the node: the probe itself saw no Read Logs since the drop.
+        // History is complete, filled through the node: the probe itself saw no Read Logs at all.
         #expect(await rig.eventually { (try? await rig.storedSeqs(serialA).count) ?? 0 >= probe.recordCount - 1 })
         let seqs = try await rig.storedSeqs(serialA)
         #expect(seqs == contiguous(0...(seqs.last ?? 0)))
         #expect((seqs.last ?? 0) >= probe.logRange.max - 1)
-        #expect(readLogCount(probe) == directReads)
+        #expect(readLogCount(probe) == 0)
         let nodeReads = display.requests.filter { if case .readLogs = $0.request { true } else { false } }
         #expect(!nodeReads.isEmpty)
         #expect(nodeReads.allSatisfy { $0.probe == serialA })
@@ -113,7 +112,7 @@ struct M4MeatNetTests {
         await rig.app.stop()
     }
 
-    @Test func probeComingBackInMacRangeGetsADirectLinkAndDirectWins() async throws {
+    @Test func probeComingBackInMacRangeStaysOnTheNodeAndOpensNoDirectLink() async throws {
         let rig = try E2ERig()
         let probe = rig.probe(serialA, preload: 40)
         probe.setInRange(false)
@@ -125,20 +124,52 @@ struct M4MeatNetTests {
         #expect(try #require(await rig.snapshot(serialA)).link.primary?.kind == .nodeConnection)
 
         probe.setInRange(true)
-        #expect(await rig.run(until: { await rig.connected(serialA) }, limit: .seconds(30)))
-        await rig.run(.seconds(20))
-        let snap = try #require(await rig.snapshot(serialA))
-        #expect(snap.link.primary?.kind == .directConnection)
-        #expect(snap.link.sources.contains { $0.kind == .nodeConnection && $0.via == displayD })
-        #expect(await rig.nodeConnected(), "the node link stays up as a fallback")
-        #expect(try await rig.storedSeqs(serialA) == contiguous(0...probe.logRange.max))
-
-        // And back: the node covers the probe again with no gap.
-        probe.setInRange(false)
         await rig.run(.seconds(60))
+        // The node covers the probe, so its slot stays free: no direct connection is ever opened.
+        #expect(await rig.nodeConnected())
+        #expect(!rig.transport.isConnected(probe.peripheral))
+        #expect(rig.spy.attempts.count == 1, "only the node was connected")
+        #expect(await rig.app.diagnostics().links[serialA] == .viaNode(displayD))
+        let snap = try #require(await rig.snapshot(serialA))
+        #expect(snap.link.primary?.kind == .nodeConnection)
+        #expect(snap.link.sources.contains { $0.kind == .advertisement }, "its own advertisements are still heard")
+        #expect(await rig.eventually { (try? await rig.storedSeqs(serialA).count) ?? 0 >= probe.recordCount - 1 })
+        #expect(try await rig.storedSeqs(serialA) == contiguous(0...(try await rig.storedSeqs(serialA).last ?? 0)))
+        _ = display
+        await rig.app.stop()
+    }
+
+    @Test func nodeDropFallsBackToDirectAndTheNodeTakesOverAgain() async throws {
+        let rig = try E2ERig()
+        let probe = rig.probe(serialA, preload: 30)
+        let display = rig.node(relaying: [probe])
+        await rig.app.start()
+        await rig.app.follow(serialA)
+        #expect(await rig.run(until: { await rig.nodeConnected() }, limit: .seconds(30)))
+        await rig.run(.seconds(20))
+        #expect(!rig.transport.isConnected(probe.peripheral))
+
+        // The Display goes away: the probe falls back to a direct connection and history keeps filling.
+        display.setInRange(false)
+        await rig.drain()
+        #expect(await rig.run(until: { await rig.connected(serialA) }, limit: .seconds(60)))
+        await rig.run(.seconds(40))
+        #expect(!(await rig.nodeConnected()))
+        #expect(try #require(await rig.snapshot(serialA)).link.primary?.kind == .directConnection)
+        #expect(await rig.eventually { (try? await rig.storedSeqs(serialA).count) ?? 0 >= probe.recordCount - 1 })
+        let viaDirect = readLogCount(probe)
+        #expect(viaDirect > 0, "the hole was backfilled over the direct link")
+
+        // The Display returns: the node takes over and the direct link is released.
+        display.setInRange(true)
+        #expect(await rig.run(until: { await rig.nodeConnected() }, limit: .seconds(40)))
+        await rig.run(.seconds(30))
+        #expect(!rig.transport.isConnected(probe.peripheral))
+        #expect(await rig.app.diagnostics().links[serialA] == .viaNode(displayD))
         #expect(try #require(await rig.snapshot(serialA)).link.primary?.kind == .nodeConnection)
         #expect(await rig.eventually { (try? await rig.storedSeqs(serialA).count) ?? 0 >= probe.recordCount - 1 })
-        _ = display
+        let seqs = try await rig.storedSeqs(serialA)
+        #expect(seqs == contiguous(0...(seqs.last ?? 0)))
         await rig.app.stop()
     }
 
