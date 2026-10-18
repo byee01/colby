@@ -347,6 +347,28 @@ Completion time: the chosen format is primary; the other is always shown beside 
 
 Single probe is the most common case. Every surface has a 1-probe version, listed first. Kitchen mode with 1 probe uses a dedicated full-window layout: name and core temperature in the header, 400 px countdown with 72 px secondary time, progress bar and wide trend line.
 
-Screenshots: `docs/design/screenshots/`, regenerated together from the current canvas every time (`render-all.sh` in the scratchpad). Set: Main1, Main1At, Main, MainAlert, Main8, Kitchen1, Kitchen1At, Kitchen, KitchenAlert, LiveActivity, WindowsSurfaces, Sheets, Tokens, Onboarding, History, Settings, SettingsAlerts, SettingsDevices.
+Screenshots: `docs/design/screenshots/`, regenerated together from the current canvas every time (`render-all.sh` in the scratchpad). Set: Main1, Main1-hover, Main1At, Main, MainAlert, Main8, Kitchen1, Kitchen1At, Kitchen, KitchenAlert, LiveActivity, WindowsSurfaces, Sheets, Tokens, Onboarding, History, History-hover, Settings, SettingsAlerts, SettingsDevices.
+
+### 17.5 Alignment with the official app (design pass 2)
+
+From user-supplied screenshots of the official Combustion app (primary).
+
+| Rule | Value |
+|---|---|
+| Line color = sensor | Core `#4ea1f7` blue, Surface `#ffb81c` yellow, Ambient `#f5701f` orange; 3 px solid |
+| Readout row | Colored pill label (black text) over a large condensed number; three columns split by vertical rules |
+| Graph | Rounded card, light grid, axis labels `250°` / `13:00`, target as a light horizontal line labeled at the right (`203°`) |
+| Scrub / hover | Vertical line with a white-ringed dot on each series; readouts switch to the scrubbed values; label above graph shows state + time (`Predicting / 11:24`); leaving the graph returns to live (`Now · 13:20`) |
+| One probe per graph | Graph shows the selected probe's 3 sensors; probe chips switch the selection (replaces the per-probe palette) |
+| Probe identity | Neutral badge with the probe number; ring = physical probe color (yellow / grey) |
+| Background | Pure black window, `#161616` cards, radius 28 for cards |
+| Type | Barlow (text) + Barlow Condensed (numbers) |
+| Time | Follows OS 12/24 h; mocks use 24 h as in the references |
+| History list | Probe icon, title (nickname, else "Predictive Cook" / "Manual Cook"), duration with stacked unit (`hrs/min`, `min/sec`), target with gauge icon, `7d ago • 11 Oct 06:10`, 3-line thumbnail |
+| History detail | Readouts + scrubbable graph + Start · date / End / Duration card |
+| Status | Ready `#5fd17a`, critical `#e5484d`; primary button white on black |
+
+Palette check: contrast ≥ 3:1 on `#161616` and color-blind separation pass; the lightness-band check fails because the official colors are brighter than the reference band. Accepted: every line is also labeled by its pill.
+
 
 Next: empty and error states board; then U2 (tokens.json + component specs).
