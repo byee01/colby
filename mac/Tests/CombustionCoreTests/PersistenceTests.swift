@@ -3,37 +3,39 @@ import Foundation
 import Testing
 
 struct PersistenceTests {
+    private let current = Schema.migrations.map(\.version).max()!
+
     private func migrated() throws -> SQLiteDatabase {
         let db = try SQLiteDatabase.inMemory()
         try Schema.migrate(db)
         return db
     }
 
-    @Test func migrationOneRunsOnceAndSetsUserVersion() throws {
+    @Test func migrationsRunOnceAndSetUserVersion() throws {
         let db = try SQLiteDatabase.inMemory()
         #expect(db.userVersion == 0)
         try Schema.migrate(db)
-        #expect(db.userVersion == 1)
+        #expect(db.userVersion == current)
         // A second pass must not re-run (CREATE TABLE would fail).
         try Schema.migrate(db)
-        #expect(db.userVersion == 1)
+        #expect(db.userVersion == current)
         let tables = try db.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-        #expect(tables == ["alert_event", "alert_rule", "probe", "sample", "session"].map { [.text($0)] })
+        #expect(tables == ["alert_event", "alert_rule", "alert_rule_set", "probe", "sample", "session"].map { [.text($0)] })
     }
 
     @Test func laterMigrationsApplyInOrderOnce() throws {
         let db = try migrated()
-        let extra = Migration(version: 2, sql: "ALTER TABLE probe ADD COLUMN note TEXT")
+        let extra = Migration(version: current + 1, sql: "ALTER TABLE probe ADD COLUMN note TEXT")
         try db.migrate(Schema.migrations + [extra])
         try db.migrate(Schema.migrations + [extra])
-        #expect(db.userVersion == 2)
+        #expect(db.userVersion == current + 1)
     }
 
     @Test func failedMigrationRollsBack() throws {
         let db = try migrated()
-        let bad = Migration(version: 2, sql: "CREATE TABLE ok(x); CREATE TABLE probe(y)")
+        let bad = Migration(version: current + 1, sql: "CREATE TABLE ok(x); CREATE TABLE probe(y)")
         #expect(throws: SQLiteError.self) { try db.migrate(Schema.migrations + [bad]) }
-        #expect(db.userVersion == 1)
+        #expect(db.userVersion == current)
         #expect(try db.query("SELECT name FROM sqlite_master WHERE name='ok'").isEmpty)
     }
 
@@ -49,7 +51,8 @@ struct PersistenceTests {
                                            "anchor_seq", "anchor_time", "nickname", "kind", "ready_since", "thumbnail"])
         #expect(try columns("sample") == ["session", "seq", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "vs",
                                           "pred_state", "pred_mode", "pred_type", "setpoint", "pred_seconds", "est_core"])
-        #expect(try columns("alert_rule") == ["id", "serial", "kind", "params_json", "enabled"])
+        #expect(try columns("alert_rule") == ["id", "serial", "kind", "params_json", "enabled", "position"])
+        #expect(try columns("alert_rule_set") == ["serial"])
         #expect(try columns("alert_event") == ["id", "rule_id", "serial", "session", "fired_at", "cleared_at",
                                                "acked_at", "value"])
     }
@@ -140,7 +143,7 @@ struct PersistenceTests {
         }
         let db = try SQLiteDatabase(path: path)
         try Schema.migrate(db)
-        #expect(db.userVersion == 1)
+        #expect(db.userVersion == current)
         #expect(try db.query("SELECT nickname FROM probe") == [[.text("x")]])
     }
 

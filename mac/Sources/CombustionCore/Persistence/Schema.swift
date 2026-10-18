@@ -21,6 +21,13 @@ public enum Schema {
             id TEXT PRIMARY KEY, rule_id TEXT, serial INTEGER, session INTEGER, fired_at INTEGER,
             cleared_at INTEGER, acked_at INTEGER, value REAL);
         """),
+        // Alert rules keep their order; a serial in alert_rule_set has been configured (even if it now has no rules).
+        Migration(version: 2, sql: """
+        ALTER TABLE alert_rule ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+        CREATE TABLE alert_rule_set(serial INTEGER PRIMARY KEY);
+        CREATE INDEX alert_event_open ON alert_event(rule_id, cleared_at);
+        CREATE INDEX alert_event_serial ON alert_event(serial, fired_at);
+        """),
     ]
 
     public static func migrate(_ db: SQLiteDatabase) throws {

@@ -9,6 +9,7 @@ let package = Package(
         .library(name: "CombustionCore", targets: ["CombustionCore"]),
         .library(name: "CombustionSim", targets: ["CombustionSim"]),
         .library(name: "CombustionCoreBluetooth", targets: ["CombustionCoreBluetooth"]),
+        .library(name: "CombustionMacPlatform", targets: ["CombustionMacPlatform"]),
         .executable(name: "colby-sim", targets: ["ColbySim"]),
     ],
     targets: [
@@ -22,6 +23,8 @@ let package = Package(
         .target(name: "CombustionSim", dependencies: ["CombustionCore"]),
         // CoreBluetooth BleTransport. Compiles to an empty module off Apple platforms.
         .target(name: "CombustionCoreBluetooth", dependencies: ["CombustionCore"]),
+        // macOS notification, sound and keep-awake adapters. Compiles to an empty module off Apple platforms.
+        .target(name: "CombustionMacPlatform", dependencies: ["CombustionCore"]),
         // Debug CLI: CombustionApp against simulated probes, with a live table.
         .executableTarget(name: "ColbySim", dependencies: ["CombustionCore", "CombustionSim"]),
         .testTarget(name: "CombustionCodecTests", dependencies: ["CombustionCodec"]),

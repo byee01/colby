@@ -31,6 +31,10 @@ public actor CombustionApp {
     public nonisolated let commands: Commands
     public nonisolated let alerts: AlertEngine
     public nonisolated let predictionPresenter: PredictionPresenter
+    /// Alert rules and the alert log, in the app database (nil when a custom rule store was passed).
+    public nonisolated let alertStore: SQLiteAlertStore?
+    /// Widget snapshot writer (docs/02 §18); nil unless a destination was passed.
+    public nonisolated let liveSnapshot: LiveSnapshotWriter?
     /// MeatNet nodes in range or connected (`ProbeStore.nodes`).
     public nonisolated var nodes: AsyncStream<[NodeSerial: NodeSnapshot]> { probes.nodes }
 
@@ -56,14 +60,21 @@ public actor CombustionApp {
     ///   - alertSinks: where alert events go (notification, sound); none by default.
     ///   - keepAwake: held while a followed probe is in a cook.
     ///   - databasePath: a file path or `":memory:"`.
+    ///   - liveSnapshot: where to write the widget snapshot; no snapshot when nil.
+    ///   - alertRuleStore: defaults to a `SQLiteAlertStore` on `databasePath`, which also logs alert events.
     ///   - policy: defaults to `DirectConnectionPolicy`.
     ///   - trace: optional parity trace (docs/05 §3): `probe`, `session` and `link` events.
     public init(
         transport: any BleTransport, clock: any Clock, databasePath: String = ":memory:",
         policy: (any ConnectionPolicy)? = nil, trace: (any TraceSink)? = nil,
-        alertSinks: [any AlertSink] = [], keepAwake: (any KeepAwake)? = nil
+        alertSinks: [any AlertSink] = [], keepAwake: (any KeepAwake)? = nil,
+        alertRuleStore: (any AlertRuleStore)? = nil, liveSnapshot: (any LiveSnapshotWriting)? = nil
     ) throws {
+        // History migrates the shared schema first; the alert store's own connection then finds it current.
         let history = try HistoryStore(path: databasePath, clock: clock, logFetcher: router)
+        let alertStore = alertRuleStore == nil ? try SQLiteAlertStore(path: databasePath) : nil
+        self.alertStore = alertStore
+        self.liveSnapshot = liveSnapshot.map { LiveSnapshotWriter(clock: clock, writer: $0) }
         self.transport = transport
         self.clock = clock
         self.history = history
@@ -76,7 +87,8 @@ public actor CombustionApp {
         self.commands = commands
         self.predictionPresenter = PredictionPresenter(probes: probes, clock: clock)
         self.alerts = AlertEngine(
-            clock: clock, sinks: alertSinks, keepAwake: keepAwake, silencer: commands, trace: trace)
+            clock: clock, ruleStore: alertRuleStore ?? alertStore ?? InMemoryAlertRuleStore(), sinks: alertSinks,
+            keepAwake: keepAwake, silencer: commands, trace: trace)
     }
 
     /// One probe's prediction for the UI: the latest view first, then every change. docs/02 §7.
@@ -101,17 +113,21 @@ public actor CombustionApp {
         let nodeSightings = advertisements.nodeSightings
         let policyNodes = advertisements.nodeSightings
         let policyRepeated = advertisements.repeatedSightings
+        let alertEvents = alerts.events
 
         let probes = self.probes
         tasks.append(Task { for await o in observations { await probes.ingest(o) } })
         tasks.append(Task { for await e in statuses { await self.route(e) } })
         tasks.append(Task { for await s in nodeSightings { await probes.ingest(sighting: s) } })
+        if let alertStore { tasks.append(Task { await alertStore.consume(alertEvents) }) }
         tasks.append(Task {
             for await s in bluetoothChanges { await self.bluetoothChanged(s) }
         })
 
         await predictionPresenter.start()
         await alerts.start(probes: probes.probes, predictions: predictionPresenter.updates, followed: probes.followed)
+        await liveSnapshot?.start(
+            probes: probes.probes, predictions: predictionPresenter.updates, followed: probes.followed)
 
         await advertisements.start()
         await policy.start(ConnectionPolicyInput(
@@ -126,6 +142,7 @@ public actor CombustionApp {
         for t in tasks { t.cancel() }
         tasks = []
         await alerts.stop()
+        await liveSnapshot?.stop()
         await predictionPresenter.stop()
         await policy.stop()
         await coordinator.shutdown()

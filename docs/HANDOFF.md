@@ -53,12 +53,12 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 | M3 direct link + history | Done on simulator: UartClient, DirectProbeLink, SessionTracker, HistoryStore (SQLite), BackfillPlanner, DirectConnectionPolicy, CombustionApp facade, e2e tests for exit criteria | `Sources/CombustionCore`, `Tests/CombustionCoreTests/EndToEnd` |
 | M4 MeatNet | Done on simulator: NodeLink, NodeSnapshot/DeviceInfo (`ProbeStore.nodes`, `CombustionApp.nodes`), node-first step in `DirectConnectionPolicy` (`ProbeConnectionState.viaNode`), node-routed backfill in `LinkRouter`/`LinkCoordinator`, e2e `M4MeatNetTests` | `Links/NodeLink.swift`, `Policy/ConnectionPolicy.swift`, `Sources/CombustionSim/SimulatedNode.swift` |
 | M5 prediction + commands | Done on simulator: `PredictionPresenter` (iOS `PredictionManager` smoothing, `readyAt`, `readySince`, stale), `Commands` (set prediction, set/replace alarms read-modify-write, silence; confirmed by next status; `CommandRouting` so a node route plugs in), e2e vs `SimulatedProbe` | `Sources/CombustionCore/Presenter`, `Commands` |
-| M6 alerts | Done on simulator: `AlertEngine` (all §9 rules, probe alarms, overheat, hysteresis, sustain, ack, snooze, silence, latching Ready), `AlertSink`/`KeepAwake` protocols with notification/sound sink adapters and test doubles, default alert set | `Sources/CombustionCore/Alerts` |
+| M6 alerts | Done on simulator: `AlertEngine` (all §9 rules, probe alarms, overheat, hysteresis, sustain, ack, snooze, silence, latching Ready), sink adapters, default alert set; `SQLiteAlertStore` (rules with order, configured-set marker, alert log via `consume(alerts.events)`, `events(for:in:)` for history), schema v2; `LiveSnapshotWriter` (02 §18; immediate on state change, else every 5 s; 30-point trend); macOS adapters `UserNotificationPresenter`, `SystemSoundPlayer`, `PowerAssertionKeepAwake`, `LiveSnapshotLocation` (**never compiled**, Apple-only) | `Sources/CombustionCore/Alerts`, `Widgets`, `Sources/CombustionMacPlatform` |
 | Sim | SimulatedTransport, RecordingTransport, replay format, SimulatedProbe; `swift run colby-sim` | `Sources/CombustionSim`, `Sources/ColbySim` |
 
-Tests: `cd mac && swift test` (432, Swift 6.1.3). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
+Tests: `cd mac && swift test` (446, Swift 6.1.3). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
 
-CI (`.github/workflows/mac.yml`, macOS 15 + Linux): every run ends in `startup_failure` with 0 jobs. Check repo Actions settings / spending limit. Until it runs, the CoreBluetooth module is unverified.
+CI (`.github/workflows/mac.yml`, `windows.yml`): every run ends in `startup_failure` with 0 jobs; GitHub lists 0 registered workflows and the runs show path `BuildFailed`. YAML parses. Owner to check: Settings → Actions → General (Actions enabled, allowed actions include `actions/checkout`, `actions/setup-dotnet`), Billing (private repo: macOS minutes count 10×, default $0 spending limit), and the run page's error. Until CI runs, `CombustionCoreBluetooth` and `CombustionMacPlatform` are unverified.
 
 Spec discrepancies found while writing the codec (verify on hardware): hop count bits (followed SDKs: top 2 bits), overheat bit order (followed Android), GATT status 94 B legacy / 100 B current, node Silence Alarms has a 16 B payload, node 0x48 request is serial only.
 
@@ -71,12 +71,15 @@ M5/M6 decisions where the docs are silent:
 - "Active cook" (keep-awake, `probeOffline(onlyDuringCook:)`): normal mode and either prediction state inserted/warming/predicting/done, or core at least 40 °C. A quiet cook counts for 10 min.
 - A probe with no source clears its probe-alarm and overheat alerts (the stale bits say nothing current); `probeOffline` covers it.
 - Acknowledging a probe alarm mutes locally at once, then sends Silence Alarms; on failure it returns to firing with `AlertEvent.failure`.
-- Not done: SQLite persistence of alert rules (`AlertRuleStore` protocol and in-memory store exist; `alert_rule`/`alert_event` tables unused), `LiveSnapshot` writer (02 §18), real macOS sink/keep-awake implementations (UNUserNotificationCenter, AVAudioPlayer, IOPMAssertion).
+- Alert log rows: one per firing (a return from snooze reuses the open row); `session` column is left NULL, history joins by serial and time range.
+- macOS notifications use the default sound (system sound names are not addressable by UserNotifications); the loop plays in-app via `NSSound`. Needs the time-sensitive notification entitlement and an App Group for the widget snapshot.
+- Not done: alert-rule editing UI and sound per rule kind (`AlertSound` has 4 cases; 06 §17.3 lists 6 events: 5-minute warning, disconnected and low battery should play once, not loop).
 
 Known weak spots: `TestClock` wake ordering under a multi-threaded executor relies on yields plus an opt-in `wakeGrace` real-time pause (e2e tests); session change during an in-flight backfill on a link that stays connected is untested; node heartbeat (0x49) payload is not decoded (layout not in our spec digest); `ProbeSnapshot` has no per-probe `DeviceInfo` yet (node 0x46-0x48 reads exist in the codec but nothing calls them).
 
 ## Next
 
-1. Get CI running; fix CoreBluetooth compile errors on macOS 15.
+1. Get CI running (or `swift test` on a Mac); fix CoreBluetooth and MacPlatform compile errors on macOS 15.
 2. M0 on hardware: `RecordingTransport` captures into `spec/replays/`; check the discrepancies above.
-3. M5 PredictionPresenter + Commands; M6 AlertEngine; M7 app target.
+3. Split `AlertSound` per 06 §17.3 (looping vs once).
+4. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension.
