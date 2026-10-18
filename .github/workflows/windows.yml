@@ -1,0 +1,27 @@
+name: windows
+
+on:
+  push:
+    paths: ["windows/**", "spec/**", ".github/workflows/windows.yml"]
+  pull_request:
+    paths: ["windows/**", "spec/**", ".github/workflows/windows.yml"]
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test windows/Colby.sln --configuration Release
+
+  # The codec and core are platform-neutral, so the same suite runs on Linux (the WinUI and WinRT projects will be excluded here when they land).
+  test-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test windows/Colby.sln --configuration Release
