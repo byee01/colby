@@ -208,6 +208,7 @@ First launch:
 
 | Setting | Default |
 |---|---|
+| Prediction time | "Ready in" (countdown) primary, "Ready at" (clock) secondary; setting swaps them. No toggle in the main UI |
 | Units | Follow region |
 | Alarm sound / volume | Built-in per event (§17.3), 80% |
 | Alert when Do Not Disturb is on | On (macOS time-sensitive; Windows alarm toast) |
@@ -279,7 +280,7 @@ No screenshots could be fetched (combustion.inc and app stores are blocked from 
 | Reference | Source | Type | Used as |
 |---|---|---|---|
 | "Target temp (cooking to) and predicted (ready-in) time are now visible on the graph" | [Product release notes](https://combustion.inc/pages/product-release-notes) | Primary | Labels "Cooking to" / "Ready in"; target line + ready marker on graph |
-| Predictions in relative ("ready in") or absolute "clock" time | [App Store listing](https://apps.apple.com/us/app/combustion-inc/id1658858290) | Primary | "Ready in / Ready at" toggle in toolbar |
+| Predictions in relative ("ready in") or absolute "clock" time | [App Store listing](https://apps.apple.com/us/app/combustion-inc/id1658858290) | Primary | Settings choice of primary format; the other shown at lower emphasis |
 | Live Activities: "live cooking data for one of your probes" on Lock Screen, Watch, Dynamic Island | [Product release notes](https://combustion.inc/pages/product-release-notes) | Primary | One-probe floating live window, menu bar compact item |
 | Live Activities gained "temperature trend lines" (v3.3.0) | [Update history](https://combustioninc.gorgias.help/en-US/combustion-app-update-history-1614818) | Primary (vendor help center) | Trend sparkline on every live surface and kitchen tile |
 | Live Activities follow in-app device order; rounding fix between Live Activity and app | [App Store listing](https://apps.apple.com/us/app/combustion-inc/id1658858290) | Primary | Same order and same rounding on every surface (shared formatter) |
@@ -317,7 +318,7 @@ macOS notification banners use `UNNotificationSound.default` (system sound names
 
 | Board | Shows |
 |---|---|
-| Main window · 3 probes | Graph-first layout, hover crosshair, chip selection, Ready in/at toggle; tweaks: probes 1/3/8, alerting |
+| Main window · 3 probes | Graph-first layout, hover crosshair, chip selection; tweaks: probes 1/3/8, alerting, time format (stands in for the setting) |
 | Main window · alarm firing | Red alert band, alerting chip |
 | Main window · 8 probes | Non-focused probes core-only, end-label de-collision |
 | Kitchen mode · 4 probes / alarm | 2×2 tiles with trend lines; full-screen red takeover |
@@ -326,6 +327,10 @@ macOS notification banners use `UNNotificationSound.default` (system sound names
 | Set target · Alarms & alerts | Unit-aware target entry with range validation, mode choice, probe alarms, desktop alerts, sound picker |
 | Design tokens | Colors, validated probe palette (dark + light), type scale, sound map, spacing |
 
-Rendered screenshots: `docs/design/screenshots/` (headless Chromium, 1440 px wide).
+Completion time: the chosen format is primary; where space allows (inspector, kitchen tiles) the other format sits beside it at lower emphasis (muted, ~30% of the primary size), e.g. `3:42  at 5:02 PM` or `5:02  PM · in 3:42`. Chips, menu bar and widgets show the primary format only. Graph ready markers always use clock time.
+
+Rendered screenshots: `docs/design/screenshots/` (`MainAt.png`, `KitchenAt.png` show the "Ready at" setting).
+
+Rendered screenshots (all): `docs/design/screenshots/` (headless Chromium, 1440 px wide).
 
 Next: U2 (tokens.json + component specs from the Tokens board), then onboarding, history, settings, empty/error states boards.
