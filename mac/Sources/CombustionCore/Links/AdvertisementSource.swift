@@ -34,6 +34,27 @@ public struct ProbeSighting: Sendable, Equatable {
     }
 }
 
+/// A probe's data repeated by a node, heard on the node's peripheral. Tells the policy which node can reach
+/// the probe even before the node's own advertisement has been matched to a serial.
+public struct RepeatedProbeSighting: Sendable, Equatable {
+    public var serial: ProbeSerial
+    public var nodePeripheral: PeripheralId
+    /// Nil until the node's own advertisement has been heard.
+    public var via: NodeSerial?
+    public var hopCount: Int
+    public var rssi: Int
+    public var time: Date
+
+    public init(serial: ProbeSerial, nodePeripheral: PeripheralId, via: NodeSerial?, hopCount: Int, rssi: Int, time: Date) {
+        self.serial = serial
+        self.nodePeripheral = nodePeripheral
+        self.via = via
+        self.hopCount = hopCount
+        self.rssi = rssi
+        self.time = time
+    }
+}
+
 public struct AdvertisementDiagnostics: Sendable, Equatable {
     /// Advertisements received from the transport.
     public var received = 0
@@ -59,6 +80,9 @@ public actor AdvertisementSource {
     /// Probes heard on their own peripheral; `ConnectionPolicy` connects to these.
     public nonisolated var probeSightings: AsyncStream<ProbeSighting> { probeSightingBroadcast.stream() }
 
+    /// Probes heard through a node; `ConnectionPolicy` uses them to decide on a node connection.
+    public nonisolated var repeatedSightings: AsyncStream<RepeatedProbeSighting> { repeatedBroadcast.stream() }
+
     public var diagnostics: AdvertisementDiagnostics { stats }
     /// The node serial last advertised by `peripheral`, if any.
     public func nodeSerial(for peripheral: PeripheralId) -> NodeSerial? { nodeByPeripheral[peripheral] }
@@ -67,6 +91,7 @@ public actor AdvertisementSource {
     private let observationBroadcast = Broadcaster<ProbeObservation>()
     private let sightingBroadcast = Broadcaster<NodeSighting>()
     private let probeSightingBroadcast = Broadcaster<ProbeSighting>()
+    private let repeatedBroadcast = Broadcaster<RepeatedProbeSighting>()
     private var nodeByPeripheral: [PeripheralId: NodeSerial] = [:]
     private var stats = AdvertisementDiagnostics()
     private var task: Task<Void, Never>?
@@ -112,7 +137,11 @@ public actor AdvertisementSource {
                 serial: probe.serial, peripheral: raw.peripheral, rssi: raw.rssi, time: raw.time))
         case .repeated(let probe, let hops):
             stats.probePackets += 1
-            publish(probe, kind: .nodeAdvertisement, via: nodeByPeripheral[raw.peripheral], hopCount: hops, raw)
+            let via = nodeByPeripheral[raw.peripheral]
+            publish(probe, kind: .nodeAdvertisement, via: via, hopCount: hops, raw)
+            repeatedBroadcast.send(RepeatedProbeSighting(
+                serial: probe.serial, nodePeripheral: raw.peripheral, via: via, hopCount: hops,
+                rssi: raw.rssi, time: raw.time))
         case .node(let node):
             stats.nodePackets += 1
             nodeByPeripheral[raw.peripheral] = node.serial

@@ -36,6 +36,8 @@ public actor ProbeStore {
     private let probesBroadcaster = Broadcaster<[ProbeSerial: ProbeSnapshot]>(initial: [:], replayLatest: true)
     private let followedBroadcaster = Broadcaster<Set<ProbeSerial>>(initial: [], replayLatest: true)
     private let statusBroadcaster = Broadcaster<ProbeStatusEvent>()
+    private var nodeMap: [NodeSerial: NodeSnapshot] = [:]
+    private let nodesBroadcaster = Broadcaster<[NodeSerial: NodeSnapshot]>(initial: [:], replayLatest: true)
 
     public init(
         clock: any Clock,
@@ -75,7 +77,12 @@ public actor ProbeStore {
     /// Every accepted full status (freshest per probe), uncoalesced. For HistoryStore and session detection.
     public nonisolated var statusEvents: AsyncStream<ProbeStatusEvent> { statusBroadcaster.stream() }
 
+    /// MeatNet nodes in range or connected (not coalesced; nodes change at heartbeat rate).
+    public nonisolated var nodes: AsyncStream<[NodeSerial: NodeSnapshot]> { nodesBroadcaster.stream() }
+
     // MARK: Direct reads (not coalesced)
+
+    public func nodeSnapshots() -> [NodeSerial: NodeSnapshot] { nodeMap }
 
     public func snapshot(of serial: ProbeSerial) -> ProbeSnapshot? { mergers[serial]?.snapshot() }
 
@@ -115,6 +122,34 @@ public actor ProbeStore {
         markDirty(o.serial)
     }
 
+    /// Records a `NodeLink` snapshot. It replaces what is known, except firmware it has not read yet.
+    public func ingest(node: NodeSnapshot) {
+        ensureExpiryTimer()
+        var n = node
+        if n.firmware == nil { n.firmware = nodeMap[node.serial]?.firmware }
+        store(n)
+    }
+
+    /// Records a node heard advertising. A connected node is already better known and is left alone.
+    public func ingest(sighting s: NodeSighting) {
+        ensureExpiryTimer()
+        let source = LinkSource(kind: .nodeAdvertisement, rssi: s.rssi, lastSeen: s.time)
+        guard var n = nodeMap[s.serial] else {
+            store(NodeSnapshot(serial: s.serial, productType: s.productType, link: source))
+            return
+        }
+        guard !n.isConnected else { return }
+        n.productType = s.productType
+        n.link = source
+        store(n)
+    }
+
+    private func store(_ n: NodeSnapshot) {
+        guard nodeMap[n.serial] != n else { return }
+        nodeMap[n.serial] = n
+        nodesBroadcaster.send(nodeMap)
+    }
+
     // MARK: Follow
 
     public func follow(_ serial: ProbeSerial) async {
@@ -149,6 +184,12 @@ public actor ProbeStore {
         let ttl = sourceTimeout.totalSeconds
         for serial in Array(mergers.keys) {
             if mergers[serial]?.expire(now: now, ttl: ttl) == true { markDirty(serial) }
+        }
+        // A node that is neither connected nor heard advertising is gone.
+        let stale = nodeMap.filter { !$0.value.isConnected && now.timeIntervalSince($0.value.link.lastSeen) >= ttl }
+        if !stale.isEmpty {
+            for serial in stale.keys { nodeMap[serial] = nil }
+            nodesBroadcaster.send(nodeMap)
         }
     }
 

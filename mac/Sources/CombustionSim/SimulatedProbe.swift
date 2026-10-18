@@ -12,6 +12,9 @@ import Foundation
 /// (session id 0, 94 B status, Read Session Information fails), `preload` (a cook that started before
 /// the app did), `dropLinkAfterLogRecords` (link loss in the middle of a log download).
 ///
+/// A `SimulatedNode` can relay it: `currentStatus`, `currentAdvertisement`, `record` and `onSample` give the node what the
+/// probe's radio would; `setInRange` only models the Mac's range, so the node keeps hearing the probe.
+///
 /// Lock order: the transport calls responders while holding its lock, so this class never calls the
 /// transport while holding its own lock.
 public final class SimulatedProbe: @unchecked Sendable {
@@ -45,6 +48,7 @@ public final class SimulatedProbe: @unchecked Sendable {
     private var received: [UartRequest] = []
     private var cutLogsAfter: Int?
     private var dropLinkOnNextTick = false
+    private var sampleObservers: [@Sendable () -> Void] = []
 
     public init(
         serial: ProbeSerial, transport: SimulatedTransport, clock: any Clock,
@@ -144,6 +148,11 @@ public final class SimulatedProbe: @unchecked Sendable {
         lock.withLock { cutLogsAfter = count }
     }
 
+    /// Called (outside the probe's lock) each time a log record is made, in range or not.
+    public func onSample(_ observer: @escaping @Sendable () -> Void) {
+        lock.withLock { sampleObservers.append(observer) }
+    }
+
     // MARK: Observation
 
     public var sessionId: UInt32 { lock.withLock { session } }
@@ -153,6 +162,10 @@ public final class SimulatedProbe: @unchecked Sendable {
     /// Every UART request answered, in order.
     public var requests: [UartRequest] { lock.withLock { received } }
     public var currentAlarms: AlarmConfig { lock.withLock { alarms } }
+    /// The full status the probe would notify now (latest record).
+    public var currentStatus: ProbeStatusPayload { lock.withLock { statusPayload(records[records.count - 1]) } }
+    public var currentAdvertisement: ProbeAdvertisement { lock.withLock { advertisement(records[records.count - 1]) } }
+    public var isLegacyLayout: Bool { lock.withLock { legacy } }
     public var currentPrediction: (setpoint: Double, mode: PredictionMode) { lock.withLock { (setpoint, predictionMode) } }
 
     // MARK: A simple cook
@@ -189,11 +202,15 @@ public final class SimulatedProbe: @unchecked Sendable {
 
     private func tick() {
         enum Work { case idle, send(advertisement: [UInt8], status: [UInt8]?, drop: Bool) }
+        var observers: [@Sendable () -> Void] = []
         let work: Work = lock.withLock {
             guard running else { return .idle }
             ticks += 1
             let sampled = ticks % ticksPerSample == 0
-            if sampled { appendRecordLocked() }
+            if sampled {
+                appendRecordLocked()
+                observers = sampleObservers
+            }
             let drop = dropLinkOnNextTick
             dropLinkOnNextTick = false
             guard inRange else { return .idle }
@@ -202,6 +219,7 @@ public final class SimulatedProbe: @unchecked Sendable {
             let status = sampled ? (try? encodeProbeStatus(statusPayload(last), layout: legacy ? .legacy : .current)) : nil
             return .send(advertisement: ad, status: status, drop: drop)
         }
+        for observer in observers { observer() }
         guard case .send(let ad, let status, let drop) = work else { return }
         transport.injectAdvertisement(peripheral: peripheral, mfrData: ad)
         if let status, transport.isConnected(peripheral) {
@@ -229,6 +247,15 @@ public final class SimulatedProbe: @unchecked Sendable {
             overheating: [], preferences: ThermometerPreferences(powerMode: .normal, highRadioPower: false),
             alarms: alarms,
             session: legacy ? nil : SessionInfo(sessionId: session, samplePeriodMs: UInt16(samplePeriod.totalSeconds * 1000)))
+    }
+
+    /// Applies a command that arrived through a node, as the probe would after a node forwarded it.
+    /// Reads are answered by the node itself from `record`; this only covers state-changing commands.
+    public func applyRelayed(_ request: UartRequest) {
+        switch request {
+        case .setPrediction, .setAlarms, .silenceAlarms: lock.withLock { _ = answerLocked(request) }
+        default: break
+        }
     }
 
     /// Answers one RX write. Called by the transport (under its lock), so nothing here touches the transport.

@@ -10,6 +10,8 @@ public struct DiagnosticsSnapshot: Sendable, Equatable {
     /// Probe Status notifications the codec rejected, per probe, summed over links.
     public var statusDecodeErrors: [ProbeSerial: Int]
     public var links: [ProbeSerial: ProbeConnectionState]
+    /// Connection state of each MeatNet node the policy is working on.
+    public var nodeLinks: [NodeSerial: ProbeConnectionState] = [:]
     /// Log downloads (live fetch or backfill) in progress.
     public var logFetchesInFlight: Int
 }
@@ -27,6 +29,8 @@ public struct DiagnosticsSnapshot: Sendable, Equatable {
 public actor CombustionApp {
     public nonisolated let probes: ProbeStore
     public nonisolated let history: HistoryStore
+    /// MeatNet nodes in range or connected (`ProbeStore.nodes`).
+    public nonisolated var nodes: AsyncStream<[NodeSerial: NodeSnapshot]> { probes.nodes }
 
     /// Bluetooth state: current value first, then changes.
     public nonisolated var bluetoothState: AsyncStream<BluetoothState> { transport.state }
@@ -79,17 +83,22 @@ public actor CombustionApp {
         let statuses = probes.statusEvents
         let followed = probes.followed
         let bluetoothChanges = transport.state
+        let nodeSightings = advertisements.nodeSightings
+        let policyNodes = advertisements.nodeSightings
+        let policyRepeated = advertisements.repeatedSightings
 
         let probes = self.probes
         tasks.append(Task { for await o in observations { await probes.ingest(o) } })
         tasks.append(Task { for await e in statuses { await self.route(e) } })
+        tasks.append(Task { for await s in nodeSightings { await probes.ingest(sighting: s) } })
         tasks.append(Task {
             for await s in bluetoothChanges { await self.bluetoothChanged(s) }
         })
 
         await advertisements.start()
         await policy.start(ConnectionPolicyInput(
-            transport: transport, clock: clock, sightings: sightings, followed: followed, delegate: coordinator))
+            transport: transport, clock: clock, sightings: sightings, followed: followed, delegate: coordinator,
+            nodeSightings: policyNodes, repeatedSightings: policyRepeated))
     }
 
     /// Closes every link, stops scanning and timers. Streams of the stores stay open.
@@ -119,7 +128,7 @@ public actor CombustionApp {
         let (uart, decode) = await coordinator.linkCounters()
         return DiagnosticsSnapshot(
             bluetooth: bluetooth, advertisements: await advertisements.diagnostics, uart: uart,
-            statusDecodeErrors: decode, links: await policy.states(),
+            statusDecodeErrors: decode, links: await policy.states(), nodeLinks: await policy.nodeStates(),
             logFetchesInFlight: await history.fetchesInFlight)
     }
 
@@ -172,20 +181,30 @@ public actor CombustionApp {
 
 // MARK: - Link plumbing
 
-/// Routes live log fetches to the current link of each probe.
+/// Routes log fetches to the current link of each probe: its direct link if it has one, else a node that
+/// is relaying it (nearest first).
 final class LinkRouter: LogFetcher, @unchecked Sendable {
     private let lock = NSLock()
     private var links: [ProbeSerial: DirectProbeLink] = [:]
+    private var nodes: [NodeSerial: NodeLink] = [:]
 
     func set(_ serial: ProbeSerial, _ link: DirectProbeLink?) {
         lock.withLock { links[serial] = link }
     }
 
+    func setNode(_ serial: NodeSerial, _ link: NodeLink?) {
+        lock.withLock { nodes[serial] = link }
+    }
+
     func readLogs(probe: ProbeSerial, start: UInt32, end: UInt32) -> AsyncThrowingStream<LogRecord, any Error> {
-        guard let link = lock.withLock({ links[probe] }) else {
+        let (direct, nodeLinks) = lock.withLock { (links[probe], Array(nodes.values)) }
+        if let direct { return direct.readLogs(probe: probe, start: start, end: end) }
+        let relaying = nodeLinks.compactMap { n in n.hops(to: probe).map { (n, $0) } }
+            .sorted { ($0.1, $0.0.serial) < ($1.1, $1.0.serial) }
+        guard let node = relaying.first?.0 else {
             return AsyncThrowingStream { $0.finish(throwing: UartError.disconnected) }
         }
-        return link.readLogs(probe: probe, start: start, end: end)
+        return node.readLogs(probe: probe, start: start, end: end)
     }
 }
 
@@ -201,6 +220,10 @@ actor LinkCoordinator: ConnectionPolicyDelegate {
     private var links: [ProbeSerial: DirectProbeLink] = [:]
     private var forwarders: [ProbeSerial: Task<Void, Never>] = [:]
     private var backfills: [ProbeSerial: Task<Void, Never>] = [:]
+    private var nodeLinks: [NodeSerial: NodeLink] = [:]
+    private var nodeForwarders: [NodeSerial: [Task<Void, Never>]] = [:]
+    /// Probes whose running backfill reads through a node, and which one (no direct link at the time).
+    private var nodeBackfills: [ProbeSerial: NodeSerial] = [:]
     /// Probes whose link is up but whose first status has not been recorded yet.
     private var awaitingFirstStatus: [ProbeSerial: Date] = [:]
     private var retiredUart: [ProbeSerial: UartDiagnostics] = [:]
@@ -236,6 +259,7 @@ actor LinkCoordinator: ConnectionPolicyDelegate {
         router.set(serial, nil)
         awaitingFirstStatus[serial] = nil
         backfills.removeValue(forKey: serial)?.cancel()
+        nodeBackfills[serial] = nil
         forwarders.removeValue(forKey: serial)?.cancel()
         if let link = links.removeValue(forKey: serial) {
             retiredUart[serial] = Self.sum(retiredUart[serial], await link.uart.diagnostics)
@@ -248,18 +272,63 @@ actor LinkCoordinator: ConnectionPolicyDelegate {
 
     /// Called after a status was recorded in history. The first one after a connect starts the backfill:
     /// until then the session for this connection may not exist (new session) or may still be the old one.
+    ///
+    /// A probe with no direct link but relayed by a connected node gets its backfill through the node
+    /// (the router picks the node per read), started by its first recorded status.
     func statusRecorded(serial: ProbeSerial, receivedAt: Date) {
-        guard let since = awaitingFirstStatus[serial], receivedAt >= since, let link = links[serial] else { return }
-        awaitingFirstStatus[serial] = nil
-        backfills[serial]?.cancel()
-        backfills[serial] = Task { await self.runBackfill(serial: serial, link: link) }
+        if let since = awaitingFirstStatus[serial], receivedAt >= since, let link = links[serial] {
+            awaitingFirstStatus[serial] = nil
+            backfills[serial]?.cancel()
+            nodeBackfills[serial] = nil
+            backfills[serial] = Task { await self.runBackfill(serial: serial, fetcher: link) }
+            return
+        }
+        guard links[serial] == nil, backfills[serial] == nil,
+              let node = nodeLinks.values.first(where: { $0.covers(serial) }) else { return }
+        nodeBackfills[serial] = node.serial
+        backfills[serial] = Task { await self.runBackfill(serial: serial, fetcher: self.router) }
+    }
+
+    // MARK: Nodes
+
+    func nodeLinkCreated(_ link: NodeLink) {
+        let serial = link.serial
+        nodeLinks[serial] = link
+        nodeForwarders[serial]?.forEach { $0.cancel() }
+        let observations = link.observations
+        let snapshots = link.snapshots
+        let probes = self.probes
+        nodeForwarders[serial] = [
+            Task { for await o in observations { await probes.ingest(o) } },
+            Task { for await s in snapshots { await probes.ingest(node: s) } },
+        ]
+    }
+
+    func nodeLinkEstablished(_ link: NodeLink) {
+        router.setNode(link.serial, link)
+    }
+
+    func nodeLinkEnded(serial: NodeSerial, reason: DisconnectReason) async {
+        router.setNode(serial, nil)
+        for (probe, via) in nodeBackfills where via == serial {
+            backfills.removeValue(forKey: probe)?.cancel()
+            nodeBackfills[probe] = nil
+        }
+        nodeForwarders.removeValue(forKey: serial)?.forEach { $0.cancel() }
+        if let link = nodeLinks.removeValue(forKey: serial) {
+            // The forwarder may not have seen the final (disconnected) snapshot yet.
+            await probes.ingest(node: await link.snapshot)
+        }
     }
 
     func shutdown() {
         for t in backfills.values { t.cancel() }
         for t in forwarders.values { t.cancel() }
+        for ts in nodeForwarders.values { ts.forEach { $0.cancel() } }
         backfills = [:]
         forwarders = [:]
+        nodeForwarders = [:]
+        nodeBackfills = [:]
     }
 
     func linkCounters() async -> ([ProbeSerial: UartDiagnostics], [ProbeSerial: Int]) {
@@ -274,12 +343,12 @@ actor LinkCoordinator: ConnectionPolicyDelegate {
 
     /// Fills holes while the link lives: retry soon while holes remain, otherwise re-check every minute
     /// (a live fetch can lose a record to a dropped notification).
-    private func runBackfill(serial: ProbeSerial, link: DirectProbeLink) async {
+    private func runBackfill(serial: ProbeSerial, fetcher: any LogFetcher) async {
         var attempt = 0
         while !Task.isCancelled {
             var complete = true
             if let key = try? await history.currentSession(of: serial) {
-                let result = await history.backfill(key, using: link)
+                let result = await history.backfill(key, using: fetcher)
                 complete = result.remaining == 0 && !result.failed
             }
             let wait: Duration

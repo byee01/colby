@@ -9,6 +9,8 @@ public enum UartMessageType {
     public static let probeFirmware: UInt8 = 0x46
     public static let probeHardware: UInt8 = 0x47
     public static let probeModel: UInt8 = 0x48
+    /// Node notification; payload (network topology) is not decoded.
+    public static let heartbeat: UInt8 = 0x49
 }
 
 /// A command to a probe. Over a node every request also names the probe (`encodeRequest(probe:)`).
