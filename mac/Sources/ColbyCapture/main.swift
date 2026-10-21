@@ -293,6 +293,8 @@ func run(_ options: Options) async throws {
     print("add firmware versions for probes to meta.json by hand (from the Combustion phone app)")
 }
 
+// Line-buffered so the table shows up promptly when stdout is a file or pipe.
+setvbuf(stdout, nil, _IOLBF, 0)
 try await run(Options(Array(CommandLine.arguments.dropFirst())))
 #else
 log("colby-capture needs CoreBluetooth (macOS)")

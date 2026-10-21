@@ -92,6 +92,8 @@ Hardware findings (probe `1000D027`, fw v2.3.3, hw v11.0-A1, macOS 26; replays i
 - Backfill works on hardware: 318 records (0-317), none missing, across a 6-minute gap and 6 edge-of-range drops. One record every 5.0 s.
 - **Inefficiency:** while connected, the app sends a Read Logs for each new record (one write every ~5 s, 94 writes in 15 min), with occasional repeats (`0x9E` twice; `0x10B` three times with a growing end). Check whether the live status should be stored as the record instead.
 - macOS delivers ~3.9 adverts/s from one probe (spec: 4-10/s).
+- New session after a charger cycle (`charger-new-session`): link dropped ~50 s after the probe went in the charger, adverts stopped, and on removal the log range restarted at 0 (max 351 -> 1). `SessionTracker` caught it by log-range regression and backfill restarted at record 0.
+- **Gap:** the 94 B status carries no session ID and nothing calls `DirectProbeLink.readSessionInfo()`, so on fw v2.3.3 every session has id 0 and only the fallback rules tell cooks apart (SessionTracker's documented limitation). Fix: read Session Info (UART 0x03) after connect when the status has none. Also open: fw v2.3.3 is current, so the "94 B = legacy" label in the spec digest may be wrong.
 
 Deviations from 02: `SessionKey` = (serial, sessionId, startedAt) since id 0 repeats; `ProbeSnapshot.instantReadFahrenheit` (Android filters °F separately); probe UART readLogs queued per link instead of `busy`.
 
