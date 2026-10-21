@@ -92,7 +92,7 @@ struct HistoryStoreTests {
         let key = try await store.ingest(status: ev(F.status(logMax: 9), at: t0))
         let r = await store.backfill(key, using: Dup())
         #expect(try await store.sampleCount(key) == 10)
-        #expect(r.received == 10 && r.remaining == 0)
+        #expect(r.received == 9 && r.remaining == 0)          // seq 9 came from the status itself
     }
 
     // MARK: Sessions
@@ -189,7 +189,7 @@ struct HistoryStoreTests {
         let f = StoreFakeFetcher()
         f.add(rec)
         let store = try makeStore(fetcher: f)
-        let key = try await store.ingest(status: ev(F.status(logMax: 0), at: t0))
+        let key = try await store.ingest(status: ev(F.status(logMax: 1), at: t0))   // the status is seq 1 (core 25)
         #expect(try await store.sessions()[0].peakCore == 55)
         let sample = try #require(try await store.currentSeries(key)?.samples.first)
         #expect(sample.core == 55 && sample.surface == 10 && sample.virtualSensors == vs)
@@ -343,7 +343,8 @@ struct HistoryStoreTests {
                                        state: s >= 8 ? .predicting : .notInserted))
         }
         let store = try makeStore(fetcher: f)
-        let key = try await store.ingest(status: ev(F.status(logMax: 10), at: t0))   // seq 10 at t0, 5 s apart
+        // seq 10 at t0, 5 s apart. The status is stored as seq 10, so it carries record 10's values.
+        let key = try await store.ingest(status: ev(F.status(core: 30, surface: 110, ambient: 200, logMax: 10), at: t0))
         return (store, key)
     }
 
@@ -432,13 +433,15 @@ struct HistoryStoreTests {
     @Test func liveFetchRequestsOnlyNewSeqsWhenMaxAdvances() async throws {
         let f = StoreFakeFetcher(seqs: 0...100)
         let store = try makeStore(fetcher: f)
+        // Each status is stored as the record at its max, so only seqs below it are requested.
         let key = try await store.ingest(status: ev(F.status(logMax: 5), at: t0))
-        #expect(f.requests == [.init(start: 0, end: 5)])
+        #expect(f.requests == [.init(start: 0, end: 4)])
         try await store.ingest(status: ev(F.status(logMax: 5), at: t0 + 1))      // not advanced
         #expect(f.requests.count == 1)
-        try await store.ingest(status: ev(F.status(logMax: 6), at: t0 + 5))
-        try await store.ingest(status: ev(F.status(logMax: 8), at: t0 + 10))
-        #expect(f.requests == [.init(start: 0, end: 5), .init(start: 6, end: 6), .init(start: 7, end: 8)])
+        try await store.ingest(status: ev(F.status(logMax: 6), at: t0 + 5))      // next seq: nothing to fetch
+        #expect(f.requests.count == 1)
+        try await store.ingest(status: ev(F.status(logMax: 8), at: t0 + 10))     // seq 7 was skipped
+        #expect(f.requests == [.init(start: 0, end: 4), .init(start: 7, end: 7)])
         #expect(try await store.sampleCount(key) == 9)
     }
 
@@ -446,9 +449,9 @@ struct HistoryStoreTests {
         let f = StoreFakeFetcher(seqs: 0...1000)
         let store = try makeStore(fetcher: f)
         let key = try await store.ingest(status: ev(F.status(logMax: 1000), at: t0))
-        #expect(f.requests == [.init(start: 873, end: 1000)])
+        #expect(f.requests == [.init(start: 872, end: 999)])
         let r = await store.backfill(key, using: f)
-        #expect(r.remaining == 0 && r.received == 873)
+        #expect(r.remaining == 0 && r.received == 872)
         #expect(try await store.sampleCount(key) == 1001)
     }
 
@@ -457,7 +460,7 @@ struct HistoryStoreTests {
         f.fail(onRequest: 1)
         let store = try makeStore(fetcher: f)
         let key = try await store.ingest(status: ev(F.status(logMax: 10), at: t0))
-        #expect(try await store.sampleCount(key) == 0)
+        #expect(try await store.sampleCount(key) == 1)       // only the status's own record
         #expect(try await store.sessions().count == 1)       // status handling was not lost
     }
 
@@ -492,8 +495,9 @@ struct HistoryStoreTests {
         let store = try makeStore()   // no live fetching
         let key = try await store.ingest(status: ev(F.status(logMax: 299), at: t0))
         let r = await store.backfill(key, using: f)
-        #expect(f.requests == [.init(start: 172, end: 299), .init(start: 44, end: 171), .init(start: 0, end: 43)])
-        #expect(r == BackfillResult(requested: 300, received: 300, remaining: 0, failed: false))
+        // seq 299 is the status's own record.
+        #expect(f.requests == [.init(start: 171, end: 298), .init(start: 43, end: 170), .init(start: 0, end: 42)])
+        #expect(r == BackfillResult(requested: 299, received: 299, remaining: 0, failed: false))
         #expect(try await store.sampleCount(key) == 300)
     }
 
@@ -509,7 +513,7 @@ struct HistoryStoreTests {
         await store.backfill(key, using: f)
         await settle(clock) { log.last == 0 }
         task.cancel()
-        #expect(log.items.filter { $0 >= 0 } == [172, 44, 0])    // earliest stored seq moves left chunk by chunk
+        #expect(log.items.filter { $0 >= 0 } == [299, 171, 43, 0])   // earliest stored seq moves left chunk by chunk
     }
 
     @Test func backfillToleratesPartialResultsAndRetriesOnlyGaps() async throws {
@@ -518,7 +522,7 @@ struct HistoryStoreTests {
         let store = try makeStore()
         let key = try await store.ingest(status: ev(F.status(logMax: 299), at: t0))
         let r1 = await store.backfill(key, using: f)
-        #expect(r1.received == 289 && r1.remaining == 11 && !r1.failed)
+        #expect(r1.received == 288 && r1.remaining == 11 && !r1.failed)   // plus seq 299 from the status
         #expect(try await store.sampleCount(key) == 289)
         f.release()
         let before = f.requests.count
@@ -536,7 +540,7 @@ struct HistoryStoreTests {
         let store = try makeStore()
         let key = try await store.ingest(status: ev(F.status(logMax: 299), at: t0))
         let r1 = await store.backfill(key, using: f)
-        #expect(r1.failed && r1.received == 128 && r1.remaining == 172)
+        #expect(r1.failed && r1.received == 128 && r1.remaining == 171)
         #expect(f.requests.count == 2)                          // chunk 3 was not attempted
         f.fail(onRequest: nil)
         let r2 = await store.backfill(key, using: f)
@@ -571,7 +575,7 @@ struct HistoryStoreTests {
         let store = try makeStore()
         let key = try await store.ingest(status: ev(F.status(logMin: 400, logMax: 500), at: t0))
         await store.backfill(key, using: f)
-        #expect(f.requests == [.init(start: 400, end: 500)])
+        #expect(f.requests == [.init(start: 400, end: 499)])
     }
 
     // MARK: Eight concurrent sessions

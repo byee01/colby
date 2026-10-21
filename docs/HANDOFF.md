@@ -48,7 +48,7 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 
 | Milestone | State | Where |
 |---|---|---|
-| M0 captures | Ready to capture: `swift run colby-capture --name <replay>` (07). Not yet run against a device. Fixtures hand-built from spec @ `eabc77d` + Android SDK tests; regenerate with `python3 spec/tools/gen_codec_fixtures/gen_all.py` | `spec/fixtures/` (330) |
+| M0 captures | In progress: steps 1-4 of 07 §3 captured (4 replays in `spec/replays/`); 3 bugs found and fixed on simulator, not yet re-checked on hardware. Next: verify, then step 5. Fixtures hand-built from spec @ `eabc77d` + Android SDK tests; regenerate with `python3 spec/tools/gen_codec_fixtures/gen_all.py` | `spec/fixtures/` (330) |
 | M1 codec | Done, 100% region coverage | `Sources/CombustionCodec` |
 | M2 transport + adverts | Done on simulator. CoreBluetooth transport written, **never compiled** (Linux only so far) | `Sources/CombustionCoreBluetooth`, `Links/AdvertisementSource`, `Stores/ProbeStore` |
 | M3 direct link + history | Done on simulator: UartClient, DirectProbeLink, SessionTracker, HistoryStore (SQLite), BackfillPlanner, DirectConnectionPolicy, CombustionApp facade, e2e tests for exit criteria | `Sources/CombustionCore`, `Tests/CombustionCoreTests/EndToEnd` |
@@ -57,7 +57,7 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 | M6 alerts | Done on simulator: `AlertEngine` (all §9 rules, probe alarms, overheat, hysteresis, sustain, ack, snooze, silence, latching Ready), sink adapters, default alert set; `SQLiteAlertStore` (rules with order, configured-set marker, alert log via `consume(alerts.events)`, `events(for:in:)` for history), schema v2; `LiveSnapshotWriter` (02 §18; immediate on state change, else every 5 s; 30-point trend); macOS adapters `UserNotificationPresenter`, `SystemSoundPlayer`, `PowerAssertionKeepAwake`, `LiveSnapshotLocation` (**never compiled**, Apple-only) | `Sources/CombustionCore/Alerts`, `Widgets`, `Sources/CombustionMacPlatform` |
 | Sim | SimulatedTransport, RecordingTransport, replay format, SimulatedProbe; `swift run colby-sim` | `Sources/CombustionSim`, `Sources/ColbySim` |
 
-Tests: `cd mac && swift test` (446, Swift 6.1.3). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
+Tests: `cd mac && swift test` (449; Swift 6.1.3 Linux, 6.2.4 macOS). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
 
 ## CI status (blocked)
 
@@ -88,12 +88,13 @@ Spec discrepancies found while writing the codec (verify on hardware): hop count
 
 Hardware findings (probe `1000D027`, fw v2.3.3, hw v11.0-A1, macOS 26; replays in `spec/replays/`):
 - GATT status is 94 B on fw v2.3.3 (617 of 617 in `out-of-range-return`). 100 B not seen yet.
-- **Bug:** an idle or Instant-Read probe interleaves Instant Read (mode 1, ~70 %) and Normal (mode 0) adverts several times a second (`idle-interleaved-modes`, `instant-read`). `ProbeMerger` takes the mode of the latest advert, so surface/ambient blank and `mode` flips. Fix: Normal adverts update temperatures, Instant Read adverts update only `instantRead`, which expires a few seconds after the last one; check the SDKs first.
+- **Fixed (Mac):** an idle or Instant-Read probe interleaves Instant Read (mode 1, ~70 %) and Normal (mode 0) adverts several times a second; Normal packets can be 6 s apart at idle and 18 s apart in Instant Read (`idle-interleaved-modes`, `instant-read`). `ProbeMerger` took the mode of the latest packet, so surface/ambient blanked and `mode` flipped ~70 times in 2 min. Now as in the iOS SDK (`Probe.swift`): Normal packets set T1-T8 and keep them, Instant Read packets set only `instantRead`, and `mode = instantRead` until 5 s pass without one. Pinned by `ProbeStoreTests.capturedInterleavedAdvertsGiveAStableSnapshot` (feeds the real replay).
 - Backfill works on hardware: 318 records (0-317), none missing, across a 6-minute gap and 6 edge-of-range drops. One record every 5.0 s.
-- **Inefficiency:** while connected, the app sends a Read Logs for each new record (one write every ~5 s, 94 writes in 15 min), with occasional repeats (`0x9E` twice; `0x10B` three times with a growing end). Check whether the live status should be stored as the record instead.
+- **Fixed (Mac):** while connected, the app sent a Read Logs for each new record (94 writes in 15 min, some repeated). Now a Normal status is stored as the record at `logRange.max` (iOS SDK `addDataToLog`), and the live fetch asks only for seqs below it that are missing. Trade-off: that one record holds the status's values, not the probe's logged ones (same as the SDK).
 - macOS delivers ~3.9 adverts/s from one probe (spec: 4-10/s).
 - New session after a charger cycle (`charger-new-session`): link dropped ~50 s after the probe went in the charger, adverts stopped, and on removal the log range restarted at 0 (max 351 -> 1). `SessionTracker` caught it by log-range regression and backfill restarted at record 0.
-- **Gap:** the 94 B status carries no session ID and nothing calls `DirectProbeLink.readSessionInfo()`, so on fw v2.3.3 every session has id 0 and only the fallback rules tell cooks apart (SessionTracker's documented limitation). Fix: read Session Info (UART 0x03) after connect when the status has none. Also open: fw v2.3.3 is current, so the "94 B = legacy" label in the spec digest may be wrong.
+- **Fixed (Mac):** the 94 B status carries no session ID and nothing read it, so every session had id 0. `DirectProbeLink` now reads Session Info (UART 0x03) on the first status without one and fills it into later statuses; it re-reads if the log range goes backwards. Simulator: `SimulatedProbe.statusWithoutSession` models this firmware; e2e `sessionIdIsReadOverUartWhenTheStatusHasNone`. Not done: node path (`NodeLink.readSessionInfo(probe:)` exists, nothing calls it) and the SDK's 3-minute re-read. Open: fw v2.3.3 is current, so the "94 B = legacy" label in the spec digest may be wrong.
+- Windows has the same three bugs (ported from the same design); port the fixes and tests for parity.
 
 Deviations from 02: `SessionKey` = (serial, sessionId, startedAt) since id 0 repeats; `ProbeSnapshot.instantReadFahrenheit` (Android filters °F separately); probe UART readLogs queued per link instead of `busy`.
 
@@ -127,7 +128,12 @@ Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,24
 ## Next
 
 1. Get CI running (or `swift test` on a Mac, `dotnet test` on Windows); fix compile errors in the Apple-only and Windows-only modules (CoreBluetooth, MacPlatform, Transport.WinRT, Windows.Platform).
-2. M0 on hardware: capture with `colby-capture` in the order of 07 §3; check the discrepancies above. Scripted commands (07 §2.3) are needed for `alarm-trip-silence`.
-3. Split `AlertSound` per 06 §17.3 (looping vs once).
-4. Windows: port the Swift end-to-end suites (M3–M6) to C#.
-5. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension; then W6 (WinUI 3).
+2. M0 on hardware, verify the three fixes first (probe next to the Mac, `cd mac && swift build`):
+   - `swift run colby-capture --name verify-fixes --direct-only --minutes 3`. In the table, surface/ambient never show `-` after the first Normal packet, and `prediction` shows the probe's state without flicker.
+   - In `events.jsonl`: one Read Session Info write (message type byte 4 = `03`) answered by a type-03 response; Read Logs writes only at connect (the history before it), not one per status.
+   - Session id: after the run, the snapshot/meta shows a non-zero id; repeat the charger cycle (07 §3 step 4) and expect a second session with a different id.
+   - Then delete `spec/replays/verify-fixes` or keep it as the first post-fix replay.
+3. Continue 07 §3 at step 5 (`display-relay-2hop`, needs a Display and a Booster; with only a Display, capture a 1-hop `display-relay-1hop`), then step 6 (12 h cook). Scripted commands (07 §2.3) are needed for `alarm-trip-silence`. Check the node path for the same session-ID gap.
+4. Split `AlertSound` per 06 §17.3 (looping vs once).
+5. Windows: port the three hardware fixes above, then the Swift end-to-end suites (M3–M6) to C#.
+6. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension; then W6 (WinUI 3).

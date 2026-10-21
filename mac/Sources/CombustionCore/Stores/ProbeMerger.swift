@@ -4,8 +4,12 @@ import Foundation
 /// Merge state of one probe: many sources in, one `ProbeSnapshot` out. docs/02 §6.1. Pure (no clock, no I/O);
 /// `ProbeStore` supplies arrival times.
 ///
-/// - Live fields (temperatures, mode, color, probe number, battery, virtual sensors, overheating) come from the
-///   freshest observation of any kind. An absent overheating byte keeps the previous value.
+/// - Live fields (color, probe number, battery, overheating) come from the freshest observation of any kind.
+///   An absent overheating byte keeps the previous value.
+/// - Mode: a probe out of the charger interleaves Instant Read and Normal packets several times a second
+///   (fw v2.3.3, docs/07). As in the iOS SDK, Normal packets set T1-T8 and virtual sensors, Instant Read packets
+///   set only the filtered Instant Read value, and the probe counts as in Instant Read until
+///   `instantReadStale` passes without an Instant Read packet.
 /// - Status-only fields (prediction, alarms, food safe, session/log range) come from the freshest full status.
 ///   Advertisements never touch them, and they survive loss of every source (the probe is shown offline).
 /// - Freshness is `ProbeObservation.receivedAt`; ties go to the later arrival.
@@ -16,13 +20,19 @@ struct ProbeMerger {
     }
 
     private struct Live {
-        var temperatures: ProbeTemperatures
-        var mode: ProbeMode
         var color: ProbeColor
         var probeNumber: Int
         var batteryLow: Bool
         var virtualSensors: VirtualSensors
         var overheating: Set<SensorIndex>
+        var receivedAt: Date
+    }
+
+    /// Latest Normal (or Error) mode packet: the only source of T1-T8.
+    private struct Normal {
+        var temperatures: ProbeTemperatures
+        var mode: ProbeMode
+        var virtualSensors: VirtualSensors
         var receivedAt: Date
     }
 
@@ -37,8 +47,14 @@ struct ProbeMerger {
     let serial: ProbeSerial
     private(set) var sources: [LinkSource.PathKey: Entry] = [:]
     private var live: Live?
+    private var normal: Normal?
     private var status: StatusPart?
     private var filter = InstantReadFilter()
+    /// Last Instant Read packet: its time and raw T1.
+    private var instant: (at: Date, t1: Double?)?
+
+    /// iOS SDK `INSTANT_READ_STALE_TIMEOUT`.
+    static let instantReadStale: TimeInterval = 5
 
     init(serial: ProbeSerial) { self.serial = serial }
 
@@ -73,11 +89,22 @@ struct ProbeMerger {
         batteryLow: Bool, virtualSensors: VirtualSensors, overheating: Set<SensorIndex>?
     ) {
         if let cur = live, receivedAt < cur.receivedAt { return }
-        live = Live(temperatures: temperatures, mode: mode, color: color, probeNumber: probeNumber,
-                    batteryLow: batteryLow, virtualSensors: virtualSensors,
+        live = Live(color: color, probeNumber: probeNumber, batteryLow: batteryLow, virtualSensors: virtualSensors,
                     overheating: overheating ?? live?.overheating ?? [], receivedAt: receivedAt)
-        // Instant Read: only T1 is meaningful; filter it. Any other mode resets the filter.
-        filter.addReading(mode == .instantRead ? temperatures[.t1] : nil)
+        if mode == .instantRead {
+            // Only T1 is meaningful. The filter restarts after Instant Read went stale.
+            if !instantActive(at: receivedAt) { filter = InstantReadFilter() }
+            filter.addReading(temperatures[.t1])
+            instant = (receivedAt, temperatures[.t1])
+        } else {
+            normal = Normal(temperatures: temperatures, mode: mode, virtualSensors: virtualSensors,
+                            receivedAt: receivedAt)
+        }
+    }
+
+    private func instantActive(at time: Date) -> Bool {
+        guard let instant else { return false }
+        return time.timeIntervalSince(instant.at) < Self.instantReadStale
     }
 
     /// Drops sources with no data for `ttl` seconds. Returns true if any was dropped.
@@ -91,21 +118,23 @@ struct ProbeMerger {
 
     func snapshot() -> ProbeSnapshot? {
         guard let live else { return nil }
-        let instant = live.mode == .instantRead
-        let temps: [Double?] = live.temperatures.celsius.enumerated().map { i, c in
-            instant && i != 0 ? nil : c
-        }
-        let vs = live.virtualSensors
+        let instantOn = instantActive(at: live.receivedAt)
+        // T1-T8 from the last Normal packet, however old (Normal packets can be 18 s apart in Instant Read, see
+        // spec/replays/instant-read; the iOS SDK keeps them too). Before the first one, T1 from Instant Read alone.
+        let temps: [Double?] = normal.map { $0.temperatures.celsius.map { $0 } }
+            ?? [instant?.t1] + Array(repeating: nil, count: 7)
+        let vs = normal?.virtualSensors ?? live.virtualSensors
         let virtual = VirtualTemps(
             coreSensor: vs.core, surfaceSensor: vs.surface, ambientSensor: vs.ambient,
             core: temps[Int(vs.core.rawValue)], surface: temps[Int(vs.surface.rawValue)],
             ambient: temps[Int(vs.ambient.rawValue)])
         let ordered = sources.values.map(\.source).sorted(by: Self.precedes)
         return ProbeSnapshot(
-            serial: serial, probeNumber: live.probeNumber, color: live.color, mode: live.mode,
+            serial: serial, probeNumber: live.probeNumber, color: live.color,
+            mode: instantOn ? .instantRead : normal?.mode ?? .normal,
             temperatures: temps,
-            instantRead: instant ? filter.celsius : nil,
-            instantReadFahrenheit: instant ? filter.fahrenheit : nil,
+            instantRead: instantOn ? filter.celsius : nil,
+            instantReadFahrenheit: instantOn ? filter.fahrenheit : nil,
             virtual: virtual, batteryLow: live.batteryLow, overheating: live.overheating,
             prediction: status?.prediction, alarms: status?.alarms, foodSafe: status?.foodSafe,
             session: status?.session,

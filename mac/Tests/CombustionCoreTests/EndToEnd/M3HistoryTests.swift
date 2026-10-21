@@ -168,6 +168,36 @@ struct M3HistoryTests {
         await rig.app.stop()
     }
 
+    /// fw v2.3.3 (spec/replays/charger-new-session): the 94 B status has no session id, but Read Session Info works.
+    @Test func sessionIdIsReadOverUartWhenTheStatusHasNone() async throws {
+        let rig = try E2ERig()
+        let probe = rig.probe(serialA, preload: 60, sessionId: 7)
+        probe.statusWithoutSession = true
+        await rig.app.start()
+        await rig.app.follow(serialA)
+        await rig.run(.seconds(30))
+        #expect(await rig.connected(serialA))
+
+        var sessions = try await rig.app.history.sessions(serial: serialA)
+        #expect(sessions.count == 1)
+        #expect(sessions[0].key.sessionId == 7)
+        #expect(try #require(await rig.app.probes.snapshot(of: serialA)).session?.info?.sessionId == 7)
+        let reads = probe.requests.filter { if case .readSessionInfo = $0 { true } else { false } }
+        #expect(reads.count == 1, "read once per link, not per status")
+
+        // A charger cycle while away: the new link reads the new id and history splits the cook.
+        probe.setInRange(false)
+        await rig.run(.seconds(10))
+        probe.newSession()
+        probe.setInRange(true)
+        #expect(await rig.run(until: { await rig.connected(serialA) }, limit: .seconds(40)))
+        await rig.run(.seconds(20))
+        sessions = try await rig.app.history.sessions(serial: serialA)
+        #expect(sessions.map(\.key.sessionId) == [8, 7])
+        #expect(try await rig.storedSeqs(serialA, session: 0) == contiguous(0...probe.logRange.max))
+        await rig.app.stop()
+    }
+
     @Test func unfollowedProbeIsNeverConnectedOrRecorded() async throws {
         let rig = try E2ERig()
         let a = rig.probe(serialA, preload: 10)

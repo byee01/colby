@@ -54,8 +54,9 @@ ProbeSnapshot
   probeNumber: 1..8              # from Mode/ID
   color: ProbeColor              # yellow, grey, unknown(n)
   mode: normal | instantRead | error
-  temperatures: [8] °C?          # T1..T8; nil in Instant Read except T1
-  instantRead: °C?               # filtered, only in instantRead mode
+  temperatures: [8] °C?          # T1..T8 from the last Normal packet; before any, T1 from Instant Read only
+  instantRead: °C?               # filtered; set while mode = instantRead
+  # mode = instantRead until 5 s pass without an Instant Read packet: probes interleave both modes (docs/07)
   virtual: VirtualTemps          # coreSensor, surfaceSensor, ambientSensor indices + their °C
   batteryLow: bool
   overheating: Set<SensorIndex>

@@ -69,6 +69,11 @@ public actor HistoryStore {
     @discardableResult
     public func ingest(status event: ProbeStatusEvent, using fetcher: (any LogFetcher)? = nil) async throws -> SessionKey {
         let (key, rowId) = try record(event)
+        // A Normal status is the record at `logRange.max` (iOS SDK `addDataToLog`), so it is stored as one and
+        // never requested. Instant Read statuses carry only T1.
+        if event.status.mode != .instantRead, try insert([Self.logRecord(event.status)], rowId: rowId) > 0 {
+            publishSeries(rowId)
+        }
         if let f = fetcher ?? logFetcher {
             await liveFetch(serial: event.serial, rowId: rowId, range: event.status.logRange, fetcher: f)
         }
@@ -180,11 +185,26 @@ public actor HistoryStore {
 
     // MARK: - Live fetch and backfill
 
-    private func maxStoredSeq(_ rowId: Int64) throws -> UInt32? {
-        if case .integer(let v)? = try db.query("SELECT MAX(seq) FROM sample WHERE session=?", [.integer(rowId)]).first?.first {
+    /// Highest stored seq below `limit`.
+    private func maxStoredSeq(_ rowId: Int64, below limit: UInt32) throws -> UInt32? {
+        if case .integer(let v)? = try db.query("SELECT MAX(seq) FROM sample WHERE session=? AND seq<?",
+                                                [.integer(rowId), .integer(Int64(limit))]).first?.first {
             return UInt32(v)
         }
         return nil
+    }
+
+    private func hasSeq(_ rowId: Int64, _ seq: UInt32) throws -> Bool {
+        try !db.query("SELECT 1 FROM sample WHERE session=? AND seq=?", [.integer(rowId), .integer(Int64(seq))]).isEmpty
+    }
+
+    private static func logRecord(_ status: ProbeStatusPayload) -> LogRecord {
+        let p = status.prediction
+        return LogRecord(
+            sequence: status.logRange.max, temperatures: status.temperatures,
+            prediction: PredictionLog(virtualSensors: status.virtualSensors, state: p.state, mode: p.mode, type: p.type,
+                                      setpoint: p.setpoint, rawSecondsRemaining: p.rawSecondsRemaining,
+                                      estimatedCore: p.estimatedCore))
     }
 
     private func liveFetch(serial: ProbeSerial, rowId: Int64, range: LogRange, fetcher: any LogFetcher) async {
@@ -196,13 +216,14 @@ public actor HistoryStore {
         defer { liveRunning.remove(rowId) }
         var target = range
         while true {
-            let stored = (try? maxStoredSeq(rowId)) ?? nil
-            if let stored, stored >= target.max { break }
-            // New seqs since the last stored one, at most one chunk; older holes are backfill's job.
+            // New seqs since the last stored one below the newest (usually stored from the status itself),
+            // at most one chunk; older holes are backfill's job.
+            let end = Int64(target.max) - ((try? hasSeq(rowId, target.max)) == true ? 1 : 0)
+            let stored = (try? maxStoredSeq(rowId, below: target.max)) ?? nil
             let from = stored.map { Int64($0) + 1 } ?? Int64(target.min)
-            let start = max(from, Int64(target.max) - Int64(BackfillPlanner.defaultChunkSize) + 1, Int64(target.min))
-            guard start <= Int64(target.max) else { break }
-            _ = await fetchChunk(serial: serial, rowId: rowId, UInt32(start)...target.max, fetcher: fetcher)
+            let start = max(from, end - Int64(BackfillPlanner.defaultChunkSize) + 1, Int64(target.min))
+            guard start <= end else { break }
+            _ = await fetchChunk(serial: serial, rowId: rowId, UInt32(start)...UInt32(end), fetcher: fetcher)
             if let p = livePending.removeValue(forKey: rowId), p.max > target.max {
                 target = p
             } else {

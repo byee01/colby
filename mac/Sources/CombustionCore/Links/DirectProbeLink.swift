@@ -6,6 +6,11 @@ import Foundation
 /// Subscribes to Probe Status and publishes `ProbeObservation(.status)` with source `.directConnection`,
 /// and owns a probe-variant `UartClient` on the UART characteristics. The GATT status payload does not carry
 /// the probe serial, so the caller supplies it (from the advertisement that led to the connection).
+///
+/// The 94 B status (fw v2.3.3 and older) has no session fields. On the first such status the link reads Session
+/// Info over UART and fills it into every later status, so history can tell cooks apart (docs/07). Statuses before
+/// the answer go out without it (`SessionTracker` adopts the id). If the log range goes backwards on the same
+/// link, the cached info is dropped and read again. Firmware that refuses the read keeps sending none.
 public actor DirectProbeLink: LogFetcher {
     public nonisolated let serial: ProbeSerial
     public nonisolated let uart: UartClient
@@ -25,6 +30,10 @@ public actor DirectProbeLink: LogFetcher {
     private var started = false
     private var finished = false
     private var decodeErrors = 0
+    private var sessionInfo: SessionInfo?
+    private var sessionRead: Task<Void, Never>?
+    private var sessionReadRefused = false
+    private var lastLogMax: UInt32?
 
     public init(serial: ProbeSerial, connection: any GattConnection, clock: any Clock) {
         self.serial = serial
@@ -79,6 +88,7 @@ public actor DirectProbeLink: LogFetcher {
         finished = true
         for t in tasks { t.cancel() }
         tasks.removeAll()
+        sessionRead?.cancel()
         await uart.close()
         observationBroadcast.finish()
         disconnectBroadcast.send(reason)
@@ -87,18 +97,40 @@ public actor DirectProbeLink: LogFetcher {
 
     private func handleStatus(_ bytes: [UInt8]) {
         guard !finished else { return }
-        let payload: ProbeStatusPayload
+        var payload: ProbeStatusPayload
         do {
             payload = try decodeProbeStatus(bytes)
         } catch {
             decodeErrors += 1
             return
         }
+        if payload.session == nil {
+            if let last = lastLogMax, payload.logRange.max < last {
+                sessionInfo = nil
+                sessionReadRefused = false
+            }
+            if sessionInfo == nil { requestSessionInfo() }
+            payload.session = sessionInfo
+        }
+        lastLogMax = payload.logRange.max
         let now = clock.now()
         let source = LinkSource(
             kind: .directConnection, highRadioPower: payload.preferences?.highRadioPower, lastSeen: now)
         observationBroadcast.send(ProbeObservation(
             serial: serial, source: source, payload: .status(payload), receivedAt: now))
+    }
+
+    private func requestSessionInfo() {
+        guard sessionRead == nil, !sessionReadRefused else { return }
+        sessionRead = Task {
+            let info = try? await self.readSessionInfo()
+            self.sessionInfoArrived(info)
+        }
+    }
+
+    private func sessionInfoArrived(_ info: SessionInfo?) {
+        sessionRead = nil
+        if let info { sessionInfo = info } else { sessionReadRefused = true }
     }
 
     // MARK: UART

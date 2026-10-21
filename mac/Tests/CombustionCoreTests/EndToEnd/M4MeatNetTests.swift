@@ -157,8 +157,10 @@ struct M4MeatNetTests {
         #expect(!(await rig.nodeConnected()))
         #expect(try #require(await rig.snapshot(serialA)).link.primary?.kind == .directConnection)
         #expect(await rig.eventually { (try? await rig.storedSeqs(serialA).count) ?? 0 >= probe.recordCount - 1 })
-        let viaDirect = readLogCount(probe)
-        #expect(viaDirect > 0, "the hole was backfilled over the direct link")
+        // Direct statuses are stored as records; anything the switch skipped is read over the direct link.
+        #expect(await rig.eventually {
+            (try? await rig.storedSeqs(serialA)) == contiguous(0...probe.logRange.max)
+        }, "history is complete over the direct link")
 
         // The Display returns: the node takes over and the direct link is released.
         display.setInRange(true)
