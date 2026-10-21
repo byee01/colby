@@ -135,5 +135,5 @@ Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,24
    - Then delete `spec/replays/verify-fixes` or keep it as the first post-fix replay.
 3. Continue 07 §3 at step 5 (`display-relay-2hop`, needs a Display and a Booster; with only a Display, capture a 1-hop `display-relay-1hop`), then step 6 (12 h cook). Scripted commands (07 §2.3) are needed for `alarm-trip-silence`. Check the node path for the same session-ID gap.
 4. Split `AlertSound` per 06 §17.3 (looping vs once).
-5. Windows: port the three hardware fixes above, then the Swift end-to-end suites (M3–M6) to C#.
+5. Windows (on a Windows PC, so the WinRT transport and `colby-capture`-style checks can run on hardware too): port the three hardware fixes above from commit `c3a9bfc` (`git show c3a9bfc -- mac/`): `ProbeMerger`, `HistoryStore` (status stored as record, live fetch below max), `DirectProbeLink` (Session Info read), `SimulatedProbe.statusWithoutSession`, and the updated or new tests (including the replay-driven `CapturedInterleavedAdvertsGiveAStableSnapshot`). Then port the Swift end-to-end suites (M3–M6) to C#.
 6. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension; then W6 (WinUI 3).
