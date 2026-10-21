@@ -11,6 +11,7 @@ Planning and documentation only. No code yet.
 | [04-release-and-beta.md](04-release-and-beta.md) | TestFlight / package flight path, CI, crash reporting, release checklist |
 | [05-test-strategy.md](05-test-strategy.md) | Test layers, parity traces, replays, hardware matrix, emulator rig |
 | [06-ux-plan.md](06-ux-plan.md) | UX decisions, screens, graph spec, alerts, kitchen mode, design system, accessibility |
+| [07-hardware-capture.md](07-hardware-capture.md) | Connecting a Mac to real devices (no OS pairing), `colby-capture` spec, M0 capture order |
 | [design/](design/) | `tokens.json`, `components.md`, canvas source (`canvas/`), render tools (`tools/`), screenshots |
 | [HANDOFF.md](HANDOFF.md) | Current state and how to continue in a new session |
 
