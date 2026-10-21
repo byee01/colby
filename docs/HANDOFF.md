@@ -86,6 +86,13 @@ Local toolchain in this kind of container: `/opt/swift/usr/bin` (add to `PATH`);
 
 Spec discrepancies found while writing the codec (verify on hardware): hop count bits (followed SDKs: top 2 bits), overheat bit order (followed Android), GATT status 94 B legacy / 100 B current, node Silence Alarms has a 16 B payload, node 0x48 request is serial only.
 
+Hardware findings (probe `1000D027`, fw v2.3.3, hw v11.0-A1, macOS 26; replays in `spec/replays/`):
+- GATT status is 94 B on fw v2.3.3 (617 of 617 in `out-of-range-return`). 100 B not seen yet.
+- **Bug:** an idle or Instant-Read probe interleaves Instant Read (mode 1, ~70 %) and Normal (mode 0) adverts several times a second (`idle-interleaved-modes`, `instant-read`). `ProbeMerger` takes the mode of the latest advert, so surface/ambient blank and `mode` flips. Fix: Normal adverts update temperatures, Instant Read adverts update only `instantRead`, which expires a few seconds after the last one; check the SDKs first.
+- Backfill works on hardware: 318 records (0-317), none missing, across a 6-minute gap and 6 edge-of-range drops. One record every 5.0 s.
+- **Inefficiency:** while connected, the app sends a Read Logs for each new record (one write every ~5 s, 94 writes in 15 min), with occasional repeats (`0x9E` twice; `0x10B` three times with a growing end). Check whether the live status should be stored as the record instead.
+- macOS delivers ~3.9 adverts/s from one probe (spec: 4-10/s).
+
 Deviations from 02: `SessionKey` = (serial, sessionId, startedAt) since id 0 repeats; `ProbeSnapshot.instantReadFahrenheit` (Android filters °F separately); probe UART readLogs queued per link instead of `busy`.
 
 M5/M6 decisions where the docs are silent:
