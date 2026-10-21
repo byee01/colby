@@ -12,7 +12,7 @@ State of the Colby planning work, for a new session. Branch: `claude/combustion-
 | Release, TestFlight / package flights, crash reporting | `04-release-and-beta.md` |
 | Test strategy | `05-test-strategy.md` |
 | UX plan (current design rules: §4, §8, §13, §17.5, §18) | `06-ux-plan.md` |
-| Hardware capture: connecting to devices, `colby-capture` spec (not built), capture order | `07-hardware-capture.md` |
+| Hardware capture: connecting to devices, `colby-capture`, capture order | `07-hardware-capture.md` |
 | Design tokens + component specs | `design/tokens.json`, `design/components.md` |
 | Design canvas (23 boards) | https://claude.ai/artifact/SptGVDutqLHwzLb7hUJeGU (private); source in `design/canvas/` |
 | Screenshots (always regenerated together) | `design/screenshots/` |
@@ -48,7 +48,7 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 
 | Milestone | State | Where |
 |---|---|---|
-| M0 captures | Blocked: `colby-capture` not built (spec in `07-hardware-capture.md`). Fixtures hand-built from spec @ `eabc77d` + Android SDK tests; regenerate with `python3 spec/tools/gen_codec_fixtures/gen_all.py` | `spec/fixtures/` (330) |
+| M0 captures | Ready to capture: `swift run colby-capture --name <replay>` (07). Not yet run against a device. Fixtures hand-built from spec @ `eabc77d` + Android SDK tests; regenerate with `python3 spec/tools/gen_codec_fixtures/gen_all.py` | `spec/fixtures/` (330) |
 | M1 codec | Done, 100% region coverage | `Sources/CombustionCodec` |
 | M2 transport + adverts | Done on simulator. CoreBluetooth transport written, **never compiled** (Linux only so far) | `Sources/CombustionCoreBluetooth`, `Links/AdvertisementSource`, `Stores/ProbeStore` |
 | M3 direct link + history | Done on simulator: UartClient, DirectProbeLink, SessionTracker, HistoryStore (SQLite), BackfillPlanner, DirectConnectionPolicy, CombustionApp facade, e2e tests for exit criteria | `Sources/CombustionCore`, `Tests/CombustionCoreTests/EndToEnd` |
@@ -78,7 +78,7 @@ Owner checklist, in order:
 4. Still failing: merge the workflow files to `main` (workflows register from the default branch), or make the repo public.
 5. Workaround without CI: `cd mac && swift test` on a Mac with Xcode 16.
 
-`swift build` passes on a Mac (Xcode, Swift 6.2.4, 2026-10-20), so `CombustionCoreBluetooth` and `CombustionMacPlatform` compile; neither has run against hardware, and `swift test` has not been run on a Mac.
+On a Mac (Xcode, Swift 6.2.4, macOS 26, 2026-10-20): `swift build` passes, so `CombustionCoreBluetooth` and `CombustionMacPlatform` compile, and `swift test` passes all 446. `colby-capture` reaches `poweredOn`; no device heard yet.
 
 Local toolchain in this kind of container: `/opt/swift/usr/bin` (add to `PATH`); `swift test` takes ~35 s.
 
@@ -118,7 +118,7 @@ Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,24
 ## Next
 
 1. Get CI running (or `swift test` on a Mac, `dotnet test` on Windows); fix compile errors in the Apple-only and Windows-only modules (CoreBluetooth, MacPlatform, Transport.WinRT, Windows.Platform).
-2. M0 on hardware: build `colby-capture` (07 §2), then capture in the order of 07 §3; check the discrepancies above.
+2. M0 on hardware: capture with `colby-capture` in the order of 07 §3; check the discrepancies above. Scripted commands (07 §2.3) are needed for `alarm-trip-silence`.
 3. Split `AlertSound` per 06 §17.3 (looping vs once).
 4. Windows: port the Swift end-to-end suites (M3–M6) to C#.
 5. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension; then W6 (WinUI 3).

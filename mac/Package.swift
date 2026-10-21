@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "CombustionCoreBluetooth", targets: ["CombustionCoreBluetooth"]),
         .library(name: "CombustionMacPlatform", targets: ["CombustionMacPlatform"]),
         .executable(name: "colby-sim", targets: ["ColbySim"]),
+        .executable(name: "colby-capture", targets: ["ColbyCapture"]),
     ],
     targets: [
         // Pure wire codec. No dependencies, no I/O, no clock.
@@ -27,6 +28,15 @@ let package = Package(
         .target(name: "CombustionMacPlatform", dependencies: ["CombustionCore"]),
         // Debug CLI: CombustionApp against simulated probes, with a live table.
         .executableTarget(name: "ColbySim", dependencies: ["CombustionCore", "CombustionSim"]),
+        // Info.plist is embedded in the binary so CoreBluetooth finds NSBluetoothAlwaysUsageDescription.
+        .executableTarget(
+            name: "ColbyCapture",
+            dependencies: ["CombustionCore", "CombustionSim", "CombustionCoreBluetooth"],
+            exclude: ["Info.plist"],
+            linkerSettings: [.unsafeFlags(
+                ["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist",
+                 "-Xlinker", "\(Context.packageDirectory)/Sources/ColbyCapture/Info.plist"],
+                .when(platforms: [.macOS]))]),
         .testTarget(name: "CombustionCodecTests", dependencies: ["CombustionCodec"]),
         .testTarget(name: "CombustionCoreTests", dependencies: ["CombustionCore", "CombustionSim"]),
         .testTarget(name: "CombustionSimTests", dependencies: ["CombustionSim"]),
