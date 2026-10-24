@@ -81,6 +81,49 @@ public final class UserNotificationPresenter: NotificationPresenting, @unchecked
     }
 }
 
+/// What the user did with a posted alert notification.
+public enum NotificationActionKind: Sendable, Equatable {
+    case acknowledge, snooze, open
+
+    /// nil for a dismiss or an action that is not ours.
+    public init?(actionIdentifier: String) {
+        switch actionIdentifier {
+        case UserNotificationPresenter.acknowledgeAction: self = .acknowledge
+        case UserNotificationPresenter.snoozeAction: self = .snooze
+        case UNNotificationDefaultActionIdentifier: self = .open
+        default: return nil
+        }
+    }
+}
+
+/// `UNUserNotificationCenter` delegate: routes Acknowledge / Snooze / click on a banner to `handler` with the
+/// alert id, and shows banners while the app is frontmost (without the notification sound: the alert's own
+/// sound already plays in-app). Set it as the delegate before launch finishes; the center holds it weakly.
+public final class NotificationActionRouter: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    public typealias Handler = @Sendable (NotificationActionKind, String) async -> Void
+    private let handler: Handler
+
+    public init(center: UNUserNotificationCenter = .current(), handler: @escaping Handler) {
+        self.handler = handler
+        super.init()
+        center.delegate = self
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
+    ) async {
+        guard let kind = NotificationActionKind(actionIdentifier: response.actionIdentifier),
+              let id = response.notification.request.content.userInfo["alertId"] as? String else { return }
+        await handler(kind, id)
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter, willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .list]
+    }
+}
+
 // MARK: - Sound
 
 /// Plays built-in system sounds with `NSSound` (06 §17.3), once or looped. Nothing is bundled; sounds are

@@ -13,8 +13,11 @@ public final class Runtime: @unchecked Sendable {
     public let isDemo: Bool
     /// Asks for notification permission (06 §10: when the first alert rule is on; the default set is on).
     public let requestNotifications: @Sendable () async -> Void
+    /// A notification banner was clicked (alert id). Set by `AppController`.
+    @MainActor public var onOpenAlert: ((String) -> Void)?
     private var driver: Task<Void, Never>?
     private var demoProbes: [SimulatedProbe] = []
+    private var router: NotificationActionRouter?
 
     private init(app: CombustionApp, clock: any Clock, isDemo: Bool, requestNotifications: @escaping @Sendable () async -> Void) {
         self.app = app
@@ -28,7 +31,10 @@ public final class Runtime: @unchecked Sendable {
     /// The real thing: CoreBluetooth, history in Application Support, notifications, looping sounds, keep-awake.
     public static func live(appGroup: String? = nil) throws -> Runtime {
         let clock = SystemClock()
-        let notifications = UserNotificationPresenter()
+        let notifications = UserNotificationPresenter { alert in
+            let text = alertText(alert, format: Formatter(unit: .default()))
+            return (text.title, text.detail ?? "")
+        }
         let snapshot = appGroup
             .flatMap { LiveSnapshotLocation.appGroupURL(group: $0) }
             .map { FileLiveSnapshotWriter(url: $0) }
@@ -36,7 +42,15 @@ public final class Runtime: @unchecked Sendable {
             transport: CoreBluetoothTransport(clock: clock), clock: clock, databasePath: try databasePath(),
             alertSinks: [NotificationAlertSink(notifications), SoundAlertSink(SystemSoundPlayer())],
             keepAwake: PowerAssertionKeepAwake(), liveSnapshot: snapshot)
-        return Runtime(app: app, clock: clock, isDemo: false) { _ = await notifications.requestAuthorization() }
+        let runtime = Runtime(app: app, clock: clock, isDemo: false) { _ = await notifications.requestAuthorization() }
+        runtime.router = NotificationActionRouter { [weak runtime] kind, id in
+            switch kind {
+            case .acknowledge: await app.alerts.acknowledge(id)
+            case .snooze: await app.alerts.snooze(id, duration: .seconds(300))
+            case .open: await MainActor.run { runtime?.onOpenAlert?(id) }
+            }
+        }
+        return runtime
     }
 
     /// Demo mode (06 §3, App Review): three simulated probes in the middle of a cook, in real time from now.

@@ -151,6 +151,26 @@ struct ProbeChip: View {
     }
 }
 
+/// A plain trend line scaled to its own range (Instant Read, popover rows, kitchen tiles).
+struct Sparkline: View {
+    var values: [Double]
+    var color: Color = P.core
+
+    var body: some View {
+        Canvas { ctx, size in
+            guard values.count > 1, let lo = values.min(), let hi = values.max() else { return }
+            let span = max(hi - lo, 1)  // flat readings draw a flat line mid-height, not noise
+            var path = Path()
+            for (i, v) in values.enumerated() {
+                let pt = CGPoint(x: size.width * CGFloat(i) / CGFloat(values.count - 1),
+                                 y: size.height * (1 - CGFloat((v - lo) / span)) * 0.9 + size.height * 0.05)
+                if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+            }
+            ctx.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+        }
+    }
+}
+
 /// Progress toward the removal temperature.
 struct ProgressBar: View {
     var fraction: Double

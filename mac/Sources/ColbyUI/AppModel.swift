@@ -17,12 +17,17 @@ public final class AppModel {
     public private(set) var alerts: [AlertInstance] = []
     /// History of the selected probe's current session.
     public private(set) var series: TemperatureSeries?
+    /// The selected probe's Instant Read readings (°C) over the last 30 s, for the sparkline.
+    public private(set) var instantReadTrail = InstantReadTrail()
     public private(set) var now: Date
     /// The probe on the graph. Until the user picks one it follows the lowest probe number.
     public var selected: ProbeSerial? {
         didSet {
             if !autoSelecting { userSelected = true }
-            if selected != oldValue { watchSeries() }
+            if selected != oldValue {
+                instantReadTrail = InstantReadTrail()
+                watchSeries()
+            }
         }
     }
     public var unit: TemperatureUnit = .default()
@@ -116,6 +121,7 @@ public final class AppModel {
             selected = probes.first?.serial
             autoSelecting = false
         }
+        if let p = selectedProbe { instantReadTrail.add(p.mode == .instantRead ? p.instantRead : nil, at: p.receivedAt) }
     }
 
     private func watchSeries() {

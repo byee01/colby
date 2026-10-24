@@ -94,7 +94,7 @@ public struct MainView: View {
                 if let ready = ReadyText(prediction, format: format) { ReadyBlock(text: ready) }
             }
             if probe.mode == .instantRead {
-                InstantReadView(celsius: probe.instantRead, format: format)
+                InstantReadView(celsius: probe.instantRead, trail: model.instantReadTrail, format: format)
             } else {
                 ReadoutRow(
                     core: format.temperature(scrub?.core ?? probe.virtual.core),
@@ -149,6 +149,7 @@ public struct MainView: View {
 /// Instant Read (components.md): a single large number while the probe is in Instant Read mode.
 struct InstantReadView: View {
     var celsius: Double?
+    var trail: InstantReadTrail
     var format: Formatter
 
     var body: some View {
@@ -163,6 +164,9 @@ struct InstantReadView: View {
             }
             .minimumScaleFactor(0.3)
             .lineLimit(1)
+            Sparkline(values: trail.points.map(\.celsius))
+                .frame(maxWidth: 520, maxHeight: 90)
+                .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)

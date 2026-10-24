@@ -64,3 +64,17 @@ struct FormatTests {
         #expect(TemperatureUnit.default(for: Locale(identifier: "en_GB")) == .celsius)
     }
 }
+
+struct InstantReadTrailTests {
+    @Test func keepsThirtySecondsAndClearsOutsideInstantRead() {
+        var trail = InstantReadTrail()
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+        for i in 0..<40 { trail.add(20 + Double(i), at: t0.addingTimeInterval(Double(i))) }
+        #expect(trail.points.count == 31)
+        #expect(trail.points.first?.celsius == 29)
+        trail.add(99, at: t0.addingTimeInterval(39))  // same time again: ignored
+        #expect(trail.points.last?.celsius == 59)
+        trail.add(nil, at: t0.addingTimeInterval(40))
+        #expect(trail.points.isEmpty)
+    }
+}

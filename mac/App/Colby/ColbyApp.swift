@@ -16,8 +16,22 @@ struct ColbyApp: App {
             MenuContent(controller: controller)
         } label: {
             MenuBarLabel(model: controller.model)
+                .modifier(OpenMainOnRequest(controller: controller))
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+/// The menu bar label is always alive, so it opens the window when a notification is clicked.
+private struct OpenMainOnRequest: ViewModifier {
+    var controller: AppController
+    @Environment(\.openWindow) private var openWindow
+
+    func body(content: Content) -> some View {
+        content.onChange(of: controller.openMainRequests) {
+            openWindow(id: "main")
+            NSApp.activate()
+        }
     }
 }
 

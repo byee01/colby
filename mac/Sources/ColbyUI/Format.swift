@@ -131,3 +131,27 @@ extension ProbeSerial {
     /// Name shown until the user gives the cook a nickname.
     public var displayName: String { "Probe \(hex)" }
 }
+
+/// The last `window` seconds of Instant Read readings; cleared when the probe leaves Instant Read.
+public struct InstantReadTrail: Equatable, Sendable {
+    public struct Point: Equatable, Sendable {
+        public var time: Date
+        public var celsius: Double
+    }
+
+    public private(set) var points: [Point] = []
+    public var window: TimeInterval = 30
+
+    public init() {}
+
+    /// `nil` (not in Instant Read) clears the trail. Repeated times are ignored.
+    public mutating func add(_ celsius: Double?, at time: Date) {
+        guard let celsius else {
+            points.removeAll()
+            return
+        }
+        if let last = points.last, time <= last.time { return }
+        points.append(Point(time: time, celsius: celsius))
+        points.removeAll { time.timeIntervalSince($0.time) > window }
+    }
+}
