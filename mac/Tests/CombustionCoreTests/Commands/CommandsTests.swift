@@ -92,6 +92,16 @@ struct CommandsTests {
         #expect(rig.route.requests == [.setPrediction(setpoint: 63, mode: .timeToRemoval)])
     }
 
+    @Test func aSetpointReportedOneTenthLowStillConfirms() async throws {
+        // Hardware: 85 °F was sent as 29.4 °C and the probe reported 29.3 °C.
+        let rig = await Rig()
+        rig.probeApplies { request in
+            guard case .setPrediction(let sp, let mode) = request else { return (AlarmConfig(), F.prediction()) }
+            return (AlarmConfig(), F.prediction(state: .predicting, mode: mode, setpoint: sp - 0.1, seconds: 1800))
+        }
+        try await rig.commands.setPrediction(F.serial, mode: .removalAndResting, setpoint: 29.4)
+    }
+
     @Test func setPredictionNotConfirmedWhenTheStatusKeepsTheOldValue() async {
         let rig = await Rig()
         let result = await rig.finish { try await rig.commands.setPrediction(F.serial, mode: .removalAndResting, setpoint: 57) }
