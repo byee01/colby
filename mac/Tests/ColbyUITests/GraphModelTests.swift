@@ -21,17 +21,24 @@ private func series(_ seqs: [UInt32], core: (UInt32) -> Double = { 20 + Double($
 }
 
 struct GraphModelTests {
-    @Test func yAxisFollowsTheUxRule() {
-        // Ambient 100 °C = 212 °F; target 95 °C = 203 °F. 212 + 30 → 250; lower bound 50.
+    @Test func yAxisFitsTheReadingsAndTarget() {
+        // Readings run from about 20 °C to 100 °C ambient; the target 95 °C is inside that.
         let now = start.addingTimeInterval(600)
-        let m = GraphModel(series: series(Array(0...120)), target: 95, range: .all, now: now, width: 400, unit: .fahrenheit)
-        #expect(m.yMin == 50)
-        #expect(m.yMax == 250)
-        #expect(m.yStep == 50)
-        // In °C the data dips below 50, so the axis starts at 0.
-        let mc = GraphModel(series: series(Array(0...120)), target: nil, range: .all, now: now, width: 400, unit: .celsius)
-        #expect(mc.yMin == 0)
-        #expect(mc.yMax == 150)
+        let m = GraphModel(series: series(Array(0...120)), target: 95, range: .all, now: now, width: 400, unit: .celsius)
+        #expect(m.yMin <= 20 && m.yMin >= 0)
+        #expect(m.yMax >= 100 && m.yMax <= 120)
+        #expect((m.yMax - m.yMin) / m.yStep <= 6)
+    }
+
+    @Test func aFlatRoomTemperatureTraceGetsATightAxis() {
+        // The phone app's look: 72-77 °F fills the plot instead of hugging the bottom of 50-150.
+        let axis = GraphModel.yAxis([72, 73.5, 75, 77], target: nil)
+        #expect(axis.min == 65 && axis.max == 85 && axis.step == 5)
+        // A target above the readings stays on the plot.
+        let withTarget = GraphModel.yAxis([72, 77], target: 203)
+        #expect(withTarget.min <= 72 && withTarget.max >= 203)
+        // Nothing to show yet.
+        #expect(GraphModel.yAxis([], target: nil) == (50, 100, 10))
     }
 
     @Test func missingSamplesBreakTheLine() {

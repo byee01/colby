@@ -63,21 +63,35 @@ struct GraphModel {
         var start = range.span.map { max(first, end.addingTimeInterval(-$0)) } ?? first
         if end.timeIntervalSince(start) < 60 { start = end.addingTimeInterval(-60) }
 
-        // 06 §4.1: 50° to max(ambient, target) + 30, rounded to 50; ticks 50, or 100 above a 300° span.
-        let visible = pts.filter { $0.time >= start }
-        let hi = unit.convert(max(visible.map { max($0.ambient, $0.core, $0.surface) }.max() ?? 0, celsius ?? 0)) + 30
-        let lo = min(visible.map { unit.convert(min($0.ambient, $0.core, $0.surface)) }.min() ?? 50, 50)
-        let yMin = (lo / 50).rounded(.down) * 50
-        let yMax = max(yMin + 50, (hi / 50).rounded(.up) * 50)
+        let (yMin, yMax, yStep) = Self.yAxis(
+            pts.filter { $0.time >= start }.flatMap { [$0.core, $0.surface, $0.ambient] }.map(unit.convert),
+            target: celsius.map(unit.convert))
         self.start = start
         self.end = end
         self.yMin = yMin
         self.yMax = yMax
-        yStep = yMax - yMin > 300 ? 100 : 50
+        self.yStep = yStep
         points = pts
         self.unit = unit
         self.breaks = breaks
         target = celsius
+    }
+
+    /// 06 §4.1: fit the visible readings and the target, padded, at least 10° tall, on a 1-2-5 step that gives
+    /// at most five gaps. Values in the display unit.
+    static func yAxis(_ values: [Double], target: Double?) -> (min: Double, max: Double, step: Double) {
+        let all = values + (target.map { [$0] } ?? [])
+        guard var lo = all.min(), var hi = all.max() else { return (50, 100, 10) }
+        if hi - lo < 10 {
+            let mid = (lo + hi) / 2
+            (lo, hi) = (mid - 5, mid + 5)
+        }
+        let pad = (hi - lo) * 0.1
+        lo -= pad
+        hi += pad
+        let step = [1.0, 2, 5, 10, 20, 25, 50, 100, 200].first { (hi - lo) / $0 <= 5 } ?? 500
+        let yMin = (lo / step).rounded(.down) * step
+        return (yMin, max(yMin + step, (hi / step).rounded(.up) * step), step)
     }
 
     func x(_ t: Date, in rect: CGRect) -> CGFloat {
