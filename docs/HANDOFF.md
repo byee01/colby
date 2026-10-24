@@ -48,7 +48,7 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 
 | Milestone | State | Where |
 |---|---|---|
-| M0 captures | In progress: steps 1-4 of 07 §3 captured (4 replays in `spec/replays/`); 3 bugs found and fixed on simulator, not yet re-checked on hardware. Next: verify, then step 5. Fixtures hand-built from spec @ `eabc77d` + Android SDK tests; regenerate with `python3 spec/tools/gen_codec_fixtures/gen_all.py` | `spec/fixtures/` (330) |
+| M0 captures | In progress: steps 1-4 of 07 §3 captured; 3 bugs found, fixed and verified on hardware (2026-10-23: `verify-fixes`, `verify-session-charger`; 6 replays in `spec/replays/`). Next: step 5. Fixtures from spec @ `eabc77d` + Android SDK tests + one hardware frame (`source: hardware`); regenerate with `python3 spec/tools/gen_codec_fixtures/gen_all.py` | `spec/fixtures/` (331) |
 | M1 codec | Done, 100% region coverage | `Sources/CombustionCodec` |
 | M2 transport + adverts | Done on simulator. CoreBluetooth transport written, **never compiled** (Linux only so far) | `Sources/CombustionCoreBluetooth`, `Links/AdvertisementSource`, `Stores/ProbeStore` |
 | M3 direct link + history | Done on simulator: UartClient, DirectProbeLink, SessionTracker, HistoryStore (SQLite), BackfillPlanner, DirectConnectionPolicy, CombustionApp facade, e2e tests for exit criteria | `Sources/CombustionCore`, `Tests/CombustionCoreTests/EndToEnd` |
@@ -128,11 +128,7 @@ Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,24
 ## Next
 
 1. Get CI running (or `swift test` on a Mac, `dotnet test` on Windows); fix compile errors in the Apple-only and Windows-only modules (CoreBluetooth, MacPlatform, Transport.WinRT, Windows.Platform).
-2. M0 on hardware, verify the three fixes first (probe next to the Mac, `cd mac && swift build`):
-   - `swift run colby-capture --name verify-fixes --direct-only --minutes 3`. In the table, surface/ambient never show `-` after the first Normal packet, and `prediction` shows the probe's state without flicker.
-   - In `events.jsonl`: one Read Session Info write (message type byte 4 = `03`) answered by a type-03 response; Read Logs writes only at connect (the history before it), not one per status.
-   - Session id: after the run, the snapshot/meta shows a non-zero id; repeat the charger cycle (07 §3 step 4) and expect a second session with a different id.
-   - Then delete `spec/replays/verify-fixes` or keep it as the first post-fix replay.
+2. ~~Verify the three Mac fixes on hardware~~ Done 2026-10-23. `verify-fixes` (3 min idle): surface/ambient never blank, prediction steady, 2 writes in total (Session Info, Read Logs 0-10). `verify-session-charger`: session `0x0160D73D`, link drop in the charger, reconnect with Session Info re-read, new session `0xC6F7493C`, Read Logs 0-1. The Session Info reply is now a codec fixture (`response_probe_session_info_hw_fw_2_3_3`; our CRC matches the firmware's). `colby-capture --minutes` takes fractions now (it used to drop `0.5` silently and run until Ctrl-C).
 3. Continue 07 §3 at step 5 (`display-relay-2hop`, needs a Display and a Booster; with only a Display, capture a 1-hop `display-relay-1hop`), then step 6 (12 h cook). Scripted commands (07 §2.3) are needed for `alarm-trip-silence`. Check the node path for the same session-ID gap.
 4. Split `AlertSound` per 06 §17.3 (looping vs once).
 5. Windows (on a Windows PC, so the WinRT transport and `colby-capture`-style checks can run on hardware too): port the three hardware fixes above from commit `c3a9bfc` (`git show c3a9bfc -- mac/`): `ProbeMerger`, `HistoryStore` (status stored as record, live fetch below max), `DirectProbeLink` (Session Info read), `SimulatedProbe.statusWithoutSession`, and the updated or new tests (including the replay-driven `CapturedInterleavedAdvertsGiveAStableSnapshot`). Then port the Swift end-to-end suites (M3–M6) to C#.

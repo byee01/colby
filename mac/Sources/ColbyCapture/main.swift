@@ -17,7 +17,7 @@ import CombustionCoreBluetooth
 struct Options {
     var name = ""
     var serials: Set<String> = []
-    var minutes: Int?
+    var minutes: Double?
     var advOnly = false
     var directOnly = false
     var notes: String?
@@ -34,7 +34,12 @@ struct Options {
             switch a {
             case "--name": name = it.next() ?? ""
             case "--serial": if let s = it.next() { serials.insert(s.uppercased()) }
-            case "--minutes": minutes = it.next().flatMap(Int.init)
+            case "--minutes":
+                guard let m = it.next().flatMap(Double.init), m > 0 else {
+                    print("--minutes needs a positive number\n" + Options.usage)
+                    exit(2)
+                }
+                minutes = m
             case "--adv-only": advOnly = true
             case "--direct-only": directOnly = true
             case "--notes": notes = it.next()
@@ -169,7 +174,7 @@ func row(_ cells: [String]) -> String {
 }
 
 /// Ends on Ctrl-C or after `minutes`.
-func waitForEnd(minutes: Int?) async {
+func waitForEnd(minutes: Double?) async {
     signal(SIGINT, SIG_IGN)
     let (stream, continuation) = AsyncStream<Void>.makeStream()
     let source = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
