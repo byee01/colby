@@ -32,8 +32,10 @@ internal sealed class ProbeMerger(ProbeSerial serial)
     private sealed record StatusPart(
         PredictionStatus Prediction, AlarmConfig? Alarms, FoodSafe? FoodSafe, ProbeSessionState Session, DateTimeOffset ReceivedAt);
 
-    /// <summary>iOS SDK <c>INSTANT_READ_STALE_TIMEOUT</c>.</summary>
-    internal const double InstantReadStale = 5;
+    /// <summary>The iOS SDK uses 5 s, but while a link is up the probe advertises far less (~0.8/s instead of ~4/s) and
+    /// Instant Read packets come 5-10 s apart, so 5 s made the mode (and the app's Instant Read view) flip every
+    /// few seconds on hardware (2026-10-23). 15 s covers the gaps seen; leaving Instant Read shows 15 s late.</summary>
+    internal const double InstantReadStale = 15;
 
     private readonly Dictionary<PathKey, Entry> _sources = [];
     private Live? _live;

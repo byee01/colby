@@ -214,15 +214,41 @@ public class ProbeStoreTests
         s = store.Snapshot(F.Serial)!;
         Assert.True(s.Mode == ProbeMode.InstantRead && s.InstantRead == 21.0);
         Assert.All(s.Temperatures, v => Assert.NotNull(v));
-        for (var i = 0; i < 60; i++)
+        for (var i = 0; i < 180; i++)
         {
-            await Feed(25, ProbeMode.Normal); // 5 s without Instant Read
+            await Feed(25, ProbeMode.Normal); // 15 s without Instant Read
         }
         s = store.Snapshot(F.Serial)!;
         Assert.Equal(ProbeMode.Normal, s.Mode);
         Assert.True(s.InstantRead is null && s.InstantReadFahrenheit is null);
         await Feed(30.0); // filter restarted: rounds, no memory of 21
         Assert.Equal(30.0, store.Snapshot(F.Serial)!.InstantRead);
+        store.Stop();
+    });
+
+    /// <summary>While the app holds a link the probe advertises far less: Instant Read packets 5-10 s apart, Normal in
+    /// between. The mode must hold (it flipped every few seconds on hardware with a 5 s hold).</summary>
+    [Fact]
+    public void SparseInstantReadPacketsWhileConnectedKeepTheMode() => Det.Run(async () =>
+    {
+        var clock = new TestClock();
+        var store = MakeStore(clock);
+        var changes = 0;
+        ProbeMode? last = null;
+        for (var i = 0; i < 60; i++)
+        {
+            var mode = i % 8 == 0 ? ProbeMode.InstantRead : ProbeMode.Normal; // Instant Read every 9.6 s
+            store.Ingest(F.Observe(F.Ad(F.Advertisement(mode: mode, t1: 23.5)), LinkKind.Advertisement, clock.Now()));
+            var s = store.Snapshot(F.Serial)!;
+            if (last is { } l && l != s.Mode)
+            {
+                changes++;
+            }
+            last = s.Mode;
+            await clock.AdvanceAsync(TimeSpan.FromMilliseconds(1200));
+        }
+        Assert.Equal(0, changes);
+        Assert.Equal(ProbeMode.InstantRead, last);
         store.Stop();
     });
 
@@ -290,7 +316,7 @@ public class ProbeStoreTests
             checkedCount++;
         }
         Assert.True(checkedCount > 250);
-        Assert.True(modeChanges <= 10, $"{modeChanges} mode changes");
+        Assert.True(modeChanges <= 1, $"{modeChanges} mode changes");
         store.Stop();
     });
 
