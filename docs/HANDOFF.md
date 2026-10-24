@@ -40,7 +40,7 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 | # | Item |
 |---|---|
 | 1 | App icon / logo |
-| 2 | Barlow Condensed tabular figures check in SwiftUI and WinUI (M2 spike) |
+| 2 | Barlow Condensed tabular figures: SwiftUI checked (`.monospacedDigit()` on the bundled font lines up in `colby-shots`); WinUI still open |
 | 3 | Usability test (06 §15 U5) |
 | 4 | Optional interactive prototype (U4) |
 
@@ -56,8 +56,9 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 | M5 prediction + commands | Done on simulator: `PredictionPresenter` (iOS `PredictionManager` smoothing, `readyAt`, `readySince`, stale), `Commands` (set prediction, set/replace alarms read-modify-write, silence; confirmed by next status; `CommandRouting` so a node route plugs in), e2e vs `SimulatedProbe` | `Sources/CombustionCore/Presenter`, `Commands` |
 | M6 alerts | Done on simulator: `AlertEngine` (all §9 rules, probe alarms, overheat, hysteresis, sustain, ack, snooze, silence, latching Ready), sink adapters, default alert set; `SQLiteAlertStore` (rules with order, configured-set marker, alert log via `consume(alerts.events)`, `events(for:in:)` for history), schema v2; `LiveSnapshotWriter` (02 §18; immediate on state change, else every 5 s; 30-point trend); macOS adapters `UserNotificationPresenter`, `SystemSoundPlayer`, `PowerAssertionKeepAwake`, `LiveSnapshotLocation` (**never compiled**, Apple-only) | `Sources/CombustionCore/Alerts`, `Widgets`, `Sources/CombustionMacPlatform` |
 | Sim | SimulatedTransport, RecordingTransport, replay format, SimulatedProbe; `swift run colby-sim` | `Sources/CombustionSim`, `Sources/ColbySim` |
+| M7 app | Slice 1 (2026-10-23): `ColbyUI` library (tokens, bundled Barlow / Barlow Condensed, `Formatter`, `AppModel` over the facade, `Runtime` live or demo, `AppController`), main window (header + ReadyBlock, ReadoutRow, Canvas TempGraph with hover scrub and Live/1h/4h/All, probe chips, inspector, AlertBand, StatusPanel for Bluetooth states), Instant Read view, menu bar extra (label + popover). App bundle from XcodeGen (`mac/App/project.yml`: sandbox, Bluetooth entitlement, usage string, ad-hoc signed). `swift run colby-shots --out DIR` renders the views offscreen against demo mode. Not yet: sheets (set target, alarms), kitchen mode, history, settings, onboarding, widgets extension, live window, login item, notification actions, MetricKit, TestFlight CI | `Sources/ColbyUI`, `Sources/ColbyShots`, `App/` |
 
-Tests: `cd mac && swift test` (454; Swift 6.1.3 Linux, 6.2.4 macOS). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
+Tests: `cd mac && swift test` (464; Swift 6.1.3 Linux, 6.2.4 macOS). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
 
 ## CI status (blocked)
 
@@ -138,4 +139,6 @@ Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,24
 3. Continue 07 §3: `display-relay-2hop` when a Booster is available, step 6 (12 h cook). Scripted commands (07 §2.3) are needed for `alarm-trip-silence`.
 4. ~~Split `AlertSound` per 06 §17.3~~ Done on Mac; Windows still to port (see Windows status).
 5. Windows (on a Windows PC, so the WinRT transport and `colby-capture`-style checks can run on hardware too): port the Display fixes (serial-0 adverts, node Session Info, `0x45` coverage: `git show 602e108 -- mac/`) and the three hardware fixes from commit `c3a9bfc` (`git show c3a9bfc -- mac/`): `ProbeMerger`, `HistoryStore` (status stored as record, live fetch below max), `DirectProbeLink` (Session Info read), `SimulatedProbe.statusWithoutSession`, and the updated or new tests (including the replay-driven `CapturedInterleavedAdvertsGiveAStableSnapshot`). Then port the Swift end-to-end suites (M3–M6) to C#.
-6. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension; then W6 (WinUI 3).
+6. M7 (slice 1 done, see table). App: `cd mac/App && xcodegen && xcodebuild -project Colby.xcodeproj -scheme Colby -derivedDataPath build build`, then `open build/Build/Products/Debug/Colby.app --args --demo` (omit `--demo` for Bluetooth). Next slices, in order: run live against the probe (first launch asks for Bluetooth); notification actions (Acknowledge / Snooze from the banner need a `UNUserNotificationCenter` delegate); Set target + Alarms sheets (`Commands`); kitchen mode; history list/detail; settings (units, prediction time, sounds, login item); onboarding; widgets extension + App Group (needs a team ID); live window; TestFlight CI. Then W6 (WinUI 3).
+   - `ImageRenderer` does not draw `ScrollView` contents or AppKit controls (`ProgressView`), so `colby-shots` misses them; the main window avoids both where it can.
+   - The demo's countdowns come from `SimulatedProbe.predictionLeadSeconds` (fixed per probe), not from the temperature curve; progress starts at 0 %.

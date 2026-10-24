@@ -3,3 +3,5 @@ windows/**/obj/
 windows/**/TestResults/
 windows/.vs/
 *.user
+mac/App/*.xcodeproj/
+mac/App/build/
