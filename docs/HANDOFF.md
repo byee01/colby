@@ -167,6 +167,12 @@ Windows session notes (2026-10-24):
 - The repo is private: on a fresh PC, `git credential-manager github login --browser` signs in (the agent shell sets `GIT_TERMINAL_PROMPT=0`, so a plain `git fetch` cannot prompt).
 - Windows one-shot alert sounds (row 2): Countdown `Notification.Reminder`, Problem `Notification.Default`, Custom `Notification.IM`; not heard on hardware yet.
 
+WinRT hardware findings (Windows 11 26200, Realtek USB `13D3:3601` driver 18.4021.2412.2701, probe `1000D027`, Display `T100000LG5`; capture tool `windows/tools/Colby.Capture`, same flags as `colby-capture`):
+- Radio state works: with Bluetooth off in Settings the transport published `PoweredOff` (WinRT `Radio.State` Off), then `PoweredOn`.
+- Scanning works (`spec/replays/win-adv-only`): adverts decode, all three temperatures shown. Only ~1.8 adverts/s (55 in 30 s; Mac 3.9/s) and RSSI mostly a constant -78; WinRT may coalesce. The Display was heard on the second run.
+- **Open, blocks the hardware run: no LE connection.** Every connect attempt timed out (`spec/replays/win-direct-first`: 6 attempts in 2 min, all `connecting` -> `backoff`). A bare WinRT experiment shows `GattSession.MaintainConnection = true` alone never opens the link (session stays Closed 20 s), and `GetGattServicesAsync(Uncached)` returns `Unreachable` after ~4 s, for the probe and for the Display, with or without the watcher running, four retries in a row. So the PC's stack, not Colby, fails to connect. Next: check whether this PC connects to any BLE device, that the phone app is closed, toggle Bluetooth / reboot, or try a USB BLE dongle.
+- Likely transport change once a PC connects: `WaitForLinkAsync` waits only on `MaintainConnection`; on Windows a GATT request (`GetGattServicesAsync`) is what usually makes the OS connect, so the connect path should probably issue discovery too. Verify on a PC that connects before changing it.
+
 Windows-only work that is not parity: run the WinRT transport on hardware for the first time; there is no `colby-capture` on Windows (a C# `RecordingTransport` exists; a small CLI over it would give Windows its own captures).
 
 ## Next
@@ -174,7 +180,7 @@ Windows-only work that is not parity: run the WinRT transport on hardware for th
 The next sessions are on a Windows PC.
 
 1. ~~Windows core parity~~ done (rows 1-10). Row 11 (unported unit suites) can be done any time.
-2. **First hardware run of the WinRT transport** with probe `1000D027` (and the Display): adverts, connect, backfill, Session Info. Write down any WinRT-specific findings in this file the way the Mac findings are written.
+2. **First hardware run of the WinRT transport** with probe `1000D027` (and the Display): adverts work; **connect fails on this PC** (see WinRT hardware findings). Then backfill, Session Info. Run `dotnet run --project windows/tools/Colby.Capture -c Release -- --name NAME --direct-only --serial 1000D027 --minutes 2`. Write down any WinRT-specific findings in this file the way the Mac findings are written.
 3. **W6 app** (WinUI 3, tray, MSIX) over the facade, following the Mac app's slices: main window, Instant Read, tray popover, alert band, Set target. 06 is the UX source; `mac/Sources/ColbyUI` shows how each view reads the facade.
 4. Back on a Mac (or anywhere with the phone app and probe): the alarm-channel check (Implementation notes, "Open, do first"). It may change `AlarmChannel` and the status decoder on both platforms, and it blocks the Alarms sheet on both. `colby-capture` is Mac-only.
 5. Mac app slices still to do: Alarms sheet (after 4), cook nickname in the Set target sheet (core ready), kitchen mode, history list/detail, settings, onboarding, widgets extension + App Group, live window, TestFlight CI. App build: `cd mac/App && xcodegen && xcodebuild -project Colby.xcodeproj -scheme Colby -derivedDataPath build build`, then `open build/Build/Products/Debug/Colby.app --args --demo`.

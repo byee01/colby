@@ -1,0 +1,17 @@
+{
+  "adapter" : "WinRT",
+  "devices" : [
+    {
+      "name" : "probe 1000D027",
+      "peripheral" : "C2711FC30E70"
+    },
+    {
+      "name" : "Display T100000LG5",
+      "peripheral" : "D0365FF94F0C"
+    }
+  ],
+  "formatVersion" : 1,
+  "name" : "win-direct-first",
+  "notes" : "Windows first hardware run: WinRT direct connect, Session Info, backfill",
+  "os" : "Windows 10.0.26200.0"
+}

@@ -1,0 +1,13 @@
+{
+  "adapter" : "WinRT",
+  "devices" : [
+    {
+      "name" : "probe 1000D027",
+      "peripheral" : "C2711FC30E70"
+    }
+  ],
+  "formatVersion" : 1,
+  "name" : "win-adv-only",
+  "notes" : "Windows first hardware run: WinRT advertisements only",
+  "os" : "Windows 10.0.26200.0"
+}
