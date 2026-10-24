@@ -210,12 +210,87 @@ public class ProbeStoreTests
         Assert.Equal(20.0, store.Snapshot(F.Serial)!.InstantRead);
         await Feed(20.7);
         Assert.Equal(21.0, store.Snapshot(F.Serial)!.InstantRead);
-        await Feed(25, ProbeMode.Normal);
+        await Feed(25, ProbeMode.Normal); // a Normal packet fills T1-T8 but Instant Read stays on
         s = store.Snapshot(F.Serial)!;
-        Assert.True(s.InstantRead is null && s.InstantReadFahrenheit is null);
+        Assert.True(s.Mode == ProbeMode.InstantRead && s.InstantRead == 21.0);
         Assert.All(s.Temperatures, v => Assert.NotNull(v));
-        await Feed(30.0);
+        for (var i = 0; i < 60; i++)
+        {
+            await Feed(25, ProbeMode.Normal); // 5 s without Instant Read
+        }
+        s = store.Snapshot(F.Serial)!;
+        Assert.Equal(ProbeMode.Normal, s.Mode);
+        Assert.True(s.InstantRead is null && s.InstantReadFahrenheit is null);
+        await Feed(30.0); // filter restarted: rounds, no memory of 21
         Assert.Equal(30.0, store.Snapshot(F.Serial)!.InstantRead);
+        store.Stop();
+    });
+
+    /// <summary>Captured on fw v2.3.3 (spec/replays/idle-interleaved-modes): Instant Read and Normal packets alternate.
+    /// Surface and ambient must not blank and the mode must not flip with each packet.</summary>
+    [Fact]
+    public void InterleavedModesKeepAllSensorsAndInstantRead() => Det.Run(async () =>
+    {
+        var clock = new TestClock();
+        var store = MakeStore(clock);
+        for (var i = 0; i < 40; i++)
+        {
+            var mode = i % 3 == 2 ? ProbeMode.Normal : ProbeMode.InstantRead;
+            store.Ingest(F.Observe(F.Ad(F.Advertisement(mode: mode, t1: 23.5)), LinkKind.Advertisement, clock.Now()));
+            await clock.AdvanceAsync(TimeSpan.FromMilliseconds(250));
+            if (i < 2)
+            {
+                continue;
+            }
+            var s = store.Snapshot(F.Serial)!;
+            Assert.Equal(ProbeMode.InstantRead, s.Mode);
+            Assert.Equal(24.0, s.InstantRead);
+            Assert.All(s.Temperatures, v => Assert.NotNull(v));
+            Assert.True(s.Virtual.Surface is not null && s.Virtual.Ambient is not null);
+        }
+        store.Stop();
+    });
+
+    /// <summary>The real capture: every advert of <c>spec/replays/idle-interleaved-modes</c> at its recorded time. It has
+    /// stretches of 5 s and more with only Normal packets, so Instant Read may lapse there, but the mode must not
+    /// follow each packet (it did ~70 times in 2 min before) and the Normal sensors must never blank.</summary>
+    [Fact]
+    public void CapturedInterleavedAdvertsGiveAStableSnapshot() => Det.Run(async () =>
+    {
+        var adverts = new Combustion.Sim.ReplayReader(Replays.Directory("idle-interleaved-modes")).Events
+            .Where(e => e.Type == Combustion.Sim.ReplayEvent.Kind.Adv).ToList();
+        Assert.True(adverts.Count > 300);
+        var clock = new TestClock();
+        var store = MakeStore(clock);
+        var elapsed = 0.0;
+        var checkedCount = 0;
+        var modeChanges = 0;
+        ProbeMode? lastMode = null;
+        foreach (var e in adverts)
+        {
+            await clock.AdvanceAsync(TimeSpan.FromSeconds(e.T - elapsed));
+            elapsed = e.T;
+            if (CombustionCodec.DecodeAdvertisement(e.Bytes) is not AdvertisementPacket.Probe { Advertisement: var ad })
+            {
+                continue;
+            }
+            store.Ingest(F.Observe(F.Ad(ad), LinkKind.Advertisement, clock.Now(), serial: ad.Serial));
+            // The capture starts with 15 s of Instant Read only.
+            if (e.T <= 16 || store.Snapshot(ad.Serial) is not { } s)
+            {
+                continue;
+            }
+            Assert.True(s.Virtual.Core is not null && s.Virtual.Surface is not null && s.Virtual.Ambient is not null);
+            Assert.Equal(s.Mode == ProbeMode.InstantRead, s.InstantRead is not null);
+            if (lastMode is { } last && last != s.Mode)
+            {
+                modeChanges++;
+            }
+            lastMode = s.Mode;
+            checkedCount++;
+        }
+        Assert.True(checkedCount > 250);
+        Assert.True(modeChanges <= 10, $"{modeChanges} mode changes");
         store.Stop();
     });
 

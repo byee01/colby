@@ -136,7 +136,7 @@ public class HistoryStoreTests
         var key = await store.IngestAsync(Ev(F.Status(logMax: 9), T0));
         var r = await store.BackfillAsync(key, new Dup());
         Assert.Equal(10, store.SampleCount(key));
-        Assert.True(r.Received == 10 && r.Remaining == 0);
+        Assert.True(r.Received == 9 && r.Remaining == 0); // seq 9 came from the status itself
     });
 
     // Sessions
@@ -252,7 +252,7 @@ public class HistoryStoreTests
         var f = new StoreFakeFetcher();
         f.Add(rec);
         using var store = MakeStore(f);
-        var key = await store.IngestAsync(Ev(F.Status(logMax: 0), T0));
+        var key = await store.IngestAsync(Ev(F.Status(logMax: 1), T0)); // the status is seq 1 (core 25)
         Assert.Equal(55, store.Sessions()[0].PeakCore);
         var sample = store.CurrentSeries(key)?.Samples.FirstOrDefault();
         Assert.NotNull(sample);
@@ -432,7 +432,8 @@ public class HistoryStoreTests
                 state: s >= 8 ? PredictionState.Predicting : PredictionState.NotInserted));
         }
         var store = MakeStore(f);
-        var key = await store.IngestAsync(Ev(F.Status(logMax: 10), T0)); // seq 10 at t0, 5 s apart
+        // seq 10 at t0, 5 s apart. The status is stored as seq 10, so it carries record 10's values.
+        var key = await store.IngestAsync(Ev(F.Status(core: 30, surface: 110, ambient: 200, logMax: 10), T0));
         return (store, key);
     }
 
@@ -550,13 +551,15 @@ public class HistoryStoreTests
     {
         var f = new StoreFakeFetcher(0, 100);
         using var store = MakeStore(f);
+        // Each status is stored as the record at its max, so only seqs below it are requested.
         var key = await store.IngestAsync(Ev(F.Status(logMax: 5), T0));
-        Assert.Equal([new Req(0, 5)], f.Requests);
+        Assert.Equal([new Req(0, 4)], f.Requests);
         await store.IngestAsync(Ev(F.Status(logMax: 5), T0.AddSeconds(1))); // not advanced
         Assert.Single(f.Requests);
-        await store.IngestAsync(Ev(F.Status(logMax: 6), T0.AddSeconds(5)));
-        await store.IngestAsync(Ev(F.Status(logMax: 8), T0.AddSeconds(10)));
-        Assert.Equal([new Req(0, 5), new Req(6, 6), new Req(7, 8)], f.Requests);
+        await store.IngestAsync(Ev(F.Status(logMax: 6), T0.AddSeconds(5))); // next seq: nothing to fetch
+        Assert.Single(f.Requests);
+        await store.IngestAsync(Ev(F.Status(logMax: 8), T0.AddSeconds(10))); // seq 7 was skipped
+        Assert.Equal([new Req(0, 4), new Req(7, 7)], f.Requests);
         Assert.Equal(9, store.SampleCount(key));
     });
 
@@ -566,9 +569,9 @@ public class HistoryStoreTests
         var f = new StoreFakeFetcher(0, 1000);
         using var store = MakeStore(f);
         var key = await store.IngestAsync(Ev(F.Status(logMax: 1000), T0));
-        Assert.Equal([new Req(873, 1000)], f.Requests);
+        Assert.Equal([new Req(872, 999)], f.Requests);
         var r = await store.BackfillAsync(key, f);
-        Assert.True(r.Remaining == 0 && r.Received == 873);
+        Assert.True(r.Remaining == 0 && r.Received == 872);
         Assert.Equal(1001, store.SampleCount(key));
     });
 
@@ -579,7 +582,7 @@ public class HistoryStoreTests
         f.Fail(onRequest: 1);
         using var store = MakeStore(f);
         var key = await store.IngestAsync(Ev(F.Status(logMax: 10), T0));
-        Assert.Equal(0, store.SampleCount(key));
+        Assert.Equal(1, store.SampleCount(key)); // only the status's own record
         Assert.Single(store.Sessions()); // status handling was not lost
     });
 
@@ -620,8 +623,9 @@ public class HistoryStoreTests
         using var store = MakeStore(); // no live fetching
         var key = await store.IngestAsync(Ev(F.Status(logMax: 299), T0));
         var r = await store.BackfillAsync(key, f);
-        Assert.Equal([new Req(172, 299), new Req(44, 171), new Req(0, 43)], f.Requests);
-        Assert.Equal(new BackfillResult(300, 300, 0, false), r);
+        // seq 299 is the status's own record.
+        Assert.Equal([new Req(171, 298), new Req(43, 170), new Req(0, 42)], f.Requests);
+        Assert.Equal(new BackfillResult(299, 299, 0, false), r);
         Assert.Equal(300, store.SampleCount(key));
     });
 
@@ -642,7 +646,7 @@ public class HistoryStoreTests
         Assert.Equal(0, log[^1]);
         cts.Cancel();
         await task;
-        Assert.Equal([172, 44, 0], log.Where(v => v >= 0)); // earliest stored seq moves left chunk by chunk
+        Assert.Equal([299, 171, 43, 0], log.Where(v => v >= 0)); // earliest stored seq moves left chunk by chunk
     });
 
     [Fact]
@@ -653,7 +657,7 @@ public class HistoryStoreTests
         using var store = MakeStore();
         var key = await store.IngestAsync(Ev(F.Status(logMax: 299), T0));
         var r1 = await store.BackfillAsync(key, f);
-        Assert.True(r1.Received == 289 && r1.Remaining == 11 && !r1.Failed);
+        Assert.True(r1.Received == 288 && r1.Remaining == 11 && !r1.Failed); // plus seq 299 from the status
         Assert.Equal(289, store.SampleCount(key));
         f.Release();
         var before = f.Requests.Count;
@@ -673,7 +677,7 @@ public class HistoryStoreTests
         using var store = MakeStore();
         var key = await store.IngestAsync(Ev(F.Status(logMax: 299), T0));
         var r1 = await store.BackfillAsync(key, f);
-        Assert.True(r1.Failed && r1.Received == 128 && r1.Remaining == 172);
+        Assert.True(r1.Failed && r1.Received == 128 && r1.Remaining == 171);
         Assert.Equal(2, f.Requests.Count); // chunk 3 was not attempted
         f.Fail(onRequest: null);
         var r2 = await store.BackfillAsync(key, f);
@@ -706,7 +710,7 @@ public class HistoryStoreTests
         using var store = MakeStore();
         var key = await store.IngestAsync(Ev(F.Status(logMin: 400, logMax: 500), T0));
         await store.BackfillAsync(key, f);
-        Assert.Equal([new Req(400, 500)], f.Requests);
+        Assert.Equal([new Req(400, 499)], f.Requests);
     });
 
     // Eight concurrent sessions

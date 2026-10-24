@@ -49,6 +49,7 @@ public sealed class SimulatedProbe
     private int _ticks;
     private bool _inRange = true;
     private bool _legacy;
+    private bool _shortStatus;
     private bool _running;
     private CancellationTokenSource? _task;
     private double _setpoint;
@@ -153,6 +154,13 @@ public sealed class SimulatedProbe
     {
         get => _legacy;
         set => _legacy = value;
+    }
+
+    /// <summary>fw v2.3.3: 94 B status without session fields, but Read Session Information is answered.</summary>
+    public bool StatusWithoutSession
+    {
+        get => _shortStatus;
+        set => _shortStatus = value;
     }
 
     public void SetCurve(Curve curve) => _curve = curve;
@@ -391,7 +399,7 @@ public sealed class SimulatedProbe
     }
 
     private byte[]? EncodeStatus(LogRecord last) =>
-        Try(() => CombustionCodec.EncodeProbeStatus(StatusPayload(last), _legacy ? StatusLayout.Legacy : StatusLayout.Current));
+        Try(() => CombustionCodec.EncodeProbeStatus(StatusPayload(last), _legacy || _shortStatus ? StatusLayout.Legacy : StatusLayout.Current));
 
     private ProbeAdvertisement Advertisement(LogRecord last) =>
         new(Serial, last.Temperatures, ProbeMode.Normal, ProbeColor.Yellow, _probeNumber, BatteryLow, _virtualSensors,
@@ -411,7 +419,7 @@ public sealed class SimulatedProbe
             Overheating: Overheating,
             Preferences: new ThermometerPreferences(ProbePowerMode.Normal, false),
             Alarms: _alarms,
-            Session: _legacy ? null : Session);
+            Session: _legacy || _shortStatus ? null : Session);
     }
 
     /// <summary>Applies a command that arrived through a node, as the probe would after a node forwarded it.

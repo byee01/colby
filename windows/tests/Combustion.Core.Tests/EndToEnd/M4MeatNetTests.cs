@@ -168,7 +168,9 @@ public sealed class M4MeatNetTests
         Assert.False(rig.NodeConnected());
         Assert.Equal(LinkKind.DirectConnection, rig.Snapshot(SerialA)!.Link.Primary?.Kind);
         Assert.True(await rig.EventuallyAsync(() => rig.StoredSeqs(SerialA).Count >= probe.RecordCount - 1));
-        Assert.True(NodeRig.ReadLogCount(probe) > 0, "the hole was backfilled over the direct link");
+        // Direct statuses are stored as records; anything the switch skipped is read over the direct link.
+        Assert.True(await rig.EventuallyAsync(() => rig.StoredSeqs(SerialA).SequenceEqual(Contiguous(0, probe.LogRange.Max))),
+            "history is complete over the direct link");
 
         // The Display returns: the node takes over and the direct link is released.
         display.SetInRange(true);

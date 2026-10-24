@@ -91,6 +91,12 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
     public async Task<SessionKey> IngestAsync(ProbeStatusEvent status, ILogFetcher? fetcher = null)
     {
         var (key, rowId) = RecordStatus(status);
+        // A Normal status is the record at `LogRange.Max` (iOS SDK `addDataToLog`), so it is stored as one and
+        // never requested. Instant Read statuses carry only T1.
+        if (status.Status.Mode != ProbeMode.InstantRead && Insert([LogRecordOf(status.Status)], rowId) > 0)
+        {
+            PublishSeries(rowId);
+        }
         if ((fetcher ?? _logFetcher) is { } f)
         {
             await LiveFetchAsync(status.Serial, rowId, status.Status.LogRange, f);
@@ -221,10 +227,22 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
 
     // Live fetch and backfill
 
-    private uint? MaxStoredSeq(long rowId)
+    /// <summary>Highest stored seq below <paramref name="limit"/>.</summary>
+    private uint? MaxStoredSeq(long rowId, uint limit)
     {
-        var rows = _db.Query("SELECT MAX(seq) FROM sample WHERE session=?", rowId);
+        var rows = _db.Query("SELECT MAX(seq) FROM sample WHERE session=? AND seq<?", rowId, (long)limit);
         return rows.Count > 0 && rows[0].Int64(0) is { } v ? (uint)v : null;
+    }
+
+    private bool HasSeq(long rowId, uint seq) =>
+        _db.Query("SELECT 1 FROM sample WHERE session=? AND seq=?", rowId, (long)seq).Count > 0;
+
+    private static LogRecord LogRecordOf(ProbeStatusPayload status)
+    {
+        var p = status.Prediction;
+        return new LogRecord(
+            status.LogRange.Max, status.Temperatures,
+            new PredictionLog(status.VirtualSensors, p.State, p.Mode, p.Type, p.Setpoint, p.RawSecondsRemaining, p.EstimatedCore));
     }
 
     private async Task LiveFetchAsync(ProbeSerial serial, long rowId, LogRange range, ILogFetcher fetcher)
@@ -240,27 +258,27 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
             var target = range;
             while (true)
             {
+                // New seqs since the last stored one below the newest (usually stored from the status itself),
+                // at most one chunk; older holes are backfill's job.
+                long end;
                 uint? stored;
                 try
                 {
-                    stored = MaxStoredSeq(rowId);
+                    end = (long)target.Max - (HasSeq(rowId, target.Max) ? 1 : 0);
+                    stored = MaxStoredSeq(rowId, target.Max);
                 }
                 catch (Exception)
                 {
-                    stored = null; // Swift: try?
+                    end = target.Max; // Swift: try?
+                    stored = null;
                 }
-                if (stored is { } st && st >= target.Max)
-                {
-                    break;
-                }
-                // New seqs since the last stored one, at most one chunk; older holes are backfill's job.
                 var from = stored is { } s ? (long)s + 1 : target.Min;
-                var start = Math.Max(Math.Max(from, (long)target.Max - BackfillPlanner.DefaultChunkSize + 1), target.Min);
-                if (start > target.Max)
+                var start = Math.Max(Math.Max(from, end - BackfillPlanner.DefaultChunkSize + 1), target.Min);
+                if (start > end)
                 {
                     break;
                 }
-                await FetchChunkAsync(serial, rowId, new SeqRange((uint)start, target.Max), fetcher);
+                await FetchChunkAsync(serial, rowId, new SeqRange((uint)start, (uint)end), fetcher);
                 if (_livePending.Remove(rowId, out var p) && p.Max > target.Max)
                 {
                     target = p;

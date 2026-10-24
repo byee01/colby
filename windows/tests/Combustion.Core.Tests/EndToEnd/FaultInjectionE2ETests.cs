@@ -68,7 +68,7 @@ public sealed class FaultInjectionE2ETests
         await rig.App.FollowAsync(SerialA);
         await rig.RunAsync(6);
         // The partial download was kept.
-        Assert.Equal(50, rig.StoredSeqs(SerialA).Count);
+        Assert.Equal(51, rig.StoredSeqs(SerialA).Count); // 50 records plus the status's own
         Assert.False(rig.Connected(SerialA));
 
         Assert.True(await rig.RunUntilAsync(() => rig.Connected(SerialA), limit: 30));

@@ -180,6 +180,38 @@ public sealed class M3HistoryTests
         await rig.App.StopAsync();
     });
 
+    /// <summary>fw v2.3.3 (spec/replays/charger-new-session): the 94 B status has no session id, but Read Session Info works.</summary>
+    [Fact]
+    public void SessionIdIsReadOverUartWhenTheStatusHasNone() => Det.Run(async () =>
+    {
+        using var rig = new E2ERig();
+        var probe = rig.Probe(SerialA, preload: 60, sessionId: 7);
+        probe.StatusWithoutSession = true;
+        await rig.App.StartAsync();
+        await rig.App.FollowAsync(SerialA);
+        await rig.RunAsync(30);
+        Assert.True(rig.Connected(SerialA));
+
+        var sessions = rig.App.History.Sessions(SerialA);
+        Assert.Single(sessions);
+        Assert.Equal(7u, sessions[0].Key.SessionId);
+        Assert.Equal(7u, rig.App.Probes.Snapshot(SerialA)!.Session?.Info?.SessionId);
+        var reads = probe.Requests.OfType<UartRequest.ReadSessionInfo>().Count();
+        Assert.True(reads == 1, "read once per link, not per status");
+
+        // A charger cycle while away: the new link reads the new id and history splits the cook.
+        probe.SetInRange(false);
+        await rig.RunAsync(10);
+        probe.NewSession();
+        probe.SetInRange(true);
+        Assert.True(await rig.RunUntilAsync(() => rig.Connected(SerialA), limit: 40));
+        await rig.RunAsync(20);
+        sessions = rig.App.History.Sessions(SerialA);
+        Assert.Equal([8u, 7u], sessions.Select(s => s.Key.SessionId).ToList());
+        Assert.Equal(Contiguous(0, probe.LogRange.Max), rig.StoredSeqs(SerialA, session: 0));
+        await rig.App.StopAsync();
+    });
+
     [Fact]
     public void UnfollowedProbeIsNeverConnectedOrRecorded() => Det.Run(async () =>
     {
