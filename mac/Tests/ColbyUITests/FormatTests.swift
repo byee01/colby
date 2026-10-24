@@ -11,8 +11,9 @@ private let serial = ProbeSerial(0x1000_D027)
 private let noon = Date(timeIntervalSince1970: 1_799_971_200 + 12 * 3600) // 2027-01-15 12:00 UTC
 
 private func view(_ state: PredictionState, seconds: UInt32? = nil, type: PredictionType = .removal,
-                  stale: Bool = false, readyAt: Date? = nil, readySince: Date? = nil) -> PredictionView {
-    PredictionView(serial: serial, state: state, mode: .timeToRemoval, type: type, setpoint: 63, estimatedCore: 40,
+                  mode: PredictionMode = .timeToRemoval, stale: Bool = false, readyAt: Date? = nil,
+                  readySince: Date? = nil) -> PredictionView {
+    PredictionView(serial: serial, state: state, mode: mode, type: type, setpoint: 63, estimatedCore: 40,
                    percentToRemoval: 50, secondsRemaining: seconds, isStale: stale, readyAt: readyAt, readySince: readySince)
 }
 
@@ -55,6 +56,8 @@ struct FormatTests {
         #expect(ReadyText(view(.removalPredictionDone, type: .resting), format: c)?.caption == "Rested")
         #expect(ReadyText(view(.predicting, seconds: 60, stale: true), format: c)?.tone == .muted)
         #expect(ReadyText(view(.warming), format: c)?.caption == "Warming")
+        // Seen on hardware: warming with no target and set point 0 showed "Warming 77° to 32°".
+        #expect(ReadyText(view(.warming, mode: .none), format: c) == nil)
         #expect(ReadyText(view(.notInserted), format: c) == nil)
         #expect(ReadyText(nil, format: c) == nil)
     }

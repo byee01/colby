@@ -105,6 +105,8 @@ public struct ReadyText: Equatable, Sendable {
             self.init(caption: p.type == .resting ? "Rested" : "Remove now", primary: "Ready",
                       secondary: p.readySince.map { "since " + format.clock($0) }, tone: p.isStale ? .muted : .ready)
         case .warming:
+            // The probe reports warming with no target too (set point 0); nothing to count toward then.
+            guard p.mode != .none else { return nil }
             self.init(caption: "Warming", primary: format.temperature(p.estimatedCore),
                       secondary: "to " + format.temperature(p.setpoint), tone: tone)
         case .notInserted, .inserted, .unknown:

@@ -17,9 +17,9 @@ public struct MainView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            if let alert = model.alerts.first {
+            if let alert = model.firing.first {
                 let text = alertText(alert, format: model.format)
-                AlertBand(title: text.title, detail: text.detail, count: model.alerts.count,
+                AlertBand(title: text.title, detail: text.detail, count: model.firing.count,
                           acknowledge: { model.acknowledge(alert) }, snooze: { model.snooze(alert) })
             }
             content
@@ -121,7 +121,7 @@ public struct MainView: View {
         HStack(spacing: 10) {
             ForEach(model.probes, id: \.serial) { p in
                 ProbeChip(snapshot: p, prediction: model.prediction(p.serial), selected: p.serial == probe.serial,
-                          alerting: model.alerts.contains { $0.serial == p.serial }, now: model.now, format: format)
+                          alerting: model.firing.contains { $0.serial == p.serial }, now: model.now, format: format)
                     .onTapGesture { model.selected = p.serial }
             }
         }

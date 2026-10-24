@@ -13,8 +13,10 @@ public final class AppModel {
     public private(set) var bluetooth: BluetoothState = .poweredOn
     public private(set) var probes: [ProbeSnapshot] = []
     public private(set) var predictions: [ProbeSerial: PredictionView] = [:]
-    /// Most urgent first (06 §7).
+    /// Most urgent first (06 §7). Includes acknowledged and snoozed alerts until their condition clears.
     public private(set) var alerts: [AlertInstance] = []
+    /// The alerts that should demand attention now (band, bell, popover); most urgent first.
+    public var firing: [AlertInstance] { alerts.filter { $0.state == .firing } }
     /// History of the selected probe's current session.
     public private(set) var series: TemperatureSeries?
     /// The selected probe's Instant Read readings (°C) over the last 30 s, for the sparkline.

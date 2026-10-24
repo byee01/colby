@@ -159,7 +159,8 @@ struct Sparkline: View {
     var body: some View {
         Canvas { ctx, size in
             guard values.count > 1, let lo = values.min(), let hi = values.max() else { return }
-            let span = max(hi - lo, 1)  // flat readings draw a flat line mid-height, not noise
+            // At least 5° of range, so tenths of a degree of jitter stay a nearly flat line.
+            let span = max(hi - lo, 5)
             var path = Path()
             for (i, v) in values.enumerated() {
                 let pt = CGPoint(x: size.width * CGFloat(i) / CGFloat(values.count - 1),

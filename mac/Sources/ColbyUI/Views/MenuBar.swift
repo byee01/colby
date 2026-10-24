@@ -13,7 +13,7 @@ public struct MenuBarLabel: View {
 
     public var body: some View {
         let format = model.format
-        if !model.alerts.isEmpty {
+        if !model.firing.isEmpty {
             Label(menuText(format) ?? "Alert", systemImage: "bell.fill")
         } else if let text = menuText(format) {
             Label(text, systemImage: "thermometer.medium")
@@ -53,7 +53,7 @@ public struct MenuBarContent: View {
     public var body: some View {
         let format = model.format
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(model.alerts, id: \.id) { alert in
+            ForEach(model.firing, id: \.id) { alert in
                 let text = alertText(alert, format: format)
                 HStack {
                     Image(systemName: "bell.fill").foregroundStyle(P.critical)
