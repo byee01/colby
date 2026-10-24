@@ -140,6 +140,38 @@ public sealed class M6AlertsTests
     });
 
     [Fact]
+    public void AcknowledgingOrSnoozingTheDisconnectedAlertTakesItOutOfFiring() => Det.Run(async () =>
+    {
+        var d = new Doubles();
+        using var rig = Rig(d);
+        var probe = await ConnectAsync(rig);
+        await rig.App.Commands.SetPredictionAsync(SerialA, PredictionMode.TimeToRemoval, 60);
+        await rig.RunAsync(20);
+        var offline = $"{Hex}.offline";
+        // What the UI sees: the `Active()` stream, not the engine's own list.
+        using var published = rig.App.Alerts.Active().Collect();
+        AlertState? State() => published.Last?.FirstOrDefault(a => a.Id == offline)?.State;
+
+        probe.SetInRange(false);
+        Assert.True(await rig.RunUntilAsync(() => State() == AlertState.Firing, limit: 120, step: 1));
+        await rig.App.Alerts.AcknowledgeAsync(offline);
+        Assert.True(await rig.EventuallyAsync(() => State() == AlertState.Acknowledged));
+        await rig.RunAsync(120);
+        Assert.Equal(AlertState.Acknowledged, State()); // stays acknowledged while the probe is gone
+        Assert.Single(d.Events.Transitions, t => t == $"{offline} idle->firing");
+
+        probe.SetInRange(true);
+        Assert.True(await rig.RunUntilAsync(() => State() is null, limit: 120, step: 1));
+        probe.SetInRange(false);
+        Assert.True(await rig.RunUntilAsync(() => State() == AlertState.Firing, limit: 120, step: 1));
+        await rig.App.Alerts.SnoozeAsync(offline, TimeSpan.FromSeconds(300));
+        Assert.True(await rig.EventuallyAsync(() => State() == AlertState.Snoozed));
+        await rig.RunAsync(120);
+        Assert.Equal(AlertState.Snoozed, State()); // stays snoozed until the snooze runs out
+        await rig.App.StopAsync();
+    });
+
+    [Fact]
     public void NoDisconnectedAlertForAProbeThatWasNotCooking() => Det.Run(async () =>
     {
         var d = new Doubles();

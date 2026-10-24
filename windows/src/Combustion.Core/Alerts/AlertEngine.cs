@@ -234,6 +234,7 @@ public sealed class AlertEngine
         {
             Evaluate(t.Serial);
         }
+        FinishRound();
         await DrainOutboxAsync();
         if (t.Source is AlertSource.ProbeAlarm)
         {
@@ -254,7 +255,7 @@ public sealed class AlertEngine
         var now = _clock.Now();
         _instances[id] = t with { SnoozedUntil = now.AddSecondsExact(duration.TotalSeconds) };
         Transition(id, AlertState.Snoozed, now);
-        ScheduleWake();
+        FinishRound();
         await DrainOutboxAsync();
         if (t.Source is AlertSource.ProbeAlarm)
         {
@@ -274,6 +275,7 @@ public sealed class AlertEngine
         {
             Transition(a.Id, AlertState.Acknowledged, now);
         }
+        FinishRound();
         await DrainOutboxAsync();
         var probeAlarms = mine.Where(a => a.Source is AlertSource.ProbeAlarm).Select(a => a.Id).ToList();
         if (probeAlarms.Count > 0)
@@ -303,6 +305,7 @@ public sealed class AlertEngine
                     Transition(id, AlertState.Firing, now, error.Message);
                 }
             }
+            FinishRound();
             await DrainOutboxAsync();
         }
     }
@@ -697,7 +700,9 @@ public sealed class AlertEngine
         }
     }
 
-    /// <summary>After a round of evaluations: publish the active list, update keep-awake, set the next wake-up.</summary>
+    /// <summary>After a round of evaluations or a user action: publish the active list, update keep-awake, set the next
+    /// wake-up. Every state change must end here, or <c>Active()</c> (what the UI shows) keeps the old list until the
+    /// next input, which never comes while a probe is offline.</summary>
     private void FinishRound()
     {
         _active.Send(SortedActive());
