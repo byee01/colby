@@ -278,6 +278,82 @@ public class HistoryStoreTests
         Assert.Equal([again], store.Sessions().Select(s => s.Key));
     });
 
+    private static ValueMap<ProbeSerial, string> Names(params (ProbeSerial, string)[] pairs) =>
+        new(pairs.ToDictionary(p => p.Item1, p => p.Item2));
+
+    [Fact]
+    public void CookNameNamesTheOpenCookAndANewCookStartsUnnamed() => Det.Run(async () =>
+    {
+        using var store = MakeStore();
+        using var names = store.CookNames().Collect();
+        await DeterministicContext.Current!.IdleAsync();
+        Assert.Equal([Names()], names.Items);
+
+        var k1 = await store.IngestAsync(Ev(F.Status(logMax: 5, sessionId: 1), T0));
+        await DeterministicContext.Current!.IdleAsync();
+        Assert.Equal(Names(), names.Last); // the cook opened unnamed
+        Assert.Equal(2, names.Count);
+        store.SetCookName("  Brisket ", F.Serial);
+        await DeterministicContext.Current!.IdleAsync();
+        Assert.Equal(Names((F.Serial, "Brisket")), names.Last);
+        Assert.Equal("Brisket", store.CookName(F.Serial));
+        Assert.Equal("Brisket", store.Sessions().First().Nickname);
+
+        await store.IngestAsync(Ev(F.Status(logMax: 1, sessionId: 2), T0.AddSeconds(4000)));
+        await DeterministicContext.Current!.IdleAsync();
+        Assert.Equal(Names(), names.Last); // a charger cycle starts a new, unnamed cook
+        Assert.Equal([null, "Brisket"], store.Sessions().Select(s => s.Nickname));
+
+        store.Rename(k1, "Old brisket");
+        await DeterministicContext.Current!.IdleAsync();
+        Assert.Equal(Names(), names.Last); // renaming an ended cook changes no current name
+        store.SetCookName("", F.Serial);
+        await DeterministicContext.Current!.IdleAsync();
+        Assert.Equal(Names(), names.Last);
+        Assert.Equal(6, names.Count);
+    });
+
+    [Fact]
+    public void ANameGivenBeforeTheFirstStatusGoesToTheNextCook() => Det.Run(async () =>
+    {
+        using var store = MakeStore();
+        store.SetCookName("Ribs", F.Serial);
+        Assert.Equal("Ribs", store.CookName(F.Serial));
+        var key = await store.IngestAsync(Ev(F.Status(logMax: 3, sessionId: 9), T0));
+        Assert.Equal("Ribs", store.Sessions().First(s => s.Key == key).Nickname);
+
+        store.EndCurrentSession(F.Serial);
+        Assert.Null(store.CookName(F.Serial)); // the cook ended
+    });
+
+    [Fact]
+    public void CookNamesSurviveARestart() => Det.Run(async () =>
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"colby-{Guid.NewGuid()}.sqlite");
+        try
+        {
+            using (var first = new HistoryStore(path, new TestClock()))
+            {
+                await first.IngestAsync(Ev(F.Status(logMax: 10, sessionId: 4), T0));
+                first.SetCookName("Pork shoulder", F.Serial);
+            }
+            using var store = new HistoryStore(path, new TestClock());
+            using var names = store.CookNames().Collect();
+            await DeterministicContext.Current!.IdleAsync();
+            Assert.Equal(Names((F.Serial, "Pork shoulder")), names.Items[0]); // known before the probe is heard again
+            store.SetCookName("Pulled pork", F.Serial);
+            var k = await store.IngestAsync(Ev(F.Status(logMax: 12, sessionId: 4), T0.AddSeconds(60)));
+            Assert.Equal("Pulled pork", store.Sessions().First(s => s.Key == k).Nickname);
+        }
+        finally
+        {
+            foreach (var ext in new[] { "", "-wal", "-shm" })
+            {
+                File.Delete(path + ext);
+            }
+        }
+    });
+
     [Fact]
     public void EndCurrentSessionClosesAndComputesThumbnail() => Det.Run(async () =>
     {

@@ -31,6 +31,9 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
     private readonly HashSet<long> _liveRunning = [];
     private readonly Dictionary<long, LogRange> _livePending = [];
     private readonly HashSet<long> _backfilling = [];
+    /// <summary>Names given while the probe had no open cook; the next cook it starts takes it.</summary>
+    private readonly Dictionary<ProbeSerial, string> _pendingNames = [];
+    private readonly Broadcaster<ValueMap<ProbeSerial, string>> _names;
 
     /// <summary>Takes ownership of <paramref name="database"/> (closed by <see cref="Dispose"/>).</summary>
     public HistoryStore(SqliteDatabase database, IClock clock, ILogFetcher? logFetcher = null)
@@ -39,6 +42,7 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
         _clock = clock;
         _logFetcher = logFetcher;
         Schema.Migrate(database);
+        _names = new Broadcaster<ValueMap<ProbeSerial, string>>(OpenCookNames(database), replayLatest: true);
     }
 
     /// <summary><c>":memory:"</c> or a file path.</summary>
@@ -116,6 +120,7 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
         long? periodMs = status.Session is { } info ? info.SamplePeriodMs : null;
         var predictive = IsPredictive(status.Prediction.Mode);
 
+        var opened = false;
         var rowId = _db.Transaction(() =>
         {
             var current = rt.RowId;
@@ -133,11 +138,13 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
                 _db.Run("""
                     INSERT INTO session(serial, session_id, sample_period_ms, started_at, ended_at, anchor_seq,
                                         anchor_time, nickname, kind, ready_since, thumbnail)
-                    VALUES(?,?,?,?,NULL,?,?,NULL,?,NULL,NULL)
+                    VALUES(?,?,?,?,NULL,?,?,?,?,NULL,NULL)
                     """,
                     (long)serial.Raw, (long)sessionId, periodMs ?? DefaultSamplePeriodMs, Time.ToMs(at),
-                    (long)status.LogRange.Max, Time.ToMs(at), KindText(predictive ? SessionKind.Predictive : SessionKind.Manual));
+                    (long)status.LogRange.Max, Time.ToMs(at), _pendingNames.GetValueOrDefault(serial),
+                    KindText(predictive ? SessionKind.Predictive : SessionKind.Manual));
                 id = _db.LastInsertRowId;
+                opened = true;
             }
             else
             {
@@ -180,6 +187,11 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
             _lastRanges[rowId] = status.LogRange;
         }
         PublishSeries(rowId);
+        if (opened)
+        {
+            _pendingNames.Remove(serial);
+            PublishNames();
+        }
         var row = LoadRow(rowId)!;
         return (row.Key, rowId);
     }
@@ -213,6 +225,7 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
         EndSession(rowId, at ?? rt.LastStatusAt);
         _runtime[serial] = new Runtime(new SessionTracker(), null, rt.LastStatusAt);
         PublishSeries(rowId);
+        PublishNames();
     }
 
     /// <summary>The open session of <paramref name="serial"/>, if any.</summary>
@@ -533,8 +546,99 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
         {
             return;
         }
-        _db.Run("UPDATE session SET nickname=? WHERE id=?", nickname, id);
+        _db.Run("UPDATE session SET nickname=? WHERE id=?", CleanName(nickname), id);
+        PublishNames();
     }
+
+    // Cook names
+
+    /// <summary>Nicknames of the probes' open cooks, including names waiting for a probe's next cook; the latest map
+    /// first, then changes. A probe without a name is absent.</summary>
+    public AsyncStream<ValueMap<ProbeSerial, string>> CookNames() => _names.Stream();
+
+    /// <summary>The name of the probe's open cook, or the name waiting for its next one.</summary>
+    public string? CookName(ProbeSerial serial) => CurrentNames().GetValueOrDefault(serial);
+
+    /// <summary>Names the probe's open cook; null or blank clears it. With no cook open, the name waits for the probe's
+    /// next cook (a cook that a charger cycle starts later is a new cook and starts unnamed).</summary>
+    public void SetCookName(string? name, ProbeSerial serial)
+    {
+        var clean = CleanName(name);
+        if (OpenRowId(serial) is { } id)
+        {
+            _db.Run("UPDATE session SET nickname=? WHERE id=?", clean, id);
+        }
+        else if (clean is null)
+        {
+            _pendingNames.Remove(serial);
+        }
+        else
+        {
+            _pendingNames[serial] = clean;
+        }
+        PublishNames();
+    }
+
+    private long? OpenRowId(ProbeSerial serial)
+    {
+        if (_runtime.TryGetValue(serial, out var rt))
+        {
+            return rt.RowId;
+        }
+        // Not seen since launch: the latest session, if it is still open (as `Restore` would pick it).
+        var rows = _db.Query("""
+            SELECT id, ended_at FROM session WHERE serial=? ORDER BY started_at DESC, id DESC LIMIT 1
+            """, (long)serial.Raw);
+        return rows.Count > 0 && rows[0][1] is null ? rows[0].Int64(0) : null;
+    }
+
+    private Dictionary<ProbeSerial, string> CurrentNames()
+    {
+        var names = new Dictionary<ProbeSerial, string>(OpenCookNames(_db));
+        foreach (var (serial, name) in _pendingNames)
+        {
+            if (OpenRowId(serial) is null)
+            {
+                names[serial] = name;
+            }
+        }
+        return names;
+    }
+
+    private void PublishNames()
+    {
+        Dictionary<ProbeSerial, string> names;
+        try
+        {
+            names = CurrentNames();
+        }
+        catch (Exception)
+        {
+            return; // Swift: try?
+        }
+        _names.Send(new ValueMap<ProbeSerial, string>(names));
+    }
+
+    /// <summary>Nickname of each probe's latest session, where that session is open and named.</summary>
+    private static ValueMap<ProbeSerial, string> OpenCookNames(SqliteDatabase db)
+    {
+        var rows = db.Query("""
+            SELECT s.serial, s.nickname FROM session s
+            WHERE s.ended_at IS NULL AND s.nickname IS NOT NULL
+              AND s.id = (SELECT id FROM session WHERE serial=s.serial ORDER BY started_at DESC, id DESC LIMIT 1)
+            """);
+        var names = new Dictionary<ProbeSerial, string>();
+        foreach (var r in rows)
+        {
+            if (r.Int64(0) is { } serial && r.Text(1) is { } name)
+            {
+                names[new ProbeSerial((uint)serial)] = name;
+            }
+        }
+        return new ValueMap<ProbeSerial, string>(names);
+    }
+
+    private static string? CleanName(string? name) => string.IsNullOrWhiteSpace(name) ? null : name.Trim();
 
     public void Delete(SessionKey session)
     {
@@ -559,6 +663,7 @@ public sealed class HistoryStore : IFollowedProbePersistence, IDisposable
         {
             b.Finish();
         }
+        PublishNames();
     }
 
     /// <summary>

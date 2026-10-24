@@ -213,6 +213,31 @@ public sealed class M3HistoryTests
     });
 
     [Fact]
+    public void TheCookNameReachesHistoryAndTheWidgetSnapshot() => Det.Run(async () =>
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"colby-live-{Guid.NewGuid()}.json");
+        try
+        {
+            using var rig = new E2ERig(liveSnapshot: new FileLiveSnapshotWriter(file));
+            rig.Probe(SerialA, preload: 10);
+            await rig.App.StartAsync();
+            await rig.App.FollowAsync(SerialA);
+            Assert.True(await rig.RunUntilAsync(() => rig.Connected(SerialA), limit: 20));
+            await rig.RunAsync(10);
+
+            rig.App.SetCookName("Brisket", SerialA);
+            Assert.Equal("Brisket", rig.App.History.Sessions(SerialA).First().Nickname);
+            var writer = rig.App.LiveSnapshot!;
+            Assert.True(await rig.EventuallyAsync(() => writer.Current().Probes.FirstOrDefault()?.Name == "Brisket"));
+            await rig.App.StopAsync();
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    });
+
+    [Fact]
     public void UnfollowedProbeIsNeverConnectedOrRecorded() => Det.Run(async () =>
     {
         using var rig = new E2ERig();

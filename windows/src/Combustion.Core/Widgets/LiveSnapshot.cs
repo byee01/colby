@@ -203,6 +203,17 @@ public sealed class LiveSnapshotWriter
         await ChangedAsync();
     }
 
+    /// <summary>Replaces every cook name (<c>HistoryStore.CookNames</c>).</summary>
+    public async Task SetNamesAsync(IReadOnlyDictionary<ProbeSerial, string> map)
+    {
+        _names.Clear();
+        foreach (var (serial, name) in map)
+        {
+            _names[serial] = name;
+        }
+        await ChangedAsync();
+    }
+
     public async Task SetFollowedAsync(IReadOnlySet<ProbeSerial> set)
     {
         _followed = [.. set];

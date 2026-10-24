@@ -142,11 +142,11 @@ Known weak spots: `TestClock` wake ordering under a multi-threaded executor reli
 | Sim | Done: SimulatedTransport, SimulatedProbe, SimulatedNode, RecordingTransport, replay format | `src/Combustion.Sim` |
 | W6 app | Not started (WinUI 3, tray, MSIX) | |
 
-Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 10, Linux or Windows): 1,284 passing on Windows 11 (codec 967, core 272, sim 45) after parity row 10. Conventions for the port: `windows/PORTING.md`.
+Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 10 SDK, Linux or Windows): 1,302 passing on Windows 11 (codec 967, core 290, sim 45) as of parity row 9. Conventions for the port: `windows/PORTING.md`.
 
 ### Core parity checklist (port before W6)
 
-Windows was last touched at `31fdc66`. Every core change since is on the Mac only; the core API is now complete for the app, so port these and the C# core matches the Swift one. Diff each with `git show <commit> -- mac/Sources/CombustionCore mac/Sources/CombustionSim mac/Tests`. Port the tests with the same names (PascalCase).
+**Rows 1-10 done (2026-10-24, on Windows 11):** the C# core matches the Swift core as of `289b9dc`. Row 11 (unit suites never ported) is open. Rows 1, 3 and 8's new tests were checked to fail without their fix. To port later Mac core changes: `git show <commit> -- mac/Sources/CombustionCore mac/Sources/CombustionSim mac/Tests`, tests with the same names (PascalCase).
 
 | # | Commit | Change | Tests to port |
 |---|---|---|---|
@@ -158,11 +158,14 @@ Windows was last touched at `31fdc66`. Every core change since is on the Mac onl
 | 6 | `2e614c2` (core part) | **Done.** Snooze of a probe alarm sends Silence Alarms; `snoozeSilenced` keeps it active while tripped and fires again when the snooze ends | `SnoozingAProbeAlarmSilencesTheProbeAndFiresAgainWhileTripped`, `SnoozedProbeAlarmEndsWhenTheTemperatureComesBack` |
 | 7 | `61a22dd` | **Done.** `Commands` confirm tolerance 0.11 °C (one 0.1 °C step) | `ASetpointReportedOneTenthLowStillConfirms` |
 | 8 | `1a507b6` | **Done.** `AlertEngine`: acknowledge, snooze, silenceAll and a failed silence end in `FinishRound` (publish `active`) | needs the e2e rig: `AcknowledgingOrSnoozingTheDisconnectedAlertTakesItOutOfFiring`. Until then a unit test on `Active()` after `Acknowledge` with no further input |
-| 9 | `289b9dc` | Cook names: `HistoryStore.SetCookName` / `CookName` / `CookNames()`, insert takes the waiting name, `rename`/`delete`/`endCurrentSession` republish; `LiveSnapshotWriter.SetNames`; facade `SetCookName` / `CookNames()` wired to the writer | `CookNameNamesTheOpenCookAndANewCookStartsUnnamed`, `ANameGivenBeforeTheFirstStatusGoesToTheNextCook`, `CookNamesSurviveARestart`, e2e `TheCookNameReachesHistoryAndTheWidgetSnapshot` |
+| 9 | `289b9dc` | **Done.** Cook names: `HistoryStore.SetCookName` / `CookName` / `CookNames()`, insert takes the waiting name, `rename`/`delete`/`endCurrentSession` republish; `LiveSnapshotWriter.SetNames`; facade `SetCookName` / `CookNames()` wired to the writer | `CookNameNamesTheOpenCookAndANewCookStartsUnnamed`, `ANameGivenBeforeTheFirstStatusGoesToTheNextCook`, `CookNamesSurviveARestart`, e2e `TheCookNameReachesHistoryAndTheWidgetSnapshot` |
 | 10 | (M3-M6) | **Done (2026-10-24).** End-to-end suites ported as of `31fdc66` (41 tests in `tests/Combustion.Core.Tests/EndToEnd`). On `DeterministicContext` the rig's `drain` is one `SettleAsync` and `expectSchedule` has 0 s slack (exact virtual times). Each later row adds its own e2e changes (row 1: `FaultInjection` partial count 50 -> 51; rows 3, 6, 8, 9: new M3/M4/M6 tests; row 9: `E2ERig(liveSnapshot:)`) | all; they are what proves 1-9 behave the same on both platforms |
 | 11 | (W2-W5, found 2026-10-24) | Swift unit suites that were never ported: `Links/AdvertisementSourceTests` (only `EmptySlotFromADisplayIsNotAProbe` is in C#), `DirectProbeLinkTests` (10), `NodeLinkTests` (17), `NodePolicyTests` (11), `UartClientProbeTests` (25), `UartClientNodeTests` (17), `Commands/CommandsTests` (18; the rig and 2 tests are in C#). (`PersistenceTests` and `TraceSinkTests` are ported, in `TraceAndPersistenceTests.cs`.) The e2e suites exercise the same code, so this is test parity, not behaviour | port with the same names; row 7 adds one test to `CommandsTests` |
 
-Order: 10's rig first (8 and 9 need it), then 1, 3, 5 (they share `ProbeMerger` / links), then 2, 4, 6, 7, 8, 9. New fixtures and replays since `31fdc66` (`spec/fixtures/uart_frames/response_probe_session_info_hw_fw_2_3_3.json`, 8 replays in `spec/replays/`) are picked up by the shared-fixture tests; check they pass.
+Windows session notes (2026-10-24):
+- Retargeted to .NET 10 (`net10.0`, `net10.0-windows10.0.19041.0`, CI `10.0.x`); Microsoft.Data.Sqlite 10.0.12 (10.0.0 pulls SQLitePCLRaw 2.1.11, which fails restore with NU1903 under warnings-as-errors). The PC had only the .NET 10 runtime; the SDK came from `winget install Microsoft.DotNet.SDK.10`.
+- The repo is private: on a fresh PC, `git credential-manager github login --browser` signs in (the agent shell sets `GIT_TERMINAL_PROMPT=0`, so a plain `git fetch` cannot prompt).
+- Windows one-shot alert sounds (row 2): Countdown `Notification.Reminder`, Problem `Notification.Default`, Custom `Notification.IM`; not heard on hardware yet.
 
 Windows-only work that is not parity: run the WinRT transport on hardware for the first time; there is no `colby-capture` on Windows (a C# `RecordingTransport` exists; a small CLI over it would give Windows its own captures).
 
@@ -170,7 +173,7 @@ Windows-only work that is not parity: run the WinRT transport on hardware for th
 
 The next sessions are on a Windows PC.
 
-1. **Windows core parity:** the checklist under Windows status, in its order. `dotnet test` must stay green after each row; commit per row.
+1. ~~Windows core parity~~ done (rows 1-10). Row 11 (unported unit suites) can be done any time.
 2. **First hardware run of the WinRT transport** with probe `1000D027` (and the Display): adverts, connect, backfill, Session Info. Write down any WinRT-specific findings in this file the way the Mac findings are written.
 3. **W6 app** (WinUI 3, tray, MSIX) over the facade, following the Mac app's slices: main window, Instant Read, tray popover, alert band, Set target. 06 is the UX source; `mac/Sources/ColbyUI` shows how each view reads the facade.
 4. Back on a Mac (or anywhere with the phone app and probe): the alarm-channel check (Implementation notes, "Open, do first"). It may change `AlarmChannel` and the status decoder on both platforms, and it blocks the Alarms sheet on both. `colby-capture` is Mac-only.
