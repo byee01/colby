@@ -24,7 +24,9 @@ public struct MainView: View {
             }
             content
         }
-        .frame(minWidth: 820, minHeight: 560)
+        // Band 62 + header 70 + readouts 118 + label 20 + graph 160 + chips 94 + spacing and padding.
+        // Width: inspector 300 + three readout columns that fit "188°" at 72 pt.
+        .frame(minWidth: 900, minHeight: 640)
         .background(P.window)
         .preferredColorScheme(.dark)
         .toolbar {
@@ -68,7 +70,7 @@ public struct MainView: View {
                 HStack(spacing: 0) {
                     probeColumn(probe)
                     Inspector(snapshot: probe, prediction: model.prediction(probe.serial), format: model.format)
-                        .frame(width: 320)
+                        .frame(width: 300)
                 }
             } else {
                 StatusPanel(icon: "dot.radiowaves.left.and.right", title: "Looking for probes",
@@ -87,6 +89,7 @@ public struct MainView: View {
                     ProbeBadge(number: probe.probeNumber, color: probe.color, size: 34)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(probe.serial.displayName).font(F.header).foregroundStyle(P.text)
+                            .lineLimit(1).minimumScaleFactor(0.6)
                         Text(subtitle(probe, prediction)).font(F.caption).foregroundStyle(P.muted)
                     }
                 }
@@ -106,12 +109,14 @@ public struct MainView: View {
                     .frame(maxWidth: .infinity)
                 TempGraph(series: model.series, target: prediction.flatMap { $0.mode == .none ? nil : $0.setpoint },
                           range: range, now: model.now, format: format, scrub: $scrub)
-                    .frame(minHeight: 260)
+                    .frame(minHeight: 160)
+                    .layoutPriority(-1)
             }
-            if model.probes.count > 4 {
-                ScrollView(.horizontal, showsIndicators: false) { chips(probe, format) }
-            } else if model.probes.count > 1 {
-                chips(probe, format)
+            if model.probes.count > 1 {
+                ViewThatFits(in: .horizontal) {
+                    chips(probe, format)
+                    ScrollView(.horizontal, showsIndicators: false) { chips(probe, format) }
+                }
             }
         }
         .padding(20)
@@ -179,7 +184,20 @@ struct Inspector: View {
     var prediction: PredictionView?
     var format: Formatter
 
+    @Environment(\.staticRender) private var staticRender
+
     var body: some View {
+        Group {
+            if staticRender {
+                content.frame(maxHeight: .infinity, alignment: .top)
+            } else {
+                ScrollView { content }
+            }
+        }
+        .background(P.card)
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 18) {
                 if let p = prediction, p.mode != .none {
                     section("Cooking to " + format.temperatureWithUnit(p.setpoint)) {
@@ -194,6 +212,7 @@ struct Inspector: View {
                     section("No target") {
                         Text("Set a target on the probe's Display or phone app; editing here comes next.")
                             .font(F.caption).foregroundStyle(P.muted)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 section("Alarms") {
@@ -236,11 +255,8 @@ struct Inspector: View {
                     row("Connection", connection)
                     if let rssi = snapshot.link.primary?.rssi { row("Signal", "\(rssi) dBm") }
                 }
-                Spacer(minLength: 0)
         }
         .padding(20)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(P.card)
     }
 
     private var connection: String {

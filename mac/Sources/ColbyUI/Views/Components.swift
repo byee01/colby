@@ -4,6 +4,11 @@ import CombustionCodec
 import CombustionCore
 import SwiftUI
 
+extension EnvironmentValues {
+    /// Set by `colby-shots`: `ImageRenderer` does not draw `ScrollView` contents, so views lay out flat.
+    @Entry public var staticRender = false
+}
+
 typealias P = Theme.Palette
 typealias F = Theme.Fonts
 
@@ -92,7 +97,7 @@ struct ReadoutRow: View {
     private func column(_ title: String, _ color: Color, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             SensorPill(title: title, color: color)
-            Text(value).font(F.readout).foregroundStyle(P.text).lineLimit(1)
+            Text(value).font(F.readout).foregroundStyle(P.text).lineLimit(1).minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
@@ -213,6 +218,7 @@ struct AlertBand: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
+        .fixedSize(horizontal: false, vertical: true)
         .background(P.criticalBg)
         .overlay(alignment: .bottom) { Rectangle().fill(P.critical).frame(height: 2) }
     }

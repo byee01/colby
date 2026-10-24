@@ -6,11 +6,13 @@
 #if canImport(SwiftUI) && canImport(AppKit)
 import AppKit
 import ColbyUI
+import CombustionCodec
 import SwiftUI
 
 @MainActor
 func render<V: View>(_ view: V, size: CGSize, to url: URL) {
-    let renderer = ImageRenderer(content: view.frame(width: size.width, height: size.height))
+    let renderer = ImageRenderer(content: view.frame(width: size.width, height: size.height)
+        .environment(\.staticRender, true))
     renderer.scale = 2
     guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
           let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else {
@@ -31,6 +33,11 @@ func run() async {
     try? await Task.sleep(for: .seconds(seconds))
     let model = controller.model
     render(MainView(model: model), size: CGSize(width: 1180, height: 760), to: out.appendingPathComponent("main.png"))
+    // Trip a probe alarm (core low above the current core) so the alert band shows.
+    try? await model.app.commands.setAlarm(ProbeSerial(0x1000_0001), channel: .core, kind: .low, temperature: 90)
+    try? await Task.sleep(for: .seconds(7))
+    // The window's minimum content size, with an alert showing (the tallest layout).
+    render(MainView(model: model), size: CGSize(width: 900, height: 640), to: out.appendingPathComponent("main-min.png"))
     render(MenuBarContent(model: model) {}, size: CGSize(width: 340, height: 420),
            to: out.appendingPathComponent("popover.png"))
     render(MenuBarLabel(model: model).foregroundStyle(.white).padding(6).background(Color.black),

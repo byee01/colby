@@ -37,7 +37,8 @@ public final class AppModel {
     public let isDemo: Bool
 
     private let runtime: Runtime
-    private var app: CombustionApp { runtime.app }
+    /// The facade, for tools (colby-shots) and sheets that send commands.
+    public var app: CombustionApp { runtime.app }
     private var tasks: [Task<Void, Never>] = []
     private var predictionTasks: [ProbeSerial: Task<Void, Never>] = [:]
     private var seriesTask: Task<Void, Never>?

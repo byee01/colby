@@ -44,7 +44,7 @@ let package = Package(
                 ["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist",
                  "-Xlinker", "\(Context.packageDirectory)/Sources/ColbyCapture/Info.plist"],
                 .when(platforms: [.macOS]))]),
-        .executableTarget(name: "ColbyShots", dependencies: ["ColbyUI"]),
+        .executableTarget(name: "ColbyShots", dependencies: ["ColbyUI", "CombustionCodec"]),
         .testTarget(name: "CombustionCodecTests", dependencies: ["CombustionCodec"]),
         .testTarget(name: "CombustionCoreTests", dependencies: ["CombustionCore", "CombustionSim"]),
         .testTarget(name: "CombustionSimTests", dependencies: ["CombustionSim"]),
