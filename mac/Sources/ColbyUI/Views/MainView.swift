@@ -196,6 +196,29 @@ struct Inspector: View {
                             .font(F.caption).foregroundStyle(P.muted)
                     }
                 }
+                section("Alarms") {
+                    if let config = snapshot.alarms {
+                        let rows = alarmRows(config, format: format)
+                        if rows.isEmpty {
+                            Text("None set on the probe.").font(F.caption).foregroundStyle(P.muted)
+                        }
+                        ForEach(rows, id: \.title) { r in
+                            HStack {
+                                Image(systemName: r.state == .armed ? "bell" : "bell.fill")
+                                    .foregroundStyle(r.state == .armed ? P.muted : r.state == .alarming ? P.critical : P.warning)
+                                Text(r.title).font(F.label).foregroundStyle(P.text2)
+                                if r.state != .armed {
+                                    Text(r.state == .alarming ? "Alarming" : "Tripped").font(F.caption)
+                                        .foregroundStyle(r.state == .alarming ? P.critical : P.warning)
+                                }
+                                Spacer()
+                                Text(r.value).font(F.numeric(20)).foregroundStyle(P.text)
+                            }
+                        }
+                    } else {
+                        Text("Shown once the probe sends a full status.").font(F.caption).foregroundStyle(P.muted)
+                    }
+                }
                 section("Sensors") {
                     ForEach(0..<8, id: \.self) { i in
                         HStack {

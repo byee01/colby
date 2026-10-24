@@ -78,3 +78,17 @@ struct InstantReadTrailTests {
         #expect(trail.points.isEmpty)
     }
 }
+
+struct AlarmRowTests {
+    @Test func setAlarmsInDisplayOrderWithState() {
+        let config = AlarmConfig(
+            high: [.core: Alarm(isSet: true, temperature: 29.4, tripped: true, alarming: true),
+                   .t3: Alarm(isSet: true, temperature: 100), .surface: Alarm(isSet: false, temperature: 50)],
+            low: [.core: Alarm(isSet: true, temperature: 10, tripped: true)])
+        let rows = alarmRows(config, format: f)
+        #expect(rows.map(\.title) == ["Core high", "Core low", "T3 high"])
+        #expect(rows.map(\.value) == ["85°", "50°", "212°"])
+        #expect(rows.map(\.state) == [.alarming, .tripped, .armed])
+        #expect(alarmRows(AlarmConfig(), format: f).isEmpty)
+    }
+}

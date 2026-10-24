@@ -155,3 +155,34 @@ public struct InstantReadTrail: Equatable, Sendable {
         points.removeAll { time.timeIntervalSince($0.time) > window }
     }
 }
+
+/// One probe alarm as the inspector lists it.
+public struct AlarmRow: Equatable, Sendable {
+    public enum State: Sendable { case armed, tripped, alarming }
+    public var title: String
+    public var value: String
+    public var state: State
+}
+
+/// The probe's set alarms: core, surface, ambient, then T1-T8; high before low. Empty when none is set.
+public func alarmRows(_ config: AlarmConfig, format: Formatter) -> [AlarmRow] {
+    let order: [AlarmChannel] = [.core, .surface, .ambient] + [.t1, .t2, .t3, .t4, .t5, .t6, .t7, .t8]
+    func name(_ c: AlarmChannel) -> String {
+        switch c {
+        case .core: "Core"
+        case .surface: "Surface"
+        case .ambient: "Ambient"
+        default: "T\(c.rawValue + 1)"
+        }
+    }
+    var rows: [AlarmRow] = []
+    for channel in order {
+        for (kind, set) in [("high", config.high), ("low", config.low)] {
+            guard let a = set[channel], a.isSet else { continue }
+            rows.append(AlarmRow(
+                title: "\(name(channel)) \(kind)", value: format.temperature(a.temperature),
+                state: a.alarming ? .alarming : a.tripped ? .tripped : .armed))
+        }
+    }
+    return rows
+}
