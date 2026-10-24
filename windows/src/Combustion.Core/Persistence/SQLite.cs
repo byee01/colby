@@ -23,6 +23,9 @@ public sealed class SqliteDatabase : IDisposable
             Mode = path == ":memory:" ? SqliteOpenMode.Memory : SqliteOpenMode.ReadWriteCreate,
             Cache = path == ":memory:" ? SqliteCacheMode.Private : SqliteCacheMode.Default,
             Pooling = false,
+            // History and the alert store each hold a connection to the same file. Microsoft.Data.Sqlite retries a
+            // command that meets the other's lock (SQLITE_BUSY) for this long; 5 s as on the Mac (sqlite3_busy_timeout).
+            DefaultTimeout = 5,
         };
         _connection = new SqliteConnection(builder.ToString());
         _connection.Open();
