@@ -119,6 +119,60 @@ public sealed class M4MeatNetTests
         await rig.App.StopAsync();
     });
 
+    /// <summary>spec/replays/display-relay-1hop: a Display relays fw v2.3.3's 94 B status, so 0x45 has no session id either.</summary>
+    [Fact]
+    public void SessionIdIsReadThroughTheNodeWhenTheRelayedStatusHasNone() => Det.Run(async () =>
+    {
+        using var rig = new E2ERig();
+        var probe = rig.Probe(SerialA, preload: 60, sessionId: 7);
+        probe.StatusWithoutSession = true;
+        probe.SetInRange(false);
+        var display = rig.Node(relaying: [probe]);
+        await rig.App.StartAsync();
+        await rig.App.FollowAsync(SerialA);
+        Assert.True(await rig.RunUntilAsync(() => rig.NodeConnected(), limit: 30));
+        await rig.RunAsync(30);
+
+        Assert.Equal([7u], rig.App.History.Sessions(SerialA).Select(s => s.Key.SessionId).ToList());
+        Assert.Equal(7u, rig.Snapshot(SerialA)!.Session?.Info?.SessionId);
+        int SessionReads() => display.Requests.Count(r => r.Request is UartRequest.ReadSessionInfo && r.Probe == SerialA);
+        Assert.True(SessionReads() == 1, "read once per probe, not per status");
+
+        // A new cook while relayed: the log range goes backwards and the id is read again.
+        probe.NewSession();
+        await rig.RunAsync(30);
+        Assert.Equal([8u, 7u], rig.App.History.Sessions(SerialA).Select(s => s.Key.SessionId).ToList());
+        Assert.Equal(2, SessionReads());
+        await rig.App.StopAsync();
+    });
+
+    /// <summary>spec/replays/display-relay-1hop: the connected Display paused its repeated advertisements for 16 s and
+    /// the app opened a direct link to a probe it was still getting 0x45 for.</summary>
+    [Fact]
+    public void RelayedStatusesKeepTheNodeCoveringWhenItsRepeatedAdvertisementsPause() => Det.Run(async () =>
+    {
+        using var rig = new E2ERig();
+        var probe = rig.Probe(SerialA, preload: 10);
+        var display = rig.Node(relaying: [probe]);
+        display.QuietWhileConnected = true;
+        await rig.App.StartAsync();
+        await rig.App.FollowAsync(SerialA);
+        Assert.True(await rig.RunUntilAsync(() => rig.NodeConnected(), limit: 30));
+        await rig.RunAsync(5, step: 1);
+        var directSeconds = 0;
+        for (var i = 0; i < 60; i++)
+        {
+            await rig.RunAsync(1, step: 1);
+            if (rig.Transport.IsConnected(probe.Peripheral))
+            {
+                directSeconds++;
+            }
+        }
+        Assert.Equal(0, directSeconds);
+        Assert.Equal(ViaDisplay, rig.LinkState(SerialA));
+        await rig.App.StopAsync();
+    });
+
     [Fact]
     public void ProbeComingBackInMacRangeStaysOnTheNodeAndOpensNoDirectLink() => Det.Run(async () =>
     {

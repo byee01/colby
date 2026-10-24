@@ -40,6 +40,7 @@ public sealed class SimulatedNode
 
     private readonly Dictionary<ProbeSerial, Relayed> _relayed = [];
     private bool _inRange = true;
+    private bool _quiet;
     private bool _running;
     private int _ticks;
     private uint _nextResponseId = 5000;
@@ -104,6 +105,14 @@ public sealed class SimulatedNode
 
     public bool IsInRange => _inRange;
 
+    /// <summary>While the app is connected, send no repeated-probe advertisements (only 0x45). A real Display repeats
+    /// them with gaps of up to 16 s while connected (spec/replays/display-relay-1hop); this is the extreme.</summary>
+    public bool QuietWhileConnected
+    {
+        get => _quiet;
+        set => _quiet = value;
+    }
+
     /// <summary>Out of range: no advertisements, the open connection drops with <c>LinkLost</c>, connects are refused.</summary>
     public void SetInRange(bool value)
     {
@@ -151,6 +160,7 @@ public sealed class SimulatedNode
 
     private void Tick()
     {
+        var connected = _transport.IsConnected(Peripheral);
         if (!_running || !_inRange)
         {
             return;
@@ -161,7 +171,7 @@ public sealed class SimulatedNode
         {
             ads.Add(own);
         }
-        foreach (var r in _relayed.Values)
+        foreach (var r in _relayed.Values.Where(_ => !(_quiet && connected)))
         {
             if (Try(() => CombustionCodec.EncodeAdvertisement(new AdvertisementPacket.Repeated(r.Probe.CurrentAdvertisement, r.Hops))) is { } ad)
             {
@@ -181,7 +191,7 @@ public sealed class SimulatedNode
         {
             _transport.InjectAdvertisement(Peripheral, ad);
         }
-        if (beat is not null && _transport.IsConnected(Peripheral))
+        if (beat is not null && connected)
         {
             _transport.InjectNotification(Peripheral, GattUuid.UartTx, beat);
         }
@@ -207,7 +217,7 @@ public sealed class SimulatedNode
             return;
         }
         var probe = relay.Probe;
-        var layout = probe.IsLegacyLayout ? StatusLayout.Legacy : StatusLayout.Current;
+        var layout = probe.IsLegacyLayout || probe.StatusWithoutSession ? StatusLayout.Legacy : StatusLayout.Current;
         var frame = Try(() =>
         {
             var payload = CombustionCodec.EncodeNodeProbeStatus(new NodeProbeStatus(probeSerial, probe.CurrentStatus, relay.Hops), layout);
