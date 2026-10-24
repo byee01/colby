@@ -13,6 +13,8 @@ public final class Runtime: @unchecked Sendable {
     public let isDemo: Bool
     /// Asks for notification permission (06 §10: when the first alert rule is on; the default set is on).
     public let requestNotifications: @Sendable () async -> Void
+    /// Whether macOS will show Colby's banners; nil in demo mode (no notifications there).
+    public var notificationsAllowed: @Sendable () async -> Bool? = { nil }
     /// A notification banner was clicked (alert id). Set by `AppController`.
     @MainActor public var onOpenAlert: ((String) -> Void)?
     private var driver: Task<Void, Never>?
@@ -43,6 +45,7 @@ public final class Runtime: @unchecked Sendable {
             alertSinks: [NotificationAlertSink(notifications), SoundAlertSink(SystemSoundPlayer())],
             keepAwake: PowerAssertionKeepAwake(), liveSnapshot: snapshot)
         let runtime = Runtime(app: app, clock: clock, isDemo: false) { _ = await notifications.requestAuthorization() }
+        runtime.notificationsAllowed = { await notifications.canShowBanners() }
         runtime.router = NotificationActionRouter { [weak runtime] kind, id in
             switch kind {
             case .acknowledge: await app.alerts.acknowledge(id)

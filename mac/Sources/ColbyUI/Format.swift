@@ -161,6 +161,8 @@ public struct InstantReadTrail: Equatable, Sendable {
 /// One probe alarm as the inspector lists it.
 public struct AlarmRow: Equatable, Sendable {
     public enum State: Sendable { case armed, tripped, alarming }
+    public var kind: AlarmKind
+    public var channel: AlarmChannel
     public var title: String
     public var value: String
     public var state: State
@@ -179,10 +181,10 @@ public func alarmRows(_ config: AlarmConfig, format: Formatter) -> [AlarmRow] {
     }
     var rows: [AlarmRow] = []
     for channel in order {
-        for (kind, set) in [("high", config.high), ("low", config.low)] {
+        for (kind, set) in [(AlarmKind.high, config.high), (.low, config.low)] {
             guard let a = set[channel], a.isSet else { continue }
             rows.append(AlarmRow(
-                title: "\(name(channel)) \(kind)", value: format.temperature(a.temperature),
+                kind: kind, channel: channel, title: "\(name(channel)) \(kind == .high ? "high" : "low")", value: format.temperature(a.temperature),
                 state: a.alarming ? .alarming : a.tripped ? .tripped : .armed))
         }
     }

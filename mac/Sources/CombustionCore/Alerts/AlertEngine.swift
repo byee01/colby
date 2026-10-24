@@ -73,6 +73,9 @@ public actor AlertEngine {
     private var snapshots: [ProbeSerial: ProbeSnapshot] = [:]
     private var views: [ProbeSerial: PredictionView] = [:]
     private var instances: [String: Tracked] = [:]
+    /// Probe alarms that a snooze silenced on the probe: they stay active while the alarm is still tripped
+    /// (the probe no longer says alarming) so the snooze can run out and fire again.
+    private var snoozeSilenced: Set<String> = []
     private var pending: [String: Pending] = [:]
     private var history: [ProbeSerial: [CoreSample]] = [:]
     private var cooks: [ProbeSerial: CookState] = [:]
@@ -202,13 +205,17 @@ public actor AlertEngine {
     public func acknowledge(_ id: String) async {
         guard let t = instances[id], t.instance.state == .firing || t.instance.state == .snoozed else { return }
         let now = clock.now()
+        let wasSnoozeSilenced = snoozeSilenced.remove(id) != nil
         transition(id, to: .acknowledged, at: now)
+        // An alert kept only by a snooze silence ends here if the probe already stopped alarming.
+        if wasSnoozeSilenced { evaluate(t.instance.serial) }
         await drainOutbox()
         if case .probeAlarm = t.instance.source { await silenceProbe(t.instance.serial, ids: [id]) }
     }
 
-    /// Mutes a firing alert for `duration`; it fires again then if the condition still holds. Local only: a probe
-    /// alarm keeps sounding on the probe.
+    /// Mutes a firing alert for `duration`; it fires again then if the condition still holds. A probe alarm is
+    /// also silenced on the probe (so its Display and phone stop too); Colby then keeps the alert while the alarm
+    /// stays tripped and fires again when the snooze runs out. The probe stays quiet after that: it has no snooze.
     public func snooze(_ id: String, duration: Duration) async {
         guard let t = instances[id], t.instance.state == .firing else { return }
         let now = clock.now()
@@ -216,6 +223,10 @@ public actor AlertEngine {
         transition(id, to: .snoozed, at: now)
         scheduleWake()
         await drainOutbox()
+        if case .probeAlarm = t.instance.source {
+            snoozeSilenced.insert(id)
+            await silenceProbe(t.instance.serial, ids: [id])
+        }
     }
 
     /// Acknowledges everything firing for the probe; sends one Silence Alarms if any probe alarm was among them.
@@ -237,7 +248,7 @@ public actor AlertEngine {
         } catch {
             // The probe is still alarming: the app must not stay quiet about it.
             let now = clock.now()
-            for id in ids where instances[id]?.instance.state == .acknowledged {
+            for id in ids where instances[id]?.instance.state == .acknowledged || instances[id]?.instance.state == .snoozed {
                 transition(id, to: .firing, at: now, failure: String(describing: error))
             }
             await drainOutbox()
@@ -357,8 +368,10 @@ public actor AlertEngine {
         if let alarms = snap.alarms {
             for (kind, set) in [(AlarmKind.high, alarms.high), (.low, alarms.low)] {
                 for channel in AlarmChannel.allCases {
-                    guard online, set[channel]?.alarming == true else { continue }
-                    desired[Self.alarmId(serial, kind, channel)] = Desired(
+                    let id = Self.alarmId(serial, kind, channel)
+                    guard online, let a = set[channel],
+                          a.alarming || (a.tripped && snoozeSilenced.contains(id)) else { continue }
+                    desired[id] = Desired(
                         source: .probeAlarm(kind: kind, channel: channel),
                         outcome: RuleOutcome(met: true, value: set[channel]?.temperature), sustain: 0, latch: false)
                 }
@@ -431,6 +444,7 @@ public actor AlertEngine {
         guard var t = instances[id] else { return }
         let from = t.instance.state
         guard from != new else { return }
+        if new == .idle { snoozeSilenced.remove(id) }
         t.instance.state = new
         switch new {
         case .firing:

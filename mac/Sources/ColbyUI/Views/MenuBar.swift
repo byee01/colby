@@ -64,6 +64,21 @@ public struct MenuBarContent: View {
                 .padding(10)
                 .background(RoundedRectangle(cornerRadius: Theme.Radius.control).fill(P.criticalBg))
             }
+            ForEach(model.snoozed, id: \.id) { alert in
+                HStack {
+                    Image(systemName: "bell.slash").foregroundStyle(P.muted)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(alertText(alert, format: format).title).font(F.label).foregroundStyle(P.text2)
+                        if let until = alert.snoozedUntil {
+                            Text("Snoozed until " + format.clock(until)).font(F.caption).foregroundStyle(P.muted)
+                        }
+                    }
+                    Spacer()
+                    Button("Acknowledge") { model.acknowledge(alert) }.buttonStyle(SecondaryButtonStyle())
+                }
+                .padding(10)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.control).fill(P.raised))
+            }
             if model.probes.isEmpty {
                 Text("No probes yet. Take one out of its charger.").font(F.body).foregroundStyle(P.text2)
             }

@@ -224,6 +224,52 @@ struct AlertBand: View {
     }
 }
 
+/// Muted band while an alert is snoozed, so the snooze is visible and can be ended for good.
+struct SnoozedBand: View {
+    var title: String
+    var until: String?
+    var count: Int
+    var acknowledge: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "bell.slash").foregroundStyle(P.muted)
+            Text(title).font(F.label).foregroundStyle(P.text2)
+            Text(until.map { "Snoozed until \($0)" } ?? "Snoozed").font(F.caption).foregroundStyle(P.muted)
+            if count > 1 { Text("+\(count - 1) more").font(F.caption).foregroundStyle(P.muted) }
+            Spacer()
+            Button("Acknowledge", action: acknowledge).buttonStyle(SecondaryButtonStyle())
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(P.raised)
+        .overlay(alignment: .bottom) { Rectangle().fill(P.line).frame(height: 1) }
+    }
+}
+
+/// Warning under the toolbar while macOS will not show Colby's banners.
+struct NotificationsOffBanner: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "bell.badge.slash").foregroundStyle(P.warning)
+            Text("Notifications are off for Colby. Alerts only show and sound in this window.")
+                .font(F.caption).foregroundStyle(P.text)
+            Spacer()
+            Button("Open Notification Settings") {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            .buttonStyle(SecondaryButtonStyle())
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(P.warningBg)
+    }
+}
+
 /// Centered empty state: icon, title, one line, one action.
 struct StatusPanel: View {
     var icon: String

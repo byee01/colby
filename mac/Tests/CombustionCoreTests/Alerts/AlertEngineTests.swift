@@ -145,6 +145,40 @@ struct AlertEngineTests {
         #expect(await rig.active().isEmpty)
     }
 
+    /// Asked for on hardware: Snooze left the phone ringing with no way to stop it from Colby.
+    @Test func snoozingAProbeAlarmSilencesTheProbeAndFiresAgainWhileTripped() async {
+        let rig = AlertRig()
+        await rig.follow([])
+        let id = "\(AF.serial.hex).alarm.high.core"
+        await rig.snapshot(alarms: AF.alarming(.high, .core))
+        await rig.engine.snooze(id, duration: .seconds(300))
+        #expect(rig.silencer.silenced == [AF.serial], "the Display and phone stop too")
+        #expect(rig.sound.playing.isEmpty)
+        // The probe confirms: still past the limit (tripped), no longer alarming. The snooze holds.
+        let silenced = AlarmConfig(high: [.core: Alarm(isSet: true, temperature: 80, tripped: true, alarming: false)])
+        await rig.snapshot(alarms: silenced)
+        #expect(await rig.state(id) == .snoozed)
+        await rig.clock.advance(by: .seconds(301))
+        await rig.snapshot(alarms: silenced)
+        #expect(await rig.state(id) == .firing, "Colby fires again; the probe has no snooze")
+        #expect(rig.sound.playing[id] == .probeAlarm)
+        await rig.engine.acknowledge(id)
+        await rig.snapshot(alarms: silenced)
+        #expect(await rig.active().isEmpty)
+    }
+
+    @Test func snoozedProbeAlarmEndsWhenTheTemperatureComesBack() async {
+        let rig = AlertRig()
+        await rig.follow([])
+        let id = "\(AF.serial.hex).alarm.high.core"
+        await rig.snapshot(alarms: AF.alarming(.high, .core))
+        await rig.engine.snooze(id, duration: .seconds(300))
+        await rig.snapshot(alarms: AF.alarming(.high, .core, false))   // not tripped any more
+        #expect(await rig.active().isEmpty)
+        await rig.clock.advance(by: .seconds(301))
+        #expect(rig.sound.playing.isEmpty)
+    }
+
     @Test func failedSilenceGoesBackToFiringWithTheReason() async {
         let rig = AlertRig()
         await rig.follow([])
@@ -173,17 +207,6 @@ struct AlertEngineTests {
         await rig.snapshot(overheating: [])
         #expect(rig.notifications.visible.isEmpty)
         #expect(await rig.active().isEmpty)
-    }
-
-    @Test func snoozingAProbeAlarmIsLocalOnly() async {
-        let rig = AlertRig()
-        await rig.follow([])
-        await rig.snapshot(alarms: AF.alarming(.high, .core))
-        let id = "\(AF.serial.hex).alarm.high.core"
-        await rig.engine.snooze(id, duration: .seconds(60))
-        #expect(rig.silencer.silenced.isEmpty)
-        await rig.clock.advance(by: .seconds(61))
-        #expect(await rig.state(id) == .firing, "the probe is still alarming")
     }
 
     @Test func silenceAllAcknowledgesEverythingAndSendsOneSilence() async {

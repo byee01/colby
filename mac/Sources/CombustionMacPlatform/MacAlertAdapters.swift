@@ -38,6 +38,13 @@ public final class UserNotificationPresenter: NotificationPresenting, @unchecked
         (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
     }
 
+    /// Whether banners can be shown: authorized (or provisional) and alerts not turned off in System Settings.
+    public func canShowBanners() async -> Bool {
+        let s = await center.notificationSettings()
+        let allowed = s.authorizationStatus == .authorized || s.authorizationStatus == .provisional
+        return allowed && s.alertSetting == .enabled
+    }
+
     public func post(_ alert: AlertInstance) async {
         let text = format(alert)
         let content = UNMutableNotificationContent()

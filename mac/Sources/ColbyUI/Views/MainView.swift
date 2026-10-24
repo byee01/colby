@@ -22,6 +22,14 @@ public struct MainView: View {
                 AlertBand(title: text.title, detail: text.detail, count: model.firing.count,
                           acknowledge: { model.acknowledge(alert) }, snooze: { model.snooze(alert) })
             }
+            if model.notificationsAllowed == false {
+                NotificationsOffBanner()
+            }
+            if model.firing.isEmpty, let alert = model.snoozed.first {
+                SnoozedBand(title: alertText(alert, format: model.format).title,
+                            until: alert.snoozedUntil.map(model.format.clock), count: model.snoozed.count,
+                            acknowledge: { model.acknowledge(alert) })
+            }
             content
         }
         // Band 62 + header 70 + readouts 118 + label 20 + graph 160 + chips 94 + spacing and padding.
@@ -69,7 +77,9 @@ public struct MainView: View {
             if let probe = model.selectedProbe {
                 HStack(spacing: 0) {
                     probeColumn(probe)
-                    Inspector(snapshot: probe, prediction: model.prediction(probe.serial), format: model.format)
+                    Inspector(snapshot: probe, prediction: model.prediction(probe.serial),
+                              alerts: model.alerts.filter { $0.serial == probe.serial }, format: model.format,
+                              acknowledge: model.acknowledge)
                         .frame(width: 300)
                 }
             } else {
@@ -182,7 +192,10 @@ struct InstantReadView: View {
 struct Inspector: View {
     var snapshot: ProbeSnapshot
     var prediction: PredictionView?
+    /// This probe's active alerts, to show a snoozed probe alarm on its row.
+    var alerts: [AlertInstance] = []
     var format: Formatter
+    var acknowledge: (AlertInstance) -> Void = { _ in }
 
     @Environment(\.staticRender) private var staticRender
 
@@ -222,11 +235,16 @@ struct Inspector: View {
                             Text("None set on the probe.").font(F.caption).foregroundStyle(P.muted)
                         }
                         ForEach(rows, id: \.title) { r in
+                            let snoozed = snoozedAlert(r)
                             HStack {
-                                Image(systemName: r.state == .armed ? "bell" : "bell.fill")
-                                    .foregroundStyle(r.state == .armed ? P.muted : r.state == .alarming ? P.critical : P.warning)
+                                Image(systemName: snoozed != nil ? "bell.slash" : r.state == .armed ? "bell" : "bell.fill")
+                                    .foregroundStyle(snoozed != nil || r.state == .armed ? P.muted
+                                                     : r.state == .alarming ? P.critical : P.warning)
                                 Text(r.title).font(F.label).foregroundStyle(P.text2)
-                                if r.state != .armed {
+                                if let snoozed {
+                                    Text(snoozed.snoozedUntil.map { "Snoozed to " + format.clock($0) } ?? "Snoozed")
+                                        .font(F.caption).foregroundStyle(P.muted)
+                                } else if r.state != .armed {
                                     Text(r.state == .alarming ? "Alarming" : "Tripped").font(F.caption)
                                         .foregroundStyle(r.state == .alarming ? P.critical : P.warning)
                                 }
@@ -257,6 +275,13 @@ struct Inspector: View {
                 }
         }
         .padding(20)
+    }
+
+    private func snoozedAlert(_ r: AlarmRow) -> AlertInstance? {
+        alerts.first {
+            guard $0.state == .snoozed, case .probeAlarm(let kind, let channel) = $0.source else { return false }
+            return kind == r.kind && channel == r.channel
+        }
     }
 
     private var connection: String {

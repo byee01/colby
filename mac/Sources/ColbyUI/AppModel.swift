@@ -17,6 +17,8 @@ public final class AppModel {
     public private(set) var alerts: [AlertInstance] = []
     /// The alerts that should demand attention now (band, bell, popover); most urgent first.
     public var firing: [AlertInstance] { alerts.filter { $0.state == .firing } }
+    /// Snoozed alerts: shown muted, with Acknowledge, so a snooze is never invisible.
+    public var snoozed: [AlertInstance] { alerts.filter { $0.state == .snoozed } }
     /// History of the selected probe's current session.
     public private(set) var series: TemperatureSeries?
     /// The selected probe's Instant Read readings (°C) over the last 30 s, for the sparkline.
@@ -33,6 +35,8 @@ public final class AppModel {
         }
     }
     public var unit: TemperatureUnit = .default()
+    /// false when macOS will not show Colby's banners (permission denied or alerts off); nil when unknown.
+    public private(set) var notificationsAllowed: Bool?
     public var format: Formatter { Formatter(unit: unit) }
     public let isDemo: Bool
 
@@ -91,6 +95,14 @@ public final class AppModel {
         })
         await app.start()
         await runtime.requestNotifications()
+        let allowed = runtime.notificationsAllowed
+        tasks.append(Task {
+            // Rechecked, since the user can change it in System Settings at any time.
+            while !Task.isCancelled {
+                self.notificationsAllowed = await allowed()
+                try? await Task.sleep(for: .seconds(10))
+            }
+        })
     }
 
     public func stop() async {
