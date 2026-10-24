@@ -221,6 +221,22 @@ struct M3HistoryTests {
         #expect(rig.spy.attempts.count == attempts)
         await rig.app.stop()
     }
+    @Test func theCookNameReachesHistoryAndTheWidgetSnapshot() async throws {
+        let rig = try E2ERig(liveSnapshot: FileLiveSnapshotWriter(url: FileManager.default.temporaryDirectory
+            .appendingPathComponent("colby-live-\(UUID().uuidString).json")))
+        let probe = rig.probe(serialA, preload: 10)
+        await rig.app.start()
+        await rig.app.follow(serialA)
+        #expect(await rig.run(until: { await rig.connected(serialA) }, limit: .seconds(20)))
+        await rig.run(.seconds(10))
+
+        try await rig.app.setCookName("Brisket", for: serialA)
+        #expect(try await rig.app.history.sessions(serial: serialA).first?.nickname == "Brisket")
+        let writer = try #require(rig.app.liveSnapshot)
+        #expect(await rig.eventually { await writer.current().probes.first?.name == "Brisket" })
+        await rig.app.stop()
+        withExtendedLifetime(probe) {}
+    }
 }
 
 extension HistoryStore {

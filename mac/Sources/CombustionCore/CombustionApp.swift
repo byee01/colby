@@ -128,6 +128,10 @@ public actor CombustionApp {
         await alerts.start(probes: probes.probes, predictions: predictionPresenter.updates, followed: probes.followed)
         await liveSnapshot?.start(
             probes: probes.probes, predictions: predictionPresenter.updates, followed: probes.followed)
+        if let liveSnapshot {
+            let names = history.cookNames
+            tasks.append(Task { for await m in names { await liveSnapshot.setNames(m) } })
+        }
 
         await advertisements.start()
         await policy.start(ConnectionPolicyInput(
@@ -158,6 +162,17 @@ public actor CombustionApp {
 
     public func follow(_ serial: ProbeSerial) async { await probes.follow(serial) }
     public func unfollow(_ serial: ProbeSerial) async { await probes.unfollow(serial) }
+
+    // MARK: Cook names
+
+    /// Each probe's current cook name (absent when unnamed): the latest map first, then changes.
+    public nonisolated var cookNames: AsyncStream<[ProbeSerial: String]> { history.cookNames }
+
+    /// Names the probe's current cook, or its next one if none is open; nil or blank clears it.
+    /// History rows and the widget snapshot show it.
+    public func setCookName(_ name: String?, for serial: ProbeSerial) async throws {
+        try await history.setCookName(name, for: serial)
+    }
 
     // MARK: Diagnostics
 

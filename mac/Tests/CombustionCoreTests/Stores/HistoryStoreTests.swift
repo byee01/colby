@@ -212,6 +212,55 @@ struct HistoryStoreTests {
         #expect(try await store.sessions().map(\.key) == [again])
     }
 
+    @Test func cookNameNamesTheOpenCookAndANewCookStartsUnnamed() async throws {
+        let store = try makeStore()
+        var names = await store.cookNames.makeAsyncIterator()
+        #expect(await names.next() == [:])
+
+        let k1 = try await store.ingest(status: ev(F.status(logMax: 5, sessionId: 1), at: t0))
+        #expect(await names.next() == [:], "the cook opened unnamed")
+        try await store.setCookName("  Brisket ", for: F.serial)
+        #expect(await names.next() == [F.serial: "Brisket"])
+        #expect(try await store.cookName(of: F.serial) == "Brisket")
+        #expect(try await store.sessions().first?.nickname == "Brisket")
+
+        try await store.ingest(status: ev(F.status(logMax: 1, sessionId: 2), at: t0 + 4000))
+        #expect(await names.next() == [:], "a charger cycle starts a new, unnamed cook")
+        #expect(try await store.sessions().map(\.nickname) == [nil, "Brisket"])
+
+        try await store.rename(k1, nickname: "Old brisket")
+        #expect(await names.next() == [:], "renaming an ended cook changes no current name")
+        try await store.setCookName("", for: F.serial)
+        #expect(await names.next() == [:])
+    }
+
+    @Test func aNameGivenBeforeTheFirstStatusGoesToTheNextCook() async throws {
+        let store = try makeStore()
+        try await store.setCookName("Ribs", for: F.serial)
+        #expect(try await store.cookName(of: F.serial) == "Ribs")
+        let key = try await store.ingest(status: ev(F.status(logMax: 3, sessionId: 9), at: t0))
+        #expect(try await store.sessions().first { $0.key == key }?.nickname == "Ribs")
+
+        try await store.endCurrentSession(of: F.serial)
+        #expect(try await store.cookName(of: F.serial) == nil, "the cook ended")
+    }
+
+    @Test func cookNamesSurviveARestart() async throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("colby-\(UUID().uuidString).sqlite").path
+        defer { for ext in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + ext) } }
+        do {
+            let store = try HistoryStore(path: path, clock: TestClock())
+            try await store.ingest(status: ev(F.status(logMax: 10, sessionId: 4), at: t0))
+            try await store.setCookName("Pork shoulder", for: F.serial)
+        }
+        let store = try HistoryStore(path: path, clock: TestClock())
+        var names = await store.cookNames.makeAsyncIterator()
+        #expect(await names.next() == [F.serial: "Pork shoulder"], "known before the probe is heard again")
+        try await store.setCookName("Pulled pork", for: F.serial)
+        let k = try await store.ingest(status: ev(F.status(logMax: 12, sessionId: 4), at: t0 + 60))
+        #expect(try await store.sessions().first { $0.key == k }?.nickname == "Pulled pork")
+    }
+
     @Test func endCurrentSessionClosesAndComputesThumbnail() async throws {
         let store = try makeStore(fetcher: StoreFakeFetcher(seqs: 0...9))
         let key = try await store.ingest(status: ev(F.status(logMax: 9), at: t0))
