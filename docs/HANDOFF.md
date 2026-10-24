@@ -142,7 +142,7 @@ Known weak spots: `TestClock` wake ordering under a multi-threaded executor reli
 | Sim | Done: SimulatedTransport, SimulatedProbe, SimulatedNode, RecordingTransport, replay format | `src/Combustion.Sim` |
 | W6 app | Not started (WinUI 3, tray, MSIX) | |
 
-Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 10, Linux OK): 1,242 passing (codec 966, core 231, sim 45) as of `31fdc66`. Conventions for the port: `windows/PORTING.md`.
+Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 10, Linux or Windows): 1,284 passing on Windows 11 (codec 967, core 272, sim 45) after parity row 10. Conventions for the port: `windows/PORTING.md`.
 
 ### Core parity checklist (port before W6)
 
@@ -159,7 +159,7 @@ Windows was last touched at `31fdc66`. Every core change since is on the Mac onl
 | 7 | `61a22dd` | `Commands` confirm tolerance 0.11 °C (one 0.1 °C step) | `ASetpointReportedOneTenthLowStillConfirms` |
 | 8 | `1a507b6` | `AlertEngine`: acknowledge, snooze, silenceAll and a failed silence end in `FinishRound` (publish `active`) | needs the e2e rig: `AcknowledgingOrSnoozingTheDisconnectedAlertTakesItOutOfFiring`. Until then a unit test on `Active()` after `Acknowledge` with no further input |
 | 9 | `289b9dc` | Cook names: `HistoryStore.SetCookName` / `CookName` / `CookNames()`, insert takes the waiting name, `rename`/`delete`/`endCurrentSession` republish; `LiveSnapshotWriter.SetNames`; facade `SetCookName` / `CookNames()` wired to the writer | `CookNameNamesTheOpenCookAndANewCookStartsUnnamed`, `ANameGivenBeforeTheFirstStatusGoesToTheNextCook`, `CookNamesSurviveARestart`, e2e `TheCookNameReachesHistoryAndTheWidgetSnapshot` |
-| 10 | (M3-M6) | End-to-end suites: `E2ESupport` (`E2ERig`, `ConnectSpyTransport`), `M2`-`M6`, `ConnectionPolicyE2ETests`, `FaultInjectionE2ETests`, `TraceAndDiagnosticsE2ETests` | all; they are what proves 1-9 behave the same on both platforms |
+| 10 | (M3-M6) | **Done (2026-10-24).** End-to-end suites ported as of `31fdc66` (41 tests in `tests/Combustion.Core.Tests/EndToEnd`). On `DeterministicContext` the rig's `drain` is one `SettleAsync` and `expectSchedule` has 0 s slack (exact virtual times). Each later row adds its own e2e changes (row 1: `FaultInjection` partial count 50 -> 51; rows 3, 6, 8, 9: new M3/M4/M6 tests; row 9: `E2ERig(liveSnapshot:)`) | all; they are what proves 1-9 behave the same on both platforms |
 
 Order: 10's rig first (8 and 9 need it), then 1, 3, 5 (they share `ProbeMerger` / links), then 2, 4, 6, 7, 8, 9. New fixtures and replays since `31fdc66` (`spec/fixtures/uart_frames/response_probe_session_info_hw_fw_2_3_3.json`, 8 replays in `spec/replays/`) are picked up by the shared-fixture tests; check they pass.
 
