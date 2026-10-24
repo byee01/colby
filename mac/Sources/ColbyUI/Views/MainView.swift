@@ -54,6 +54,11 @@ public struct MainView: View {
             }
         }
         .navigationTitle(model.isDemo ? "Colby — Demo" : "Colby")
+        .sheet(isPresented: Binding(get: { model.targetSheet != nil }, set: { if !$0 { model.targetSheet = nil } })) {
+            if let serial = model.targetSheet {
+                SetTargetSheet(model: model, serial: serial) { model.targetSheet = nil }
+            }
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -79,7 +84,7 @@ public struct MainView: View {
                     probeColumn(probe)
                     Inspector(snapshot: probe, prediction: model.prediction(probe.serial),
                               alerts: model.alerts.filter { $0.serial == probe.serial }, format: model.format,
-                              acknowledge: model.acknowledge)
+                              acknowledge: model.acknowledge, setTarget: { model.targetSheet = probe.serial })
                         .frame(width: 300)
                 }
             } else {
@@ -196,6 +201,7 @@ struct Inspector: View {
     var alerts: [AlertInstance] = []
     var format: Formatter
     var acknowledge: (AlertInstance) -> Void = { _ in }
+    var setTarget: () -> Void = {}
 
     @Environment(\.staticRender) private var staticRender
 
@@ -220,12 +226,14 @@ struct Inspector: View {
                                 Text("\(Int(pct))%").font(F.numeric(18)).foregroundStyle(P.text2)
                             }
                         }
+                        Button("Change target", action: setTarget).buttonStyle(SecondaryButtonStyle())
                     }
                 } else {
                     section("No target") {
-                        Text("Set a target on the probe's Display or phone app; editing here comes next.")
+                        Text("Set a target to get a ready time.")
                             .font(F.caption).foregroundStyle(P.muted)
                             .fixedSize(horizontal: false, vertical: true)
+                        Button("Set target", action: setTarget).buttonStyle(PrimaryButtonStyle())
                     }
                 }
                 section("Alarms") {

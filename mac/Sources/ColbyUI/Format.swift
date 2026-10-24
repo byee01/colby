@@ -190,3 +190,50 @@ public func alarmRows(_ config: AlarmConfig, format: Formatter) -> [AlarmRow] {
     }
     return rows
 }
+
+/// The Set target field (06 §5): typed in the user's unit, sent in °C rounded to 0.1, within what the probe takes.
+public enum TargetEntry {
+    public enum Problem: Error, Equatable, Sendable { case empty, notANumber, outOfRange }
+
+    /// `203` → 95.0 °C. The probe's range is 0–102.3 °C; a value outside it by rounding alone is accepted.
+    public static func parse(_ text: String, unit: TemperatureUnit) -> Result<Double, Problem> {
+        let trimmed = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        guard !trimmed.isEmpty else { return .failure(.empty) }
+        guard let value = Double(trimmed), value.isFinite else { return .failure(.notANumber) }
+        let celsius = unit == .fahrenheit ? (value - 32) * 5 / 9 : value
+        let rounded = (celsius * 10).rounded() / 10
+        guard rounded >= 0, rounded <= maxPredictionSetpoint + 0.05 else { return .failure(.outOfRange) }
+        return .success(min(rounded, maxPredictionSetpoint))
+    }
+
+    /// `32–216°F`, the probe's range in the user's unit (whole degrees, inside the limits).
+    public static func range(_ unit: TemperatureUnit) -> String {
+        let lo = Int(unit.convert(0).rounded(.up)), hi = Int(unit.convert(maxPredictionSetpoint).rounded(.down))
+        return "\(lo)–\(hi)\(unit.symbol)"
+    }
+
+    /// The field's starting text for a set point already on the probe: whole degrees in the user's unit.
+    public static func text(_ celsius: Double, unit: TemperatureUnit) -> String {
+        "\(Int(unit.convert(celsius).rounded()))"
+    }
+
+    /// Help line under the field: the range, or what is wrong.
+    public static func help(_ problem: Problem?, unit: TemperatureUnit) -> String {
+        switch problem {
+        case .notANumber?: "Enter a number, " + range(unit) + "."
+        case .outOfRange?: "The probe takes " + range(unit) + "."
+        case .empty?, nil: "Range " + range(unit)
+        }
+    }
+}
+
+/// What the Set target sheet says when a command fails (02 §8).
+public func commandFailureText(_ error: any Error) -> String {
+    switch error as? CommandError {
+    case .notReachable?: "The probe isn't connected. Bring it closer or wait for it to reconnect."
+    case .notConfirmed?: "The probe didn't confirm."
+    case .outOfRange?: "The probe doesn't take that value."
+    case .alarmStateUnknown?: "Waiting for the probe's alarms."
+    case .uart?, nil: "Couldn't reach the probe."
+    }
+}

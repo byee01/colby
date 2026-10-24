@@ -38,6 +38,8 @@ public final class AppModel {
     /// false when macOS will not show Colby's banners (permission denied or alerts off); nil when unknown.
     public private(set) var notificationsAllowed: Bool?
     public var format: Formatter { Formatter(unit: unit) }
+    /// The probe whose Set target sheet is open (the inspector button and Probe ▸ Set Target… open it).
+    public var targetSheet: ProbeSerial?
     public let isDemo: Bool
 
     private let runtime: Runtime
@@ -120,6 +122,15 @@ public final class AppModel {
 
     public func snooze(_ alert: AlertInstance, minutes: Int = 5) {
         Task { await app.alerts.snooze(alert.id, duration: .seconds(minutes * 60)) }
+    }
+
+    /// Starts or changes the prediction; returns once a status shows it (02 §8), throws `CommandError` otherwise.
+    public func setTarget(_ serial: ProbeSerial, mode: PredictionMode, celsius: Double) async throws {
+        try await app.commands.setPrediction(serial, mode: mode, setpoint: celsius)
+    }
+
+    public func clearTarget(_ serial: ProbeSerial) async throws {
+        try await app.commands.cancelPrediction(serial)
     }
 
     // MARK: Streams
