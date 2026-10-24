@@ -8,6 +8,10 @@ import Foundation
 /// from the Network Information byte). `0x49` heartbeats feed the node's `NodeSnapshot`. Requests for a
 /// probe (history, session info) are addressed by probe serial, so one connection serves every probe the
 /// node relays.
+///
+/// The 94 B status inside `0x45` (probe fw v2.3.3) has no session fields. As `DirectProbeLink` does, the link
+/// reads Session Info for each probe on its first such status, through this node, and fills it into later
+/// statuses; a log range that goes backwards drops that probe's cached info and reads it again.
 public actor NodeLink: LogFetcher {
     public nonisolated let serial: NodeSerial
     public nonisolated let productType: NodeProductType
@@ -41,6 +45,14 @@ public actor NodeLink: LogFetcher {
     private var finished = false
     private var decodeErrors = 0
     private var heartbeatPayload: [UInt8]?
+    private var sessions: [ProbeSerial: ProbeSession] = [:]
+
+    private struct ProbeSession {
+        var info: SessionInfo?
+        var read: Task<Void, Never>?
+        var refused = false
+        var lastLogMax: UInt32?
+    }
 
     /// - Parameter requestIds: source of request IDs; inject a deterministic one in tests.
     public init(
@@ -109,6 +121,8 @@ public actor NodeLink: LogFetcher {
         finished = true
         for t in tasks { t.cancel() }
         tasks.removeAll()
+        for s in sessions.values { s.read?.cancel() }
+        sessions.removeAll()
         await uart.close()
         coverage.clear()
         current.isConnected = false
@@ -134,13 +148,24 @@ public actor NodeLink: LogFetcher {
     }
 
     private func handleProbeStatus(_ payload: [UInt8]) {
-        let node: NodeProbeStatus
+        var node: NodeProbeStatus
         do {
             node = try decodeNodeProbeStatus(payload)
         } catch {
             decodeErrors += 1
             return
         }
+        if node.status.session == nil {
+            var s = sessions[node.serial] ?? ProbeSession()
+            if let last = s.lastLogMax, node.status.logRange.max < last {
+                s.info = nil
+                s.refused = false
+            }
+            node.status.session = s.info
+            sessions[node.serial] = s
+            if s.info == nil { requestSessionInfo(node.serial) }
+        }
+        sessions[node.serial, default: ProbeSession()].lastLogMax = node.status.logRange.max
         let now = clock.now()
         let source = LinkSource(
             kind: .nodeConnection, via: serial, hopCount: node.hopCount,
@@ -148,6 +173,22 @@ public actor NodeLink: LogFetcher {
         observationBroadcast.send(ProbeObservation(
             serial: node.serial, source: source, payload: .status(node.status), receivedAt: now))
         if coverage.note(node.serial, hops: node.hopCount, at: now) { refreshProbes(now) }
+    }
+
+    private func requestSessionInfo(_ probe: ProbeSerial) {
+        guard var s = sessions[probe], s.read == nil, !s.refused else { return }
+        s.read = Task {
+            let info = try? await self.readSessionInfo(probe: probe)
+            self.sessionInfoArrived(info, probe: probe)
+        }
+        sessions[probe] = s
+    }
+
+    private func sessionInfoArrived(_ info: SessionInfo?, probe: ProbeSerial) {
+        guard !finished, var s = sessions[probe] else { return }
+        s.read = nil
+        if let info { s.info = info } else { s.refused = true }
+        sessions[probe] = s
     }
 
     private func handleHeartbeat(_ payload: [UInt8]) {

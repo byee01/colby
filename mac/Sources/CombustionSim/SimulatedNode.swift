@@ -36,6 +36,7 @@ public final class SimulatedNode: @unchecked Sendable {
     private let lock = NSLock()
     private var relayed: [ProbeSerial: Relayed] = [:]
     private var inRange = true
+    private var quiet = false
     private var running = false
     private var ticks = 0
     private var nextResponseId: UInt32 = 5000
@@ -100,6 +101,13 @@ public final class SimulatedNode: @unchecked Sendable {
 
     public var isInRange: Bool { lock.withLock { inRange } }
 
+    /// While the app is connected, send no repeated-probe advertisements (only `0x45`). A real Display repeats
+    /// them with gaps of up to 16 s while connected (spec/replays/display-relay-1hop); this is the extreme.
+    public var quietWhileConnected: Bool {
+        get { lock.withLock { quiet } }
+        set { lock.withLock { quiet = newValue } }
+    }
+
     /// Out of range: no advertisements, the open connection drops with `.linkLost`, connects are refused.
     public func setInRange(_ value: Bool) {
         let changed: Bool = lock.withLock {
@@ -136,6 +144,7 @@ public final class SimulatedNode: @unchecked Sendable {
             var ads: [[UInt8]]
             var heartbeat: [UInt8]?
         }
+        let connected = transport.isConnected(peripheral)
         let work: Work? = lock.withLock {
             guard running, inRange else { return nil }
             ticks += 1
@@ -143,7 +152,7 @@ public final class SimulatedNode: @unchecked Sendable {
             if let own = try? encodeAdvertisement(.node(NodeAdvertisement(productType: productType, serial: serial))) {
                 ads.append(own)
             }
-            for r in relayed.values {
+            for r in relayed.values where !(quiet && connected) {
                 if let ad = try? encodeAdvertisement(.repeated(r.probe.currentAdvertisement, hopCount: r.hops)) {
                     ads.append(ad)
                 }
@@ -160,7 +169,7 @@ public final class SimulatedNode: @unchecked Sendable {
         }
         guard let work else { return }
         for ad in work.ads { transport.injectAdvertisement(peripheral: peripheral, mfrData: ad) }
-        if let beat = work.heartbeat, transport.isConnected(peripheral) {
+        if let beat = work.heartbeat, connected {
             transport.injectNotification(peripheral: peripheral, characteristic: .uartTX, bytes: beat)
         }
     }
@@ -170,7 +179,7 @@ public final class SimulatedNode: @unchecked Sendable {
         let (relay, live): (Relayed?, Bool) = lock.withLock { (relayed[probeSerial], running && inRange) }
         guard live, let relay, transport.isConnected(peripheral) else { return }
         let probe = relay.probe
-        let layout: StatusLayout = probe.isLegacyLayout ? .legacy : .current
+        let layout: StatusLayout = probe.isLegacyLayout || probe.statusWithoutSession ? .legacy : .current
         guard let payload = try? encodeNodeProbeStatus(
             NodeProbeStatus(serial: probeSerial, status: probe.currentStatus, hopCount: relay.hops), layout: layout),
               let frame = try? UartFrame(variant: .node, direction: .request, messageType: UartMessageType.probeStatus,

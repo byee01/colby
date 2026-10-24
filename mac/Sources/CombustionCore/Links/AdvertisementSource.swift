@@ -63,6 +63,9 @@ public struct AdvertisementDiagnostics: Sendable, Equatable {
     public var nodePackets = 0
     /// Valid Combustion packets of a product type this version ignores.
     public var unknownPackets = 0
+    /// Probe packets with serial 0: a node with no probe in that slot yet (a Display right after power-on
+    /// repeats all-zero packets). Dropped.
+    public var emptySlotPackets = 0
     /// Advertisements the codec rejected (wrong vendor, too short). Counted, never thrown.
     public var codecErrors = 0
     public init() {}
@@ -130,6 +133,8 @@ public actor AdvertisementSource {
             return
         }
         switch packet {
+        case .probe(let probe) where probe.serial.rawValue == 0, .repeated(let probe, _) where probe.serial.rawValue == 0:
+            stats.emptySlotPackets += 1
         case .probe(let probe):
             stats.probePackets += 1
             publish(probe, kind: .advertisement, via: nil, hopCount: nil, raw)

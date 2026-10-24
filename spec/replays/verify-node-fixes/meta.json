@@ -1,0 +1,19 @@
+{
+  "adapter": "CoreBluetooth",
+  "devices": [
+    {
+      "firmware": "v2.3.3 (hw v11.0-A1)",
+      "name": "probe 1000D027",
+      "peripheral": "221047F5-4C98-1B33-B878-73E8362C1696"
+    },
+    {
+      "firmware": "v2.6.0",
+      "name": "display T100000LG5",
+      "peripheral": "3917F8D0-0919-BBA1-F50E-87FED7D7733A"
+    }
+  ],
+  "formatVersion": 1,
+  "name": "verify-node-fixes",
+  "notes": "probe 1000D027 fw v2.3.3 hw v11.0-A1 next to Display T100000LG5 (fw v2.6.0), both within a few m of the Mac; after the node Session Info read and the 0x45 coverage fix",
+  "os": "macOS Version 26.3.1 (a) (Build 25D771280a)"
+}

@@ -79,7 +79,9 @@ public protocol ConnectionPolicy: Sendable {
 /// 2. MeatNet node step: when a node repeats the advertisement of a followed probe, connect to the node
 ///    (one connection gets every probe on its network and keeps probe slots free for the phone app).
 ///    While a node is connected and covers a probe, that probe gets no direct connection, and an existing
-///    one is closed. A node whose first connect attempt is still under way holds direct connects back.
+///    one is closed. A connected node covers a probe while it relays its `0x45` statuses or repeats its
+///    advertisement (a connected Display advertises the probe with gaps of up to 16 s,
+///    spec/replays/display-relay-1hop). A node whose first connect attempt is still under way holds direct connects back.
 /// 3. Otherwise connect directly to each followed probe once its own advertisement has been heard. If the
 ///    node link drops (or stops repeating the probe) the probe falls back to direct, starting from the
 ///    initial backoff.
@@ -123,6 +125,7 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
     /// When each followed probe was last repeated by each node peripheral (monotonic).
     private var viaNode: [ProbeSerial: [PeripheralId: Duration]] = [:]
     private var nodeSupervisors: [NodeSerial: Task<Void, Never>] = [:]
+    private var nodeLinks: [NodeSerial: NodeLink] = [:]
     private var stateByNode: [NodeSerial: ProbeConnectionState] = [:]
 
     public init(timing: Timing = Timing()) {
@@ -352,9 +355,10 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
 
     private func nodeHearsFollowed(_ serial: NodeSerial) -> Bool { !followedViaNode(serial).isEmpty }
 
-    /// A connected node that repeats `probe` right now.
+    /// A connected node that relays or repeats `probe` right now.
     private func coveringNode(_ probe: ProbeSerial) -> NodeSerial? {
-        nodesHearing(probe).first { stateByNode[$0] == .connected }
+        nodeLinks.keys.sorted().first { stateByNode[$0] == .connected && nodeLinks[$0]?.covers(probe) == true }
+            ?? nodesHearing(probe).first { stateByNode[$0] == .connected }
     }
 
     /// A node that repeats `probe` is waiting to connect or on its first attempt.
@@ -442,12 +446,14 @@ public actor DirectConnectionPolicy: ConnectionPolicy {
             return nil
         }
         setNode(serial, .connected)
+        nodeLinks[serial] = link
         await input.delegate.nodeLinkEstablished(link)
         var reason = DisconnectReason.linkLost
         for await r in drops {
             reason = r
             break
         }
+        nodeLinks[serial] = nil
         await link.close()
         if Task.isCancelled { reason = .requested }
         await input.delegate.nodeLinkEnded(serial: serial, reason: reason)
