@@ -35,6 +35,9 @@ public final class SQLiteDatabase {
             throw SQLiteError(code: rc, message: message, sql: nil)
         }
         handle = db
+        // History and the alert store each hold a connection to the same file; without a timeout a write that
+        // meets the other's lock fails at once with SQLITE_BUSY (seen on hardware: the follow flag was lost).
+        sqlite3_busy_timeout(db, 5000)
         if path != ":memory:" {
             _ = try query("PRAGMA journal_mode=WAL")
         }

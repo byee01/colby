@@ -11,6 +11,21 @@ struct PersistenceTests {
         return db
     }
 
+    @Test func aSecondConnectionWaitsForTheFirstsWriteLock() throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("busy-\(UUID()).sqlite").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let a = try SQLiteDatabase(path: path)
+        try a.exec("CREATE TABLE t(x INTEGER)")
+        let b = try SQLiteDatabase(path: path)
+        try a.exec("BEGIN IMMEDIATE")
+        _ = try a.run("INSERT INTO t VALUES(1)")
+        let release = DispatchWorkItem { try? a.exec("COMMIT") }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.2, execute: release)
+        _ = try b.run("INSERT INTO t VALUES(2)")  // waits instead of failing with SQLITE_BUSY
+        release.wait()
+        #expect(try b.query("SELECT count(*) FROM t").first?.first == .integer(2))
+    }
+
     @Test func migrationsRunOnceAndSetUserVersion() throws {
         let db = try SQLiteDatabase.inMemory()
         #expect(db.userVersion == 0)
