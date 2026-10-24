@@ -129,6 +129,38 @@ struct M6AlertsTests {
         await rig.app.stop()
     }
 
+    @Test func acknowledgingOrSnoozingTheDisconnectedAlertTakesItOutOfFiring() async throws {
+        let d = Doubles()
+        let rig = try rig(d)
+        let probe = try await connect(rig)
+        try await rig.app.commands.setPrediction(serialA, mode: .timeToRemoval, setpoint: 60)
+        await rig.run(.seconds(20))
+        let offline = "\(serialA.hex).offline"
+        // What the UI sees: the `active` stream, not the engine's own list.
+        let published = Latest<[AlertInstance]>()
+        let watcher = Task { for await list in rig.app.alerts.active { published.value = list } }
+        defer { watcher.cancel() }
+        func state() async -> AlertState? { published.value?.first { $0.id == offline }?.state }
+
+        probe.setInRange(false)
+        #expect(await rig.run(until: { await state() == .firing }, limit: .seconds(120), step: .seconds(1)))
+        await rig.app.alerts.acknowledge(offline)
+        #expect(await rig.eventually { await state() == .acknowledged })
+        await rig.run(.seconds(120))
+        #expect(await state() == .acknowledged, "stays acknowledged while the probe is gone")
+        #expect(d.events.transitions.filter { $0 == "\(offline) idle->firing" }.count == 1)
+
+        probe.setInRange(true)
+        #expect(await rig.run(until: { await state() == nil }, limit: .seconds(120), step: .seconds(1)))
+        probe.setInRange(false)
+        #expect(await rig.run(until: { await state() == .firing }, limit: .seconds(120), step: .seconds(1)))
+        await rig.app.alerts.snooze(offline, duration: .seconds(300))
+        #expect(await rig.eventually { await state() == .snoozed })
+        await rig.run(.seconds(120))
+        #expect(await state() == .snoozed, "stays snoozed until the snooze runs out")
+        await rig.app.stop()
+    }
+
     @Test func noDisconnectedAlertForAProbeThatWasNotCooking() async throws {
         let d = Doubles()
         let rig = try rig(d)
@@ -194,5 +226,15 @@ struct M6AlertsTests {
         #expect(lines.contains { $0.contains("\"kind\":\"command\"") && $0.contains("\"op\":\"setPrediction\"") && $0.contains("\"result\":\"confirmed\"") })
         #expect(lines.contains { $0.contains("\"kind\":\"alert\"") && $0.contains("\"transition\":\"idle->firing\"") })
         await rig.app.stop()
+    }
+}
+
+/// The latest value a stream delivered.
+final class Latest<T>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: T?
+    var value: T? {
+        get { lock.withLock { stored } }
+        set { lock.withLock { stored = newValue } }
     }
 }

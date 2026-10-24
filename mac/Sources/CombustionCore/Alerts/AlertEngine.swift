@@ -209,6 +209,7 @@ public actor AlertEngine {
         transition(id, to: .acknowledged, at: now)
         // An alert kept only by a snooze silence ends here if the probe already stopped alarming.
         if wasSnoozeSilenced { evaluate(t.instance.serial) }
+        finishRound()
         await drainOutbox()
         if case .probeAlarm = t.instance.source { await silenceProbe(t.instance.serial, ids: [id]) }
     }
@@ -221,7 +222,7 @@ public actor AlertEngine {
         let now = clock.now()
         instances[id]?.instance.snoozedUntil = now.addingTimeInterval(duration.totalSeconds)
         transition(id, to: .snoozed, at: now)
-        scheduleWake()
+        finishRound()
         await drainOutbox()
         if case .probeAlarm = t.instance.source {
             snoozeSilenced.insert(id)
@@ -236,6 +237,7 @@ public actor AlertEngine {
             $0.instance.serial == serial && ($0.instance.state == .firing || $0.instance.state == .snoozed)
         }.map(\.instance)
         for a in mine { transition(a.id, to: .acknowledged, at: now) }
+        finishRound()
         await drainOutbox()
         let probeAlarms = mine.filter { if case .probeAlarm = $0.source { true } else { false } }.map(\.id)
         if !probeAlarms.isEmpty { await silenceProbe(serial, ids: probeAlarms) }
@@ -251,6 +253,7 @@ public actor AlertEngine {
             for id in ids where instances[id]?.instance.state == .acknowledged || instances[id]?.instance.state == .snoozed {
                 transition(id, to: .firing, at: now, failure: String(describing: error))
             }
+            finishRound()
             await drainOutbox()
         }
     }
@@ -491,7 +494,9 @@ public actor AlertEngine {
         cooks[serial] = c
     }
 
-    /// After a round of evaluations: publish the active list, update keep-awake, set the next wake-up.
+    /// After a round of evaluations or a user action: publish the active list, update keep-awake, set the next
+    /// wake-up. Every state change must end here, or `active` (what the UI shows) keeps the old list until the
+    /// next input, which never comes while a probe is offline.
     private func finishRound() {
         activeBroadcaster.send(sortedActive())
         scheduleWake()
