@@ -83,11 +83,13 @@ public final class UserNotificationPresenter: NotificationPresenting, @unchecked
 
 // MARK: - Sound
 
-/// Loops built-in system sounds with `NSSound` (06 §17.3). Nothing is bundled; sounds are played by name.
+/// Plays built-in system sounds with `NSSound` (06 §17.3), once or looped. Nothing is bundled; sounds are
+/// played by name.
 public final class SystemSoundPlayer: SoundPlaying, @unchecked Sendable {
     /// Built-in macOS sound per alert sound.
     public static let names: [AlertSound: String] = [
-        .ready: "Glass", .overheat: "Sosumi", .probeAlarm: "Hero", .alert: "Submarine",
+        .ready: "Glass", .overheat: "Sosumi", .probeAlarm: "Hero",
+        .countdown: "Ping", .problem: "Basso", .custom: "Submarine",
     ]
 
     @MainActor private var playing: [String: NSSound] = [:]
@@ -95,6 +97,16 @@ public final class SystemSoundPlayer: SoundPlaying, @unchecked Sendable {
 
     /// - Parameter volume: 0...1 (Settings → Alarm volume, default 0.8).
     public init(volume: Float = 0.8) { self.volume = volume }
+
+    public func play(_ sound: AlertSound) async {
+        let name = Self.names[sound] ?? "Glass"
+        let volume = self.volume
+        await MainActor.run {
+            guard let s = NSSound(named: NSSound.Name(name))?.copy() as? NSSound else { return }
+            s.volume = volume
+            s.play()
+        }
+    }
 
     public func startLoop(_ sound: AlertSound, id: String) async {
         let name = Self.names[sound] ?? "Glass"

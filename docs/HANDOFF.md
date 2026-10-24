@@ -57,7 +57,7 @@ Format gotchas: SVG `<text>` with `{{holes}}` does not render, so chart labels a
 | M6 alerts | Done on simulator: `AlertEngine` (all §9 rules, probe alarms, overheat, hysteresis, sustain, ack, snooze, silence, latching Ready), sink adapters, default alert set; `SQLiteAlertStore` (rules with order, configured-set marker, alert log via `consume(alerts.events)`, `events(for:in:)` for history), schema v2; `LiveSnapshotWriter` (02 §18; immediate on state change, else every 5 s; 30-point trend); macOS adapters `UserNotificationPresenter`, `SystemSoundPlayer`, `PowerAssertionKeepAwake`, `LiveSnapshotLocation` (**never compiled**, Apple-only) | `Sources/CombustionCore/Alerts`, `Widgets`, `Sources/CombustionMacPlatform` |
 | Sim | SimulatedTransport, RecordingTransport, replay format, SimulatedProbe; `swift run colby-sim` | `Sources/CombustionSim`, `Sources/ColbySim` |
 
-Tests: `cd mac && swift test` (449; Swift 6.1.3 Linux, 6.2.4 macOS). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
+Tests: `cd mac && swift test` (451; Swift 6.1.3 Linux, 6.2.4 macOS). In a cloud container, Swift is not preinstalled and swift.org is blocked: pull the `library/swift:6.1-noble` image layers from Docker Hub's registry API and untar the toolchain layer into `/opt/swift`; apt-install the deps listed in the image's Dockerfile.
 
 ## CI status (blocked)
 
@@ -107,7 +107,8 @@ M5/M6 decisions where the docs are silent:
 - Acknowledging a probe alarm mutes locally at once, then sends Silence Alarms; on failure it returns to firing with `AlertEvent.failure`.
 - Alert log rows: one per firing (a return from snooze reuses the open row); `session` column is left NULL, history joins by serial and time range.
 - macOS notifications use the default sound (system sound names are not addressable by UserNotifications); the loop plays in-app via `NSSound`. Needs the time-sensitive notification entitlement and an App Group for the widget snapshot.
-- Not done: alert-rule editing UI and sound per rule kind (`AlertSound` has 4 cases; 06 §17.3 lists 6 events: 5-minute warning, disconnected and low battery should play once, not loop).
+- Sounds per 06 §17.3: `AlertSound` has 6 cases (`ready`, `overheat`, `probeAlarm` loop until acknowledged; `countdown` for any `predictionWithin`, `problem` for offline/low battery, `custom` for the other rules play once per firing). `SoundAlertSink` (was `LoopingSoundAlertSink`) picks loop or once; `SoundPlaying` gained `play(_:)`.
+- Not done: alert-rule editing UI.
 
 Known weak spots: `TestClock` wake ordering under a multi-threaded executor relies on yields plus an opt-in `wakeGrace` real-time pause (e2e tests); session change during an in-flight backfill on a link that stays connected is untested; node heartbeat (0x49) payload is not decoded (layout not in our spec digest); `ProbeSnapshot` has no per-probe `DeviceInfo` yet (node 0x46-0x48 reads exist in the codec but nothing calls them).
 
@@ -123,13 +124,13 @@ Known weak spots: `TestClock` wake ordering under a multi-threaded executor reli
 | Sim | Done: SimulatedTransport, SimulatedProbe, SimulatedNode, RecordingTransport, replay format | `src/Combustion.Sim` |
 | W6 app | Not started (WinUI 3, tray, MSIX) | |
 
-Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,242 passing (codec 966, core 231, sim 45). Gaps vs Swift: no end-to-end `CombustionApp` tests (Swift has M3–M6 e2e suites); `AlertSound` has the same 4-case gap. Conventions for the port: `windows/PORTING.md`.
+Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,242 passing (codec 966, core 231, sim 45). Gaps vs Swift: no end-to-end `CombustionApp` tests (Swift has M3–M6 e2e suites); `AlertSound` still has 4 cases (port the Mac split: `AlertSound(for:)`, `loops`, `SoundAlertSink`, `SoundPlaying.play`, and the tests `AlarmSoundLoopsUntilAcknowledged`, `RuleSoundPlaysOncePerFiring`, `SoundPerAlertFollowsTheUxPlan`). Conventions for the port: `windows/PORTING.md`.
 
 ## Next
 
 1. Get CI running (or `swift test` on a Mac, `dotnet test` on Windows); fix compile errors in the Apple-only and Windows-only modules (CoreBluetooth, MacPlatform, Transport.WinRT, Windows.Platform).
 2. ~~Verify the three Mac fixes on hardware~~ Done 2026-10-23. `verify-fixes` (3 min idle): surface/ambient never blank, prediction steady, 2 writes in total (Session Info, Read Logs 0-10). `verify-session-charger`: session `0x0160D73D`, link drop in the charger, reconnect with Session Info re-read, new session `0xC6F7493C`, Read Logs 0-1. The Session Info reply is now a codec fixture (`response_probe_session_info_hw_fw_2_3_3`; our CRC matches the firmware's). `colby-capture --minutes` takes fractions now (it used to drop `0.5` silently and run until Ctrl-C).
 3. Continue 07 §3 at step 5 (`display-relay-2hop`, needs a Display and a Booster; with only a Display, capture a 1-hop `display-relay-1hop`), then step 6 (12 h cook). Scripted commands (07 §2.3) are needed for `alarm-trip-silence`. Check the node path for the same session-ID gap.
-4. Split `AlertSound` per 06 §17.3 (looping vs once).
+4. ~~Split `AlertSound` per 06 §17.3~~ Done on Mac; Windows still to port (see Windows status).
 5. Windows (on a Windows PC, so the WinRT transport and `colby-capture`-style checks can run on hardware too): port the three hardware fixes above from commit `c3a9bfc` (`git show c3a9bfc -- mac/`): `ProbeMerger`, `HistoryStore` (status stored as record, live fetch below max), `DirectProbeLink` (Session Info read), `SimulatedProbe.statusWithoutSession`, and the updated or new tests (including the replay-driven `CapturedInterleavedAdvertsGiveAStableSnapshot`). Then port the Swift end-to-end suites (M3–M6) to C#.
 6. M7: SwiftUI app target from `docs/design/` (tokens, components, canvas), menu bar extra, widgets extension; then W6 (WinUI 3).

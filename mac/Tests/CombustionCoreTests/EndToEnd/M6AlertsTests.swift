@@ -13,7 +13,7 @@ struct M6AlertsTests {
         let notifications = FakeNotificationPresenter()
         let keepAwake = FakeKeepAwake()
 
-        var sinks: [any AlertSink] { [events, LoopingSoundAlertSink(sound), NotificationAlertSink(notifications)] }
+        var sinks: [any AlertSink] { [events, SoundAlertSink(sound), NotificationAlertSink(notifications)] }
     }
 
     private func rig(_ d: Doubles) throws -> E2ERig {
@@ -153,7 +153,8 @@ struct M6AlertsTests {
         #expect(await rig.app.alerts.activeAlerts().first?.id == "\(serialA.hex).overheat.t1")
         probe.overheating = []
         #expect(await rig.run(until: { d.sound.playing["\(serialA.hex).overheat.t1"] == nil }, limit: .seconds(30), step: .seconds(1)))
-        #expect(d.sound.playing["\(serialA.hex).battery"] == .alert, "low battery goes on")
+        #expect(await rig.app.alerts.activeAlerts().map(\.id) == ["\(serialA.hex).battery"], "low battery goes on")
+        #expect(d.sound.history.filter { $0 == "once problem" }.count == 1, "its sound played once")
         await rig.app.stop()
     }
 
