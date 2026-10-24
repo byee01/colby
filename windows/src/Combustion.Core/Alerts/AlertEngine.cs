@@ -80,6 +80,9 @@ public sealed class AlertEngine
     private readonly Dictionary<ProbeSerial, ProbeSnapshot> _snapshots = [];
     private readonly Dictionary<ProbeSerial, PredictionView> _views = [];
     private readonly Dictionary<string, AlertInstance> _instances = [];
+    /// <summary>Probe alarms that a snooze silenced on the probe: they stay active while the alarm is still tripped
+    /// (the probe no longer says alarming) so the snooze can run out and fire again.</summary>
+    private readonly HashSet<string> _snoozeSilenced = [];
     private readonly Dictionary<string, Pending> _pending = [];
     private readonly Dictionary<ProbeSerial, List<CoreSample>> _history = [];
     private readonly Dictionary<ProbeSerial, CookState> _cooks = [];
@@ -224,7 +227,13 @@ public sealed class AlertEngine
         {
             return;
         }
+        var wasSnoozeSilenced = _snoozeSilenced.Remove(id);
         Transition(id, AlertState.Acknowledged, _clock.Now());
+        // An alert kept only by a snooze silence ends here if the probe already stopped alarming.
+        if (wasSnoozeSilenced)
+        {
+            Evaluate(t.Serial);
+        }
         await DrainOutboxAsync();
         if (t.Source is AlertSource.ProbeAlarm)
         {
@@ -233,7 +242,9 @@ public sealed class AlertEngine
     }
 
     /// <summary>Mutes a firing alert for <paramref name="duration"/>; it fires again then if the condition still
-    /// holds. Local only: a probe alarm keeps sounding on the probe.</summary>
+    /// holds. A probe alarm is also silenced on the probe (so its Display and phone stop too); Colby then keeps the
+    /// alert while the alarm stays tripped and fires again when the snooze runs out. The probe stays quiet after
+    /// that: it has no snooze.</summary>
     public async Task SnoozeAsync(string id, TimeSpan duration)
     {
         if (!_instances.TryGetValue(id, out var t) || t.State != AlertState.Firing)
@@ -245,6 +256,11 @@ public sealed class AlertEngine
         Transition(id, AlertState.Snoozed, now);
         ScheduleWake();
         await DrainOutboxAsync();
+        if (t.Source is AlertSource.ProbeAlarm)
+        {
+            _snoozeSilenced.Add(id);
+            await SilenceProbeAsync(t.Serial, [id]);
+        }
     }
 
     /// <summary>Acknowledges everything firing for the probe; sends one Silence Alarms if any probe alarm was among them.</summary>
@@ -282,7 +298,7 @@ public sealed class AlertEngine
             var now = _clock.Now();
             foreach (var id in ids)
             {
-                if (_instances.TryGetValue(id, out var a) && a.State == AlertState.Acknowledged)
+                if (_instances.TryGetValue(id, out var a) && a.State is AlertState.Acknowledged or AlertState.Snoozed)
                 {
                     Transition(id, AlertState.Firing, now, error.Message);
                 }
@@ -466,11 +482,13 @@ public sealed class AlertEngine
             {
                 foreach (var channel in Enum.GetValues<AlarmChannel>())
                 {
-                    if (!online || !set.TryGetValue(channel, out var alarm) || !alarm.Alarming)
+                    var id = AlarmId(serial, kind, channel);
+                    if (!online || !set.TryGetValue(channel, out var alarm)
+                        || !(alarm.Alarming || (alarm.Tripped && _snoozeSilenced.Contains(id))))
                     {
                         continue;
                     }
-                    desired[AlarmId(serial, kind, channel)] = new Desired(
+                    desired[id] = new Desired(
                         new AlertSource.ProbeAlarm(kind, channel), new RuleOutcome(true, alarm.Temperature), 0, false);
                 }
             }
@@ -599,6 +617,10 @@ public sealed class AlertEngine
         if (from == to)
         {
             return;
+        }
+        if (to == AlertState.Idle)
+        {
+            _snoozeSilenced.Remove(id);
         }
         t = t with { State = to };
         switch (to)

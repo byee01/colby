@@ -169,6 +169,47 @@ public class AlertEngineTests
         Assert.Empty(rig.Active());
     });
 
+    /// <summary>Asked for on hardware: Snooze left the phone ringing with no way to stop it from Colby.</summary>
+    [Fact]
+    public void SnoozingAProbeAlarmSilencesTheProbeAndFiresAgainWhileTripped() => Det.Run(async () =>
+    {
+        var rig = new AlertRig();
+        await rig.FollowAsync([]);
+        var id = $"{Hex}.alarm.high.core";
+        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core));
+        await rig.Engine.SnoozeAsync(id, TimeSpan.FromSeconds(300));
+        Assert.Equal([AF.Serial], rig.Silencer.Silenced); // the Display and phone stop too
+        Assert.Empty(rig.Sound.Playing);
+        // The probe confirms: still past the limit (tripped), no longer alarming. The snooze holds.
+        var silenced = new AlarmConfig(high: new Dictionary<AlarmChannel, Alarm>
+        {
+            [AlarmChannel.Core] = new(true, 80, Tripped: true, Alarming: false),
+        });
+        await rig.SnapshotAsync(alarms: silenced);
+        Assert.Equal(AlertState.Snoozed, rig.State(id));
+        await rig.Clock.AdvanceAsync(301);
+        await rig.SnapshotAsync(alarms: silenced);
+        Assert.Equal(AlertState.Firing, rig.State(id)); // Colby fires again; the probe has no snooze
+        Assert.Equal(AlertSound.ProbeAlarm, rig.Sound.Playing[id]);
+        await rig.Engine.AcknowledgeAsync(id);
+        await rig.SnapshotAsync(alarms: silenced);
+        Assert.Empty(rig.Active());
+    });
+
+    [Fact]
+    public void SnoozedProbeAlarmEndsWhenTheTemperatureComesBack() => Det.Run(async () =>
+    {
+        var rig = new AlertRig();
+        await rig.FollowAsync([]);
+        var id = $"{Hex}.alarm.high.core";
+        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core));
+        await rig.Engine.SnoozeAsync(id, TimeSpan.FromSeconds(300));
+        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core, on: false)); // not tripped any more
+        Assert.Empty(rig.Active());
+        await rig.Clock.AdvanceAsync(301);
+        Assert.Empty(rig.Sound.Playing);
+    });
+
     [Fact]
     public void FailedSilenceGoesBackToFiringWithTheReason() => Det.Run(async () =>
     {
@@ -203,18 +244,6 @@ public class AlertEngineTests
         Assert.Empty(rig.Active());
     });
 
-    [Fact]
-    public void SnoozingAProbeAlarmIsLocalOnly() => Det.Run(async () =>
-    {
-        var rig = new AlertRig();
-        await rig.FollowAsync([]);
-        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core));
-        var id = $"{Hex}.alarm.high.core";
-        await rig.Engine.SnoozeAsync(id, TimeSpan.FromSeconds(60));
-        Assert.Empty(rig.Silencer.Silenced);
-        await rig.Clock.AdvanceAsync(61);
-        Assert.Equal(AlertState.Firing, rig.State(id)); // the probe is still alarming
-    });
 
     [Fact]
     public void SilenceAllAcknowledgesEverythingAndSendsOneSilence() => Det.Run(async () =>
