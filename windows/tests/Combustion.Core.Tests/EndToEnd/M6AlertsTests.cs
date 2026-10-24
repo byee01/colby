@@ -15,7 +15,7 @@ public sealed class M6AlertsTests
         public FakeKeepAwake KeepAwake { get; } = new();
 
         public IReadOnlyList<IAlertSink> Sinks =>
-            [Events, new LoopingSoundAlertSink(Sound), new NotificationAlertSink(Notifications)];
+            [Events, new SoundAlertSink(Sound), new NotificationAlertSink(Notifications)];
     }
 
     private static E2ERig Rig(Doubles d) => new(alertSinks: d.Sinks, keepAwake: d.KeepAwake);
@@ -168,7 +168,8 @@ public sealed class M6AlertsTests
         Assert.Equal(overheat, rig.App.Alerts.ActiveAlerts().First().Id);
         probe.Overheating = SensorSet.Empty;
         Assert.True(await rig.RunUntilAsync(() => !d.Sound.Playing.ContainsKey(overheat), limit: 30, step: 1));
-        Assert.Equal(AlertSound.Alert, d.Sound.Playing[$"{Hex}.battery"]); // low battery goes on
+        Assert.Equal([$"{Hex}.battery"], rig.App.Alerts.ActiveAlerts().Select(a => a.Id).ToList()); // low battery goes on
+        Assert.Single(d.Sound.History, h => h == "once problem"); // its sound played once
         await rig.App.StopAsync();
     });
 

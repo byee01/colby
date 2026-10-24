@@ -105,8 +105,37 @@ public static class AlertStateNames
     };
 }
 
-/// <summary>The sound a sink should play for an alert (06 §17.3: Ready, Overheat and probe alarms each have their own).</summary>
-public enum AlertSound { Ready, Overheat, ProbeAlarm, Alert }
+/// <summary>The sound a sink should play for an alert (06 §17.3). Ready, Overheat and probe alarms loop until
+/// acknowledged; the rest play once each time the alert fires.</summary>
+public enum AlertSound
+{
+    Ready,
+    Overheat,
+    ProbeAlarm,
+    /// <summary>A countdown rule (<c>PredictionWithin</c>), e.g. the default 5-minute warning.</summary>
+    Countdown,
+    /// <summary>Probe offline or battery low.</summary>
+    Problem,
+    /// <summary>Any other rule: temperature, ambient range, stall.</summary>
+    Custom,
+}
+
+public static class AlertSounds
+{
+    /// <summary>Swift <c>AlertSound(for:)</c>.</summary>
+    public static AlertSound For(AlertSource source) => source switch
+    {
+        AlertSource.Overheat => AlertSound.Overheat,
+        AlertSource.ProbeAlarm => AlertSound.ProbeAlarm,
+        AlertSource.Rule { Kind: AlertRuleKind.PredictionDone or AlertRuleKind.RestingDone } => AlertSound.Ready,
+        AlertSource.Rule { Kind: AlertRuleKind.PredictionWithin } => AlertSound.Countdown,
+        AlertSource.Rule { Kind: AlertRuleKind.ProbeOffline or AlertRuleKind.BatteryLow } => AlertSound.Problem,
+        _ => AlertSound.Custom,
+    };
+
+    public static bool Loops(this AlertSound sound) =>
+        sound is AlertSound.Ready or AlertSound.Overheat or AlertSound.ProbeAlarm;
+}
 
 /// <param name="Id">A rule's id for rule alerts; <c>&lt;serial&gt;.alarm.&lt;high|low&gt;.&lt;channel&gt;</c> and
 /// <c>&lt;serial&gt;.overheat.&lt;sensor&gt;</c> otherwise.</param>
@@ -129,13 +158,7 @@ public sealed record AlertInstance(
         _ => AlertPriority.Other,
     };
 
-    public AlertSound Sound => Source switch
-    {
-        AlertSource.Overheat => AlertSound.Overheat,
-        AlertSource.ProbeAlarm => AlertSound.ProbeAlarm,
-        AlertSource.Rule { Kind: AlertRuleKind.PredictionDone or AlertRuleKind.RestingDone } => AlertSound.Ready,
-        _ => AlertSound.Alert,
-    };
+    public AlertSound Sound => AlertSounds.For(Source);
 }
 
 /// <summary>One state change of an alert. <c>Instance</c> is the alert after the change (state <c>Idle</c> when it cleared).</summary>

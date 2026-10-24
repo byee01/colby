@@ -26,8 +26,11 @@ public interface INotificationPresenting
 }
 
 /// <summary>Plays a sound in a loop until stopped. macOS: <c>AVAudioPlayer</c>; Windows: <c>MediaPlayer</c>.</summary>
+/// <summary>Plays alert sounds, once or in a loop until stopped. macOS: <c>NSSound</c>; Windows: <c>MediaPlayer</c>.</summary>
 public interface ISoundPlaying
 {
+    Task PlayAsync(AlertSound sound);
+
     Task StartLoopAsync(AlertSound sound, string id);
 
     Task StopLoopAsync(string id);
@@ -58,16 +61,25 @@ public sealed class NotificationAlertSink(INotificationPresenting presenter) : I
     }
 }
 
-/// <summary>Sound sink: loops the alert's sound from the moment it fires until it is acknowledged, snoozed or clears.</summary>
-public sealed class LoopingSoundAlertSink(ISoundPlaying player) : IAlertSink
+/// <summary>Sound sink (06 §17.3): a looping sound plays from the moment the alert fires until it is acknowledged,
+/// snoozed or clears; any other sound plays once each time the alert fires.</summary>
+public sealed class SoundAlertSink(ISoundPlaying player) : IAlertSink
 {
     public async Task DeliverAsync(AlertEvent e)
     {
+        var sound = e.Instance.Sound;
         if (e.To == AlertState.Firing)
         {
-            await player.StartLoopAsync(e.Instance.Sound, e.Instance.Id);
+            if (sound.Loops())
+            {
+                await player.StartLoopAsync(sound, e.Instance.Id);
+            }
+            else
+            {
+                await player.PlayAsync(sound);
+            }
         }
-        else if (e.From == AlertState.Firing)
+        else if (e.From == AlertState.Firing && sound.Loops())
         {
             await player.StopLoopAsync(e.Instance.Id);
         }
@@ -125,7 +137,7 @@ public sealed class FakeSoundPlayer : ISoundPlaying
         }
     }
 
-    /// <summary><c>"start &lt;id&gt;"</c> / <c>"stop &lt;id&gt;"</c>, in order.</summary>
+    /// <summary><c>"start &lt;id&gt;"</c> / <c>"stop &lt;id&gt;"</c> / <c>"once &lt;sound&gt;"</c>, in order.</summary>
     public IReadOnlyList<string> History
     {
         get
@@ -136,6 +148,18 @@ public sealed class FakeSoundPlayer : ISoundPlaying
             }
         }
     }
+
+    public Task PlayAsync(AlertSound sound)
+    {
+        lock (_lock)
+        {
+            _log.Add($"once {AlertSoundName(sound)}");
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Swift <c>String(describing:)</c>: lowerCamelCase case names.</summary>
+    private static string AlertSoundName(AlertSound s) => char.ToLowerInvariant(s.ToString()[0]) + s.ToString()[1..];
 
     public Task StartLoopAsync(AlertSound sound, string id)
     {
