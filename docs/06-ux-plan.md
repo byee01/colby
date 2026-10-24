@@ -113,13 +113,14 @@ Badge: neutral `#2a2a2a` circle with probe number; 2 px ring in the physical pro
 ```
 Set target — ① Brisket
   Target core temp  [ 203 ] °F        range 32–216 °F (0–102.3 °C)
-  Mode              (•) Time to removal   ( ) Removal + resting
+  Mode              ( ) Time to removal   (•) Removal + resting
   Current core 165.2 °F
                                      [Clear target]  [Cancel]  [Set]
 ```
 - Entry in the user's unit; converted to °C, rounded to 0.1 °C, clamped to 0–102.3 °C with an inline error outside range (02 §8 `outOfRange`).
 - "Set" shows a spinner until the next status confirms (02 §8); on `notConfirmed` show "Probe didn't confirm. Retry."
 - "Clear target" → `cancelPrediction`.
+- Mode defaults to Removal + resting for a new target (accounts for carryover); changing a target keeps its mode.
 - Optional nickname field at the top (stored per cook, see §11).
 
 ## 6. Alarms & rules sheet

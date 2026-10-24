@@ -24,7 +24,8 @@ public struct SetTargetSheet: View {
         self.dismiss = dismiss
         let current = model.prediction(serial).flatMap { $0.mode == .none ? nil : $0 }
         _text = State(initialValue: current.map { TargetEntry.text($0.setpoint, unit: model.unit) } ?? "")
-        _mode = State(initialValue: current?.mode ?? .timeToRemoval)
+        // A new target accounts for carryover by default; an existing one keeps its mode.
+        _mode = State(initialValue: current?.mode ?? .removalAndResting)
     }
 
     public var body: some View {
