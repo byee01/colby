@@ -221,6 +221,7 @@ struct M3HistoryTests {
         #expect(rig.spy.attempts.count == attempts)
         await rig.app.stop()
     }
+
     @Test func theCookNameReachesHistoryAndTheWidgetSnapshot() async throws {
         let rig = try E2ERig(liveSnapshot: FileLiveSnapshotWriter(url: FileManager.default.temporaryDirectory
             .appendingPathComponent("colby-live-\(UUID().uuidString).json")))

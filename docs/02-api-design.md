@@ -254,6 +254,9 @@ sessions(serial?) -> [SessionSummary]          # start, end, peak core, setpoint
   SessionSummary.kind: predictive | manual       # predictive if a setpoint was set at any point
   SessionSummary.thumbnail: [(core, surface, ambient)] x 60   # precomputed on session end for list rows
 rename(session, nickname?)
+cookNames: observable<[ProbeSerial: String]>    # name of each probe's open cook (or the name waiting for its next one)
+cookName(serial) -> String?
+setCookName(serial, name?)                     # names the open cook; with none open, the next cook takes it. Blank = nil
 valueAt(session, time) -> (core, surface, ambient, predictionState)   # backs the graph scrub readouts
 backfill(session) async                        # fills gaps via Read Logs
 delete(session)                                # retention: keep all until the user deletes
@@ -317,7 +320,7 @@ App rule types for v1:
 rules(serial) -> [AlertRule]
 addRule(serial, AlertRule) / updateRule / removeRule
 events: stream<AlertEvent>
-active: observable<[AlertInstance]>
+active: observable<[AlertInstance]>      # republished after every change, including acknowledge / snooze / silence (no input may follow)
 acknowledge(instanceId)           # stop sound, keep record
 snooze(instanceId, duration)
 silenceAll(serial)                # local + probe 0x0C if any probe alarm active
@@ -398,6 +401,7 @@ CombustionApp
   predictions(serial) -> observable<PredictionView>
   commands: Commands
   alerts: AlertEngine
+  cookNames / setCookName(serial, name?)         # forwards to HistoryStore; also feeds the LiveSnapshot names
   diagnostics: observable<DiagnosticsSnapshot>   # links, RSSI, hop counts, UART error counts, node heartbeat topology
   demoMode: bool                                 # SimulatedTransport replaying a recorded cook
 ```
