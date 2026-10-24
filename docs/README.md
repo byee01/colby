@@ -19,7 +19,7 @@ Planning and documentation only. No code yet.
 
 | Topic | Decision |
 |---|---|
-| Stack | Native per OS. macOS: Swift + SwiftUI + CoreBluetooth. Windows: C# (.NET 8+) + WinUI 3 + WinRT `Windows.Devices.Bluetooth`. |
+| Stack | Native per OS. macOS: Swift + SwiftUI + CoreBluetooth. Windows: C# (.NET 10) + WinUI 3 + WinRT `Windows.Devices.Bluetooth`. |
 | Devices v1 | Predictive Probe direct, plus probes relayed by MeatNet nodes (Display/Timer, Booster/Charger). |
 | Control v1 | Read everything. Write: set prediction, set high/low alarms, silence alarms. |
 | Alerts v1 | Desktop notification + sound. App-side custom rules in addition to probe alarms. No phone push/webhooks. |

@@ -62,7 +62,7 @@ Tests: `cd mac && swift test` (481; Swift 6.1.3 Linux, 6.2.4 macOS). In a cloud 
 
 ## CI status (blocked)
 
-Workflows: `.github/workflows/mac.yml` (macOS 15 + Linux `swift:6.1-noble`), `windows.yml` (windows-latest + Linux, .NET 8).
+Workflows: `.github/workflows/mac.yml` (macOS 15 + Linux `swift:6.1-noble`), `windows.yml` (windows-latest + Linux, .NET 10).
 
 Symptom: every run on `claude/combustion-desktop-plan` ends `startup_failure` with 0 jobs (13+ runs, latest after `6e29041`). The API lists **0 registered workflows**; runs show an empty name and path `BuildFailed`. Both YAML files parse. Billing exhaustion normally fails jobs with a billing message instead, so settings or a run-page error are the likelier cause.
 
@@ -142,7 +142,7 @@ Known weak spots: `TestClock` wake ordering under a multi-threaded executor reli
 | Sim | Done: SimulatedTransport, SimulatedProbe, SimulatedNode, RecordingTransport, replay format | `src/Combustion.Sim` |
 | W6 app | Not started (WinUI 3, tray, MSIX) | |
 
-Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,242 passing (codec 966, core 231, sim 45) as of `31fdc66`. Conventions for the port: `windows/PORTING.md`.
+Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 10, Linux OK): 1,242 passing (codec 966, core 231, sim 45) as of `31fdc66`. Conventions for the port: `windows/PORTING.md`.
 
 ### Core parity checklist (port before W6)
 

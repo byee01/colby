@@ -56,5 +56,5 @@ A Swift test that cannot apply (Apple-only API) is listed in the test file's hea
 ## Build
 
 `dotnet test windows/Colby.sln` (warnings are errors, nullable on). The `Combustion.Transport.WinRT` and app projects
-target `net8.0-windows10.0.19041.0` with `EnableWindowsTargeting=true`, so they compile on Linux; their tests run only on
+target `net10.0-windows10.0.19041.0` with `EnableWindowsTargeting=true`, so they compile on Linux; their tests run only on
 Windows.
