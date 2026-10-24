@@ -53,8 +53,10 @@ struct ProbeMerger {
     /// Last Instant Read packet: its time and raw T1.
     private var instant: (at: Date, t1: Double?)?
 
-    /// iOS SDK `INSTANT_READ_STALE_TIMEOUT`.
-    static let instantReadStale: TimeInterval = 5
+    /// The iOS SDK uses 5 s, but while a link is up the probe advertises far less (~0.8/s instead of ~4/s) and
+    /// Instant Read packets come 5-10 s apart, so 5 s made the mode (and the app's Instant Read view) flip every
+    /// few seconds on hardware (2026-10-23). 15 s covers the gaps seen; leaving Instant Read shows 15 s late.
+    static let instantReadStale: TimeInterval = 15
 
     init(serial: ProbeSerial) { self.serial = serial }
 

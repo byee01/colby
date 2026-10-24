@@ -178,7 +178,7 @@ struct ProbeStoreTests {
         s = await store.snapshot(of: F.serial)!
         #expect(s.mode == .instantRead && s.instantRead == 21.0)
         #expect(s.temperatures.allSatisfy { $0 != nil })
-        for _ in 0..<60 { await feed(25, mode: .normal) }   // 5 s without Instant Read
+        for _ in 0..<180 { await feed(25, mode: .normal) }  // 15 s without Instant Read
         s = await store.snapshot(of: F.serial)!
         #expect(s.mode == .normal)
         #expect(s.instantRead == nil && s.instantReadFahrenheit == nil)
@@ -203,6 +203,26 @@ struct ProbeStoreTests {
             #expect(s.temperatures.allSatisfy { $0 != nil })
             #expect(s.virtual.surface != nil && s.virtual.ambient != nil)
         }
+    }
+
+    /// While the app holds a link the probe advertises far less: Instant Read packets 5-10 s apart, Normal in
+    /// between. The mode must hold (it flipped every few seconds on hardware with a 5 s hold).
+    @Test func sparseInstantReadPacketsWhileConnectedKeepTheMode() async {
+        let clock = TestClock()
+        let store = makeStore(clock)
+        var changes = 0
+        var last: ProbeMode?
+        for i in 0..<60 {
+            let mode: ProbeMode = i % 8 == 0 ? .instantRead : .normal  // Instant Read every 9.6 s
+            await store.ingest(F.observe(.advertisement(F.advertisement(mode: mode, t1: 23.5)), kind: .advertisement,
+                                         at: clock.now()))
+            let s = await store.snapshot(of: F.serial)!
+            if let last, last != s.mode { changes += 1 }
+            last = s.mode
+            await clock.advance(by: .milliseconds(1200))
+        }
+        #expect(changes == 0)
+        #expect(last == .instantRead)
     }
 
     /// The real capture: every advert of `spec/replays/idle-interleaved-modes` at its recorded time. It has
@@ -235,7 +255,7 @@ struct ProbeStoreTests {
             checked += 1
         }
         #expect(checked > 250)
-        #expect(modeChanges <= 10)
+        #expect(modeChanges <= 1, "\(modeChanges) mode changes")
     }
 
     @Test func instantReadFilterMatchesAndroidSdkBehaviour() {
