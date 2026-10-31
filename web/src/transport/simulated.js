@@ -182,6 +182,7 @@ class SimConnection {
     if (!this.characteristics.has(uuid)) throw new Error(`no characteristic ${uuid}`);
     if (!this.#subs.has(uuid)) this.#subs.set(uuid, new Set());
     this.#subs.get(uuid).add(fn);
+    this.clock.setTimeout(() => this.onSubscribe?.(uuid), 50);
     return () => this.#subs.get(uuid)?.delete(fn);
   }
 
@@ -221,6 +222,11 @@ export class SimProbeConnection extends SimConnection {
       { [GATT.firmwareRevision]: 'v2.4.0', [GATT.serialNumber]: probe.serial, [GATT.modelNumber]: 'Predictive Probe' });
     this.probe = probe;
     this.every(probe.samplePeriodMs, () => this.notify(GATT.probeStatus, encodeProbeStatus(probe.status())));
+  }
+
+  /** The first status comes right after subscribing, instead of at the next sample. */
+  onSubscribe(uuid) {
+    if (uuid === GATT.probeStatus) this.notify(GATT.probeStatus, encodeProbeStatus(this.probe.status()));
   }
 
   async write(uuid, bytes) {
@@ -264,6 +270,10 @@ export class SimNodeConnection extends SimConnection {
   }
 
   #id() { return (Math.random() * 2 ** 32) >>> 0; }
+
+  onSubscribe(uuid) {
+    if (uuid === GATT.uartTX) for (const p of this.probes) this.#sendStatus(p);
+  }
 
   #sendStatus(p) {
     const payload = encodeNodeProbeStatus({ probeSerial: p.serial, hopCount: this.hops, status: p.status() });

@@ -114,6 +114,20 @@ Known weak spots: `TestClock` wake ordering under a multi-threaded executor reli
 
 Tests: `cd windows && dotnet test Colby.sln -c Release` (.NET 8, Linux OK): 1,242 passing (codec 966, core 231, sim 45). Gaps vs Swift: no end-to-end `CombustionApp` tests (Swift has M3–M6 e2e suites); `AlertSound` has the same 4-case gap. Conventions for the port: `windows/PORTING.md`.
 
+## Web status (`web/`)
+
+Static site, no server and no build step: plain ES modules, Web Bluetooth (Chromium only), IndexedDB history, service
+worker for offline use. Port of the Swift codec and core (store, presenter, UART client, direct and node links,
+commands, alert engine, session tracking, backfill) plus an in-browser simulated probe and node for demo mode (`#demo`).
+Feature and browser support table: `web/README.md`.
+
+Tests: `cd web && npm test` (Node 22, no dependencies): 345 passing (all codec fixtures, core on a fake clock, app
+end-to-end against the simulator). CI: `.github/workflows/web.yml`. Checked in headless Chromium against the demo
+(connect, backfill, set target, probe alarm, acknowledge, kitchen mode, history); never run against hardware.
+
+Web-only limits: alerts only while the tab is open; reconnect after reload, passive scanning and the probe serial on a
+direct connection need Chrome's experimental-web-platform-features flag (a direct probe otherwise gets a stand-in ID).
+
 ## Next
 
 1. Get CI running (or `swift test` on a Mac, `dotnet test` on Windows); fix compile errors in the Apple-only and Windows-only modules (CoreBluetooth, MacPlatform, Transport.WinRT, Windows.Platform).

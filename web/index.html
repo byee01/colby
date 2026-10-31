@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Colby</title>
+  <meta name="description" content="Browser monitor for Combustion Predictive Thermometers over Web Bluetooth. Runs entirely in the page; no server.">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="src/ui/main.js"></script>
+</head>
+<body>
+  <div id="alert-band" class="alert-band" role="alert" aria-live="assertive" hidden></div>
+
+  <header class="toolbar">
+    <div class="brand"><svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a2 2 0 0 1 4 0v10.3a4.5 4.5 0 1 1-4 0z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="17" r="2" fill="currentColor"/></svg>Colby</div>
+    <div class="segmented" id="range" role="group" aria-label="Time range">
+      <button data-range="live">Live</button><button data-range="1h">1h</button><button data-range="4h">4h</button><button data-range="all">All</button>
+    </div>
+    <div class="segmented" id="sensors" role="group" aria-label="Sensors">
+      <button data-mode="csa">Core · Surface · Ambient</button><button data-mode="all">All 8</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="tool" id="alerts-button" aria-label="Active alerts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span id="alert-count"></span></button>
+    <button class="tool" id="history-button">History</button>
+    <button class="tool" id="devices-button">Devices</button>
+    <button class="tool" id="kitchen-button">Kitchen mode</button>
+    <button class="tool icon" id="settings-button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  </header>
+
+  <main id="main">
+    <section id="empty" class="empty" hidden></section>
+    <section id="probe-view" class="probe-view" hidden>
+      <div class="content">
+        <div class="probe-header">
+          <div>
+            <div class="title-row"><span id="badge" class="badge"></span><h1 id="probe-name"></h1></div>
+            <div id="probe-caption" class="caption"></div>
+          </div>
+          <div class="ready-block">
+            <div id="ready-label" class="caption"></div>
+            <div><span id="ready-primary" class="countdown"></span><span id="ready-secondary" class="secondary-time"></span></div>
+          </div>
+        </div>
+        <div class="readouts" id="readouts"></div>
+        <div class="graph-card">
+          <div class="graph-label"><div id="graph-state"></div><div id="graph-time" class="graph-time"></div></div>
+          <div class="graph-area"><canvas id="graph" tabindex="0" aria-label="Temperature graph. Use left and right arrows to inspect values."></canvas></div>
+          <div id="graph-empty" class="graph-empty" hidden></div>
+        </div>
+        <div id="chips" class="chips"></div>
+      </div>
+      <aside class="inspector" id="inspector"></aside>
+    </section>
+  </main>
+
+  <div id="kitchen" class="kitchen" hidden></div>
+
+  <dialog id="dialog"><form method="dialog" id="dialog-form"></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

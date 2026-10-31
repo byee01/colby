@@ -1,0 +1,20 @@
+name: web
+
+on:
+  push:
+    paths: ["web/**", "spec/**", ".github/workflows/web.yml"]
+  pull_request:
+    paths: ["web/**", "spec/**", ".github/workflows/web.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test

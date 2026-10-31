@@ -13,6 +13,7 @@ Planning and documentation only. No code yet.
 | [06-ux-plan.md](06-ux-plan.md) | UX decisions, screens, graph spec, alerts, kitchen mode, design system, accessibility |
 | [design/](design/) | `tokens.json`, `components.md`, canvas source (`canvas/`), render tools (`tools/`), screenshots |
 | [HANDOFF.md](HANDOFF.md) | Current state and how to continue in a new session |
+| [../web/README.md](../web/README.md) | Web version: static files, Web Bluetooth, feature support table |
 
 ## Decisions so far
 
