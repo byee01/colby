@@ -194,6 +194,12 @@ countdown/problem sounds play once, the Normal status stored as the record at `l
 Web-only limits: alerts only while the tab is open; reconnect after reload, passive scanning and the probe serial on a
 direct connection need Chrome's experimental-web-platform-features flag (a direct probe otherwise gets a stand-in ID).
 
+Open-source survey (2026-10-31, `web/README.md`): no other browser client exists. From the Android SDK: a log reset
+should need `logRange.max` to fall by 2 or more (PR #190); the web `SessionTracker` and session re-read use that, the
+Swift and C# trackers still split on any fall (a node-relayed status one sample behind a direct one could split a cook
+on fw v2.3.3 before Session Info is read). Both official SDKs write UART frames without response; the desktop apps write
+with response, which works on hardware.
+
 ## Next
 
 The next sessions are on a Windows PC.

@@ -6,6 +6,7 @@ import { Emitter, systemClock } from './support.js';
 import { UartClient, UartError } from './uartClient.js';
 import { decodeProbeStatus, decodeNodeProbeStatus, MessageType, cString } from '../codec/index.js';
 import { GATT } from '../transport/gatt.js';
+import { MIN_SEQUENCE_FALL } from './history.js';
 
 async function requireCharacteristics(connection, needed) {
   const known = await connection.discover();
@@ -52,7 +53,7 @@ class SessionFiller {
       this.lastLogMax = status.logRange.max;
       return status;
     }
-    if (this.lastLogMax != null && status.logRange.max < this.lastLogMax) {
+    if (this.lastLogMax != null && status.logRange.max <= this.lastLogMax - MIN_SEQUENCE_FALL) {
       this.info = null;
       this.refused = false;
     }

@@ -28,12 +28,14 @@ export async function isAvailable() {
   }
 }
 
-const SERVICES = [GATT.probeStatusService, GATT.uartService, GATT.deviceInformation, GATT.deviceInformationAlt];
+const SERVICES = [GATT.probeStatusService, GATT.uartService, GATT.deviceInformation];
 
 /** Opens the browser's device chooser filtered to Combustion devices. Must run in a user gesture. */
 export function requestDevice() {
   return bt().requestDevice({
-    filters: [{ manufacturerData: [{ companyIdentifier: VENDOR_ID }] }, { services: [GATT.uartService] }],
+    // Manufacturer data matches every Combustion device; probes also advertise the Probe Status service (the Android
+    // SDK scans for it). Not the UART service: it is not advertised.
+    filters: [{ manufacturerData: [{ companyIdentifier: VENDOR_ID }] }, { services: [GATT.probeStatusService] }],
     optionalServices: SERVICES,
   });
 }
@@ -175,7 +177,14 @@ export class WebBleConnection {
 
   async write(uuid, bytes) {
     const c = this.#char(uuid);
-    const put = (b) => (c.writeValueWithResponse ? c.writeValueWithResponse(Uint8Array.from(b)) : c.writeValue(Uint8Array.from(b)));
+    // With response, as the desktop apps do on hardware; the official SDKs write without response, so that is the
+    // fallback for a characteristic that only allows it.
+    const withResponse = c.properties?.write !== false || !c.properties?.writeWithoutResponse;
+    const put = (b) => {
+      const v = Uint8Array.from(b);
+      if (!withResponse && c.writeValueWithoutResponse) return c.writeValueWithoutResponse(v);
+      return c.writeValueWithResponse ? c.writeValueWithResponse(v) : c.writeValue(v);
+    };
     try {
       await put(bytes);
     } catch (e) {

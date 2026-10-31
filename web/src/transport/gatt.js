@@ -7,9 +7,8 @@ export const GATT = {
   uartRX: '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
   /** Responses and node notifications arrive here. */
   uartTX: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
-  /** 0x180A on probes; the node doc says 0x181A (unverified), so both are requested. */
+  /** 0x180A on every product (the node doc says 0x181A, but the Android SDK reads 0x180A from all devices). */
   deviceInformation: '0000180a-0000-1000-8000-00805f9b34fb',
-  deviceInformationAlt: '0000181a-0000-1000-8000-00805f9b34fb',
   modelNumber: '00002a24-0000-1000-8000-00805f9b34fb',
   serialNumber: '00002a25-0000-1000-8000-00805f9b34fb',
   firmwareRevision: '00002a26-0000-1000-8000-00805f9b34fb',

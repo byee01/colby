@@ -819,9 +819,10 @@ async function identify(device, connection, isProbe) {
   } catch {
     /* not readable */
   }
-  const guess = ['booster', 'display', 'gauge', 'engine', 'timer', 'charger'].find((t) => model.toLowerCase().includes(t));
-  const productType = fromAd?.kind === 'node' ? fromAd.productType
-    : guess === 'timer' ? 'display' : guess === 'charger' ? 'booster' : guess ?? 'display';
+  // Model Number strings per the Android SDK (CombustionProductType.fromModelString): a Display reports "Timer", a
+  // Booster "Charger".
+  const byModel = { Timer: 'display', Charger: 'booster', Gauge: 'gauge', Engine: 'engine' }[model.trim()];
+  const productType = fromAd?.kind === 'node' ? fromAd.productType : byModel ?? 'display';
   return { serial: fromAd?.kind === 'node' ? fromAd.serial : device.name || ble.pseudoSerial(device.id), productType };
 }
 

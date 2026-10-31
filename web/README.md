@@ -58,6 +58,18 @@ privacy reasons", [GATT blocklist](https://github.com/WebBluetoothCG/registries/
 from the browser's device ID. If the same probe is also seen through a node, it then shows up twice. Using a node avoids
 this.
 
+## Other open-source implementations
+
+No other browser client for Combustion devices was found (searched 2026-10-31). What the others contributed here:
+
+| Project | Type | Used for |
+|---|---|---|
+| [combustion-android-ble](https://github.com/combustion-inc/combustion-android-ble) | Primary (vendor SDK, Kotlin) | Device Information is `0x180A` on every product; Model Number strings (`Timer` = Display, `Charger` = Booster, empty = probe); probes advertise the Probe Status service; UART written without response |
+| [Android PR #190](https://github.com/combustion-inc/combustion-android-ble/pull/190) | Primary | A log reset counts only when `logRange.max` falls by 2 or more (a relayed status can lag by one) |
+| [Android PR #191](https://github.com/combustion-inc/combustion-android-ble/pull/191) | Primary | Session ID and sample period are the 6 bytes after the alarms; ID 0 means not supplied (matches the codec) |
+| [combustion_ble](https://github.com/legrego/combustion_ble) | Secondary (Python, port of the Swift SDK) | Nothing new |
+| [homeassistant-combustion](https://github.com/legrego/homeassistant-combustion), [maintained fork](https://github.com/Milkbone911/homeassistant-combustion) | Secondary (Python) | Hop count in the top 2 bits (matches); UART written without response |
+
 ## Layout
 
 | Path | Contents | Swift counterpart |

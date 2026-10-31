@@ -12,6 +12,9 @@ import { SENSORS } from '../codec/index.js';
  * 1. First status: new session. 2. Non-zero id changed: new session. 3. With id 0 on either side: `logRange.max`
  * regressed, or a gap over 10 min with `logRange.min` lower: new session. 4. Id 0 → non-zero: same session, adopted.
  */
+/** Smallest drop of `logRange.max` that counts as a log reset. */
+export const MIN_SEQUENCE_FALL = 2;
+
 export class SessionTracker {
   currentSessionId = null;
   lastRange = null;
@@ -60,7 +63,9 @@ export class SessionTracker {
   #fallback(range, time) {
     const last = this.lastRange;
     if (!last) return null;
-    if (range.max < last.max) return 'logRangeRegressed';
+    // At least MIN_SEQUENCE_FALL below: a status relayed by a node can lag a direct one by a sample (Android SDK
+    // PR #190 uses the same threshold).
+    if (range.max <= last.max - MIN_SEQUENCE_FALL) return 'logRangeRegressed';
     if (this.lastSeen != null && time - this.lastSeen > this.gapThresholdMs && range.min < last.min) return 'returnedAfterGap';
     return null;
   }

@@ -66,6 +66,10 @@ test('session tracker and backfill planner', () => {
   assert.equal(t.observe(7, { min: 0, max: 10 }, 0).decision, 'new');
   assert.equal(t.observe(7, { min: 0, max: 11 }, 5000).decision, 'continuing');
   assert.equal(t.observe(8, { min: 0, max: 1 }, 10000).reason, 'sessionIdChanged');
+  const legacy = new SessionTracker();
+  legacy.observe(0, { min: 0, max: 50 }, 0);
+  assert.equal(legacy.observe(0, { min: 0, max: 49 }, 100).decision, 'continuing', 'a relayed status one sample late');
+  assert.equal(legacy.observe(0, { min: 0, max: 3 }, 200).reason, 'logRangeRegressed');
   assert.deepEqual(planBackfill([3, 4], { min: 0, max: 9 }, 4), [[6, 9], [5, 5], [0, 2]]);
   assert.deepEqual(planBackfill([], { min: 5, max: 4 }), []);
 });

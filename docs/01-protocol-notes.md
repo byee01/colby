@@ -20,7 +20,7 @@ Connection limits: probe "supports up to 3 simultaneous BLE connections"; node "
 
 | Service | UUID | Chars |
 |---|---|---|
-| Device Information | `0x180A` (probe); node doc says `0x181A`, verify | Mfr, Model, Serial, HW rev, FW rev (Read) |
+| Device Information | `0x180A` on every product (node doc says `0x181A`; the Android SDK reads `0x180A` from all devices) | Mfr, Model, Serial, HW rev, FW rev (Read). Model Number: `Timer` = Display, `Charger` = Booster, `Gauge`, `Engine`, empty = probe (Android `CombustionProductType.fromModelString`) |
 | Probe Status (probe only) | `00000100-CAAB-3792-3D44-97AE51C1407A` | `…0101…` Read/Notify |
 | Nordic UART | `6E400001-B5A3-F393-E0A9-E50E24DCCA9E` | RX `…0002…` Write, TX `…0003…` Read/Notify |
 | DFU | Nordic | Out of scope |
