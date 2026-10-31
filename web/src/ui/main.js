@@ -11,6 +11,10 @@ import { ALARM_CHANNELS, MAX_PREDICTION_SETPOINT, SENSORS, cString } from '../co
 import { Graph } from './graph.js';
 import * as fmt from './format.js';
 import { NotificationSink, SoundSink, ScreenWakeLock } from './platform.js';
+import { startHeartbeat, watchLifecycle, guardUnload, TitleFlasher } from './background.js';
+import { Onboarding, bluetoothStatus } from './onboarding.js';
+import { PumpedClock } from '../core/support.js';
+import { isCooking } from '../core/alerts.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = fmt.escapeHtml;
@@ -44,9 +48,22 @@ sound.enabled = prefs.get('sound', true);
 const wake = new ScreenWakeLock();
 wake.enabled = prefs.get('keepAwake', true);
 wake.onChange = () => invalidate();
-const notifications = new NotificationSink({ unit: () => state.unit, nameOf: (s) => probeName(s), onClick: () => invalidate() });
+const notifications = new NotificationSink({
+  unit: () => state.unit, nameOf: (s) => probeName(s), loops: (source) => soundLoops(soundOf(source)),
+});
+
+// The app clock is pumped by a worker heartbeat, so its timers (offline after 60 s, snooze, UART timeouts) keep time in
+// a background tab, where Chrome batches main-thread timers to once a minute (ui/background.js).
+const clock = new PumpedClock();
+const titleFlasher = new TitleFlasher();
+const heartbeat = startHeartbeat(() => {
+  clock.pump();
+  const a = state.active.find((x) => x.state === 'firing');
+  titleFlasher.tick(a ? `${probeName(a.serial)}: ${fmt.describeAlert(a, state.unit).title}` : null);
+});
 
 const app = new ColbyApp({
+  clock,
   historyStorage: await IndexedDbHistoryStorage.open(),
   ruleStore: prefsRuleStore,
   sinks: [notifications, sound],
@@ -159,7 +176,6 @@ function render() {
     updateGraph();
   }
   if (state.kitchen) renderKitchen(probes);
-  document.title = state.active.some((a) => a.state === 'firing') ? '● Alert · Colby' : 'Colby';
 }
 
 function renderToolbar() {
@@ -211,6 +227,7 @@ function renderEmpty() {
       <button class="btn primary" data-action="connect" ${caps.bluetooth ? '' : 'disabled'}>Connect a device</button>
       ${caps.scan ? '<button class="btn" data-action="scan">Scan nearby</button>' : ''}
       <button class="btn" data-action="demo">Try the demo</button>
+      <button class="btn" data-action="setup">Setup</button>
       ${app.history.sessions.size ? '<button class="btn" data-action="history">History</button>' : ''}
     </div>
     <p class="caption">Tip: one connection to a Display or Booster covers all its probes and leaves the probes' own connection slots for the phone app.</p>
@@ -218,7 +235,8 @@ function renderEmpty() {
       <li class="${caps.bluetooth ? '' : 'no'}">Web Bluetooth connections</li>
       <li class="${caps.getDevices ? '' : 'maybe'}">Automatic reconnect after reload ${caps.getDevices ? '' : '(needs Chrome flag “Experimental Web Platform features”)'}</li>
       <li class="${caps.scan ? '' : 'maybe'}">Passive scanning of advertisements ${caps.scan ? '' : '(same flag)'}</li>
-      <li class="${NotificationSink.supported ? '' : 'no'}">System notifications while this tab is open</li>
+      <li class="${NotificationSink.permission === 'granted' ? '' : NotificationSink.supported ? 'maybe' : 'no'}">System notifications ${NotificationSink.permission === 'granted' ? '' : NotificationSink.permission === 'denied' ? '(blocked for this site)' : NotificationSink.supported ? '(not allowed yet)' : ''}</li>
+      <li>Alerts keep working while this tab is in the background</li>
       <li class="${ScreenWakeLock.supported ? '' : 'no'}">Keep the screen awake during a cook</li>
     </ul>
   </div>`;
@@ -436,6 +454,7 @@ function renderInspector() {
       ${session ? `<dt>Start</dt><dd>${fmt.clock(session.startedAt)}</dd>` : ''}
       ${food ? `<dt>Food safe</dt><dd>${food}</dd>` : ''}
       ${wake.held ? '<dt>Screen</dt><dd>Kept awake</dd>' : ''}
+      <dt>Alerts</dt><dd class="${NotificationSink.permission === 'granted' ? '' : 'warn'}">${NotificationSink.permission === 'granted' ? 'Sound + notifications' : 'Sound and this tab only'}</dd>
     </dl>`;
 }
 
@@ -728,8 +747,12 @@ function settingsDialog() {
     <label class="field">Prediction time<select name="primaryTime"><option value="relative" ${state.primaryTime === 'relative' ? 'selected' : ''}>Ready in (countdown)</option><option value="clock" ${state.primaryTime === 'clock' ? 'selected' : ''}>Ready at (clock)</option></select></label>
     <label><input type="checkbox" name="sound" ${sound.enabled ? 'checked' : ''}> Alert sounds <button class="btn" data-do="test">Test</button></label>
     <label><input type="checkbox" name="keepAwake" ${wake.enabled ? 'checked' : ''} ${ScreenWakeLock.supported ? '' : 'disabled'}> Keep the screen awake during a cook${ScreenWakeLock.supported ? '' : ' (not supported here)'}</label>
-    <div class="item"><span class="grow">System notifications: ${esc(NotificationSink.permission)}</span>${NotificationSink.permission === 'default' ? '<button class="btn" data-do="notify">Allow</button>' : ''}</div>
-    <p class="note">Alerts work only while this page is open and the computer is awake. Keep this tab visible during a cook: browsers slow down background tabs and release the screen lock.</p>
+    <div class="item"><span class="grow">System notifications: ${esc({ granted: 'on', default: 'not asked yet', denied: 'blocked', unsupported: 'not supported' }[NotificationSink.permission])}</span>
+      ${NotificationSink.permission === 'default' ? '<button class="btn" data-do="notify">Allow</button>' : ''}
+      ${NotificationSink.permission === 'granted' ? '<button class="btn" data-do="test-notify">Test</button>' : ''}</div>
+    ${NotificationSink.permission === 'granted' ? '' : `<p class="note">Without notifications, alerts show only in this tab (red band, flashing tab title) and as sound; nothing pops up while you are in another tab or app.${NotificationSink.permission === 'denied' ? ' To allow them: click the icon left of the address, set Notifications to Allow, then reload.' : ''}</p>`}
+    <p class="note">Alerts keep working in a background tab (sound, notifications) while this tab stays open and the computer stays awake. The screen is kept awake only while the tab is visible.</p>
+    <div class="row" style="justify-content:flex-start"><button class="btn" data-do="setup">Run setup again</button></div>
     <fieldset><legend>This browser</legend>
       <ul class="support">
         <li class="${caps.bluetooth ? '' : 'no'}">Web Bluetooth</li>
@@ -743,8 +766,16 @@ function settingsDialog() {
     close: closeDialog,
     test: () => sound.test('ready'),
     notify: async () => {
-      await NotificationSink.requestPermission();
+      if ((await NotificationSink.requestPermission()) === 'granted') await notifications.test();
       settingsDialog();
+    },
+    'test-notify': async () => {
+      sound.test('ready');
+      toast((await notifications.test()) ? 'Test notification sent.' : 'The notification could not be shown.');
+    },
+    setup: () => {
+      closeDialog();
+      onboarding.open('welcome');
     },
     wipe: async () => {
       if (!confirm('Delete all cooks, names and settings stored by Colby in this browser?')) return;
@@ -795,18 +826,25 @@ function alertsDialog() {
 
 // MARK: Devices
 
+/** Opens the browser's chooser and adds the picked device. Resolves true when a device was added. */
 async function connectDevice() {
-  if (!ble.capabilities().bluetooth) return toast('Web Bluetooth is not available in this browser.');
+  if (!ble.capabilities().bluetooth) {
+    onboarding.open('bluetooth');
+    return false;
+  }
   let device;
   try {
     device = await ble.requestDevice();
   } catch (e) {
-    if (e?.name !== 'NotFoundError') toast(`Could not open the device chooser: ${e?.message ?? e}`);
-    return;
+    // NotFoundError: the chooser was cancelled. SecurityError / NotAllowedError: Bluetooth blocked for the site.
+    if (e?.name === 'SecurityError' || e?.name === 'NotAllowedError') onboarding.open('bluetooth');
+    else if (e?.name !== 'NotFoundError') toast(`Could not open the device chooser: ${e?.message ?? e}`);
+    return false;
   }
   addBleDevice(device);
   const known = prefs.get('devices', []).filter((d) => d.id !== device.id);
   prefs.set('devices', [...known, { id: device.id, name: device.name ?? 'Combustion device' }]);
+  return true;
 }
 
 /** Tells what a connected device is: probe serial or node serial and type. */
@@ -935,6 +973,7 @@ document.addEventListener('click', async (e) => {
     case 'connect': return connectDevice();
     case 'scan': return toggleScan();
     case 'demo': return startDemo();
+    case 'setup': return onboarding.open(ble.capabilities().bluetooth ? 'welcome' : 'bluetooth');
     case 'history': return historyDialog();
     case 'target': return setTargetDialog(state.selected);
     case 'alarms': return alarmsDialog(state.selected);
@@ -955,9 +994,59 @@ setInterval(() => {
   if (!state.viewSession && !app.history.currentSession(state.selected)) reloadSamples();
 }, 5000);
 
+// MARK: Background
+
+const onboarding = new Onboarding({
+  el: $('onboarding'),
+  connect: () => connectDevice(),
+  demo: () => startDemo(),
+  notifications,
+  testAlert: () => sound.test('ready'),
+  onDone: () => {
+    prefs.set('onboarded', true);
+    try {
+      sessionStorage.setItem('colby.setupDismissed', '1');
+    } catch {
+      /* storage blocked */
+    }
+    invalidate();
+  },
+});
+
+/** A cook is under way on a probe that has a live link: closing the tab would stop its alerts. */
+const cookAtRisk = () => [...app.store.snapshots().values()].some((s) => !s.isOffline && isCooking(s))
+  && [...app.devices.values()].some((d) => d.link && !d.simulated);
+
+const lifecycle = watchLifecycle({
+  onHidden: () => notifications.pageHidden(),
+  onVisible: () => {
+    wake.refresh();
+    render();
+  },
+  // Chrome froze the tab (no events meanwhile): reconnect what dropped.
+  onResume: () => {
+    for (const d of app.devices.values()) if (!d.link) app.retry(d.id);
+    toast('Colby was paused by the browser. Reconnecting…');
+  },
+});
+guardUnload(cookAtRisk);
+
+// Acknowledge / Snooze pressed on a notification (service worker, sw.js).
+navigator.serviceWorker?.addEventListener('message', (e) => {
+  if (e.data?.type !== 'colby-alert') return;
+  if (e.data.action === 'ack') app.alerts.acknowledge(e.data.id);
+  else if (e.data.action === 'snooze') app.alerts.snooze(e.data.id, 5 * 60_000);
+});
+navigator.serviceWorker?.startMessages?.();
+navigator.bluetooth?.addEventListener?.('availabilitychanged', (e) => {
+  if (!e.value) toast('Bluetooth was turned off. Colby cannot reach your devices until it is back on.', 8000);
+});
+
 // MARK: Start
 
 if ('serviceWorker' in navigator && isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (!heartbeat.worker) console.warn('No Web Worker: timers may run late while this tab is in the background.');
+if (lifecycle.discarded) toast('The browser unloaded Colby while it was in the background. Reconnect your devices.', 10000);
 
 // Reconnect devices this origin was allowed before (needs the getDevices flag).
 const remembered = prefs.get('devices', []);
@@ -968,3 +1057,14 @@ if (remembered.length) {
 }
 if (location.hash === '#demo') startDemo();
 render();
+
+// Setup on the first load, and again while Bluetooth cannot be used and nothing is set up (once per browser session).
+let setupDismissed = false;
+try {
+  setupDismissed = sessionStorage.getItem('colby.setupDismissed') === '1';
+} catch {
+  /* storage blocked */
+}
+const bt = await bluetoothStatus();
+if (location.hash === '#setup' || (!prefs.get('onboarded', false) && location.hash !== '#demo')) onboarding.open('welcome');
+else if (bt !== 'ready' && app.devices.size === 0 && !setupDismissed) onboarding.open('bluetooth');

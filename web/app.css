@@ -239,3 +239,23 @@ dialog .alarm-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10
   .readout { padding: 0 8px; }
   .chip { min-width: 0; flex: 1 1 100%; }
 }
+
+/* Onboarding */
+.onboarding { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.82); display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.ob-panel { width: min(600px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+.ob-panel h2 { margin: 0; font-size: 26px; }
+.ob-panel p { margin: 0; color: var(--text2); }
+.ob-panel .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 6px; }
+.ob-dots { display: flex; gap: 6px; }
+.ob-dots .dot { width: 28px; height: 4px; border-radius: 2px; background: var(--line); }
+.ob-dots .dot.on { background: var(--core); }
+.ob-status { border-radius: 14px; padding: 12px 14px; background: var(--raised); border-left: 4px solid var(--muted); color: var(--text2); }
+.ob-status strong { color: var(--text); }
+.ob-status.ok { border-left-color: var(--ready); }
+.ob-status.no { border-left-color: var(--critical); }
+.ob-status.maybe { border-left-color: var(--warning); }
+.limits { background: var(--warning-bg); border-radius: 14px; padding: 12px 14px; color: var(--text2); font-size: 14px; }
+.limits strong { color: var(--warning); }
+.limits ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.ob-note { color: var(--text) !important; font-weight: 600; }
+@media (max-width: 640px) { .ob-panel { padding: 20px; } .ob-panel h2 { font-size: 22px; } }

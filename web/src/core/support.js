@@ -104,3 +104,83 @@ export class FakeClock {
 export async function settle() {
   for (let i = 0; i < 20; i++) await Promise.resolve();
 }
+
+/**
+ * A clock whose timers fire from native timers or from `pump()`, whichever comes first. In a hidden tab Chrome batches
+ * main-thread timers to once a minute after 5 minutes ("intensive throttling", Chrome 88); messages from a Web Worker
+ * still arrive every second, so the page calls `pump()` on each worker tick and offline, snooze and UART timeouts stay
+ * on time in the background (see ui/background.js).
+ */
+export class PumpedClock {
+  #timers = new Map();
+  #nextId = 1;
+
+  constructor(base = systemClock) {
+    this.base = base;
+  }
+
+  now() { return this.base.now(); }
+  sleep(ms) { return new Promise((r) => this.setTimeout(r, ms)); }
+
+  setTimeout(fn, ms) {
+    const id = this.#nextId++;
+    this.#arm(id, { fn, at: this.now() + Math.max(0, ms), every: null });
+    return id;
+  }
+
+  setInterval(fn, ms) {
+    const id = this.#nextId++;
+    this.#arm(id, { fn, at: this.now() + ms, every: Math.max(1, ms) });
+    return id;
+  }
+
+  clearTimeout(id) {
+    const t = this.#timers.get(id);
+    if (!t) return;
+    this.base.clearTimeout(t.native);
+    this.#timers.delete(id);
+  }
+
+  clearInterval(id) { this.clearTimeout(id); }
+
+  /** Fires every timer that is due. Call it often (each worker tick). */
+  pump() {
+    const now = this.now();
+    const due = [...this.#timers].filter(([, t]) => t.at <= now).sort((a, b) => a[1].at - b[1].at || a[0] - b[0]);
+    for (const [id] of due) this.#fire(id);
+  }
+
+  /** Timers waiting to fire (for diagnostics and tests). */
+  get pending() { return this.#timers.size; }
+
+  #arm(id, t) {
+    t.native = this.base.setTimeout(() => this.#fire(id), Math.max(0, t.at - this.now()));
+    this.#timers.set(id, t);
+  }
+
+  #fire(id) {
+    const t = this.#timers.get(id);
+    if (!t) return;
+    if (t.at > this.now()) {
+      // A native timer that ran a moment early: wait out the rest.
+      this.base.clearTimeout(t.native);
+      t.native = this.base.setTimeout(() => this.#fire(id), t.at - this.now());
+      return;
+    }
+    this.base.clearTimeout(t.native);
+    if (t.every == null) {
+      this.#timers.delete(id);
+    } else {
+      // A late interval runs once, not once per missed period.
+      const now = this.now();
+      t.at += t.every;
+      if (t.at <= now) t.at = now + t.every;
+      this.#arm(id, t);
+    }
+    try {
+      t.fn();
+    } catch (e) {
+      console.error('timer failed', e);
+    }
+  }
+}

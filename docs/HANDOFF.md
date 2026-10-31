@@ -191,6 +191,10 @@ Session Info read for 94 B statuses, Instant Read/Normal interleaving (15 s hold
 countdown/problem sounds play once, the Normal status stored as the record at `logRange.max`. CI: `.github/workflows/web.yml`. Checked in headless Chromium against the demo
 (connect, backfill, set target, probe alarm, acknowledge, kitchen mode, history); never run against hardware.
 
+Background and notifications: worker heartbeat pumps the app clock (`PumpedClock`); service-worker notifications with
+Acknowledge/Snooze; flashing title; reconnect on page resume; close warning during a cook; first-run setup
+(`web/src/ui/onboarding.js`). Details and limits: `web/README.md` "Background tabs and notifications".
+
 Web-only limits: alerts only while the tab is open; reconnect after reload, passive scanning and the probe serial on a
 direct connection need Chrome's experimental-web-platform-features flag (a direct probe otherwise gets a stand-in ID).
 

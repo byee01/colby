@@ -1,8 +1,9 @@
 // Offline support: network first (so a new deploy is picked up at once), cache as the fallback.
-const CACHE = 'colby-v2';
+const CACHE = 'colby-v3';
 const FILES = [
   './', 'index.html', 'app.css', 'icon.svg', 'manifest.webmanifest',
-  'src/ui/main.js', 'src/ui/graph.js', 'src/ui/format.js', 'src/ui/platform.js',
+  'src/ui/main.js', 'src/ui/graph.js', 'src/ui/format.js', 'src/ui/platform.js', 'src/ui/background.js',
+  'src/ui/onboarding.js',
   'src/core/app.js', 'src/core/support.js', 'src/core/probeStore.js', 'src/core/presenter.js', 'src/core/uartClient.js',
   'src/core/links.js', 'src/core/commands.js', 'src/core/alerts.js', 'src/core/history.js', 'src/core/storage.js',
   'src/transport/gatt.js', 'src/transport/webBluetooth.js', 'src/transport/simulated.js',
@@ -38,7 +39,14 @@ self.addEventListener('fetch', (e) => {
     .catch(() => caches.match(e.request, { ignoreSearch: true })));
 });
 
+// Acknowledge and Snooze act in the page without bringing it forward; a click on the notification itself opens Colby.
 self.addEventListener('notificationclick', (e) => {
+  const id = e.notification.data?.id;
+  const action = e.action || 'open';
   e.notification.close();
-  e.waitUntil(self.clients.matchAll({ type: 'window' }).then((list) => (list[0] ? list[0].focus() : self.clients.openWindow('./'))));
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    if (id) for (const c of list) c.postMessage({ type: 'colby-alert', action, id });
+    if (action !== 'open') return undefined;
+    return list[0] ? list[0].focus() : self.clients.openWindow('./');
+  }));
 });

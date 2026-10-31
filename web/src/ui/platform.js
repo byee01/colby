@@ -3,12 +3,18 @@
 
 import { describeAlert } from './format.js';
 
-/** System notifications through the Notifications API (needs permission, asked from a click). */
+/**
+ * System notifications. Shown through the service worker when one is active (that adds Acknowledge and Snooze buttons
+ * that work from another tab or app, and is the only way on Android), else with `new Notification`. A notification is
+ * raised when an alert fires while the tab is hidden or unfocused, and for alerts already firing when the tab is hidden;
+ * in the visible tab the red band and the sound do the job. Closed when the alert is acknowledged, snoozed or clears.
+ */
 export class NotificationSink {
-  #open = new Map();
+  #firing = new Map();
+  #shown = new Map();
 
-  constructor({ unit, nameOf, onClick }) {
-    Object.assign(this, { unit, nameOf, onClick });
+  constructor({ unit, nameOf, loops }) {
+    Object.assign(this, { unit, nameOf, loops });
   }
 
   static get supported() { return typeof globalThis.Notification === 'function'; }
@@ -16,40 +22,89 @@ export class NotificationSink {
 
   static async requestPermission() {
     if (!NotificationSink.supported) return 'unsupported';
-    return Notification.requestPermission();
+    try {
+      return await Notification.requestPermission();
+    } catch {
+      return Notification.permission;
+    }
   }
 
   deliver(event) {
     const { instance: a, to } = event;
-    if (to !== 'firing') {
-      this.#open.get(a.id)?.close();
-      this.#open.delete(a.id);
-      return;
+    if (to === 'firing') {
+      this.#firing.set(a.id, event);
+      if (!pageInFront()) this.#show(event);
+    } else {
+      this.#firing.delete(a.id);
+      this.#close(a.id);
     }
+  }
+
+  /** The tab went to the background: notify about alerts that are already firing. */
+  pageHidden() {
+    for (const [id, event] of this.#firing) if (!this.#shown.has(id)) this.#show(event);
+  }
+
+  /** Shows a sample notification (onboarding and settings). Resolves false when it could not be shown. */
+  async test() {
+    if (NotificationSink.permission !== 'granted') return false;
+    return this.#post('Colby: notifications are on', {
+      body: 'Alerts appear like this while Colby is open in another tab or behind other windows.', tag: 'colby-test',
+    });
+  }
+
+  async #show(event) {
+    const a = event.instance;
     if (NotificationSink.permission !== 'granted') return;
     const { title, detail } = describeAlert(a, this.unit());
+    const body = event.failure ? `${detail} (Could not silence the probe: ${event.failure})` : detail;
+    const ok = await this.#post(`${this.nameOf(a.serial)}: ${title}`, {
+      body, tag: a.id, renotify: true, requireInteraction: this.loops(a.source), data: { id: a.id },
+      actions: [{ action: 'ack', title: 'Acknowledge' }, { action: 'snooze', title: 'Snooze 5 min' }],
+    });
+    if (ok && this.#firing.has(a.id)) this.#shown.set(a.id, true);
+  }
+
+  async #post(title, options) {
+    const full = { icon: 'icon.svg', badge: 'icon.svg', ...options };
     try {
-      const n = new Notification(`${this.nameOf(a.serial)}: ${title}`, {
-        body: event.failure ? `${detail} (Could not silence the probe: ${event.failure})` : detail,
-        tag: a.id,
-        renotify: true,
-        requireInteraction: true,
-        icon: 'icon.svg',
-      });
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg?.active) {
+        await reg.showNotification(title, full);
+        return true;
+      }
+    } catch {
+      /* fall back to a page notification */
+    }
+    try {
+      const { actions: _a, ...pageOptions } = full;
+      const n = new Notification(title, pageOptions);
       n.onclick = () => {
         globalThis.focus?.();
-        this.onClick?.(a.id);
         n.close();
       };
-      this.#open.set(a.id, n);
+      if (options.tag) this.#shown.set(options.tag, n);
+      return true;
     } catch {
-      // Some platforms (Android Chrome) only allow notifications from a service worker.
-      navigator.serviceWorker?.ready
-        .then((reg) => reg.showNotification(`${this.nameOf(a.serial)}: ${title}`, { body: detail, tag: a.id, requireInteraction: true }))
-        .catch(() => {});
+      return false;
+    }
+  }
+
+  async #close(id) {
+    const page = this.#shown.get(id);
+    this.#shown.delete(id);
+    if (page instanceof Notification) page.close();
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      for (const n of (await reg?.getNotifications({ tag: id })) ?? []) n.close();
+    } catch {
+      /* nothing to close */
     }
   }
 }
+
+/** True when the user can see this tab right now. */
+export const pageInFront = () => document.visibilityState === 'visible' && document.hasFocus();
 
 /** Beep patterns per sound (docs/06 §17.3): [frequency Hz, duration s] pairs, then a pause. */
 const PATTERNS = {

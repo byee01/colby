@@ -314,3 +314,20 @@ test('interleaved Instant Read and Normal advertisements keep all sensors and th
   }
   store.stop();
 });
+
+test('pumped clock fires timers from pump() when native timers are throttled', async () => {
+  let now = 0;
+  const throttled = { now: () => now, setTimeout: () => 0, clearTimeout: () => {} };
+  const { PumpedClock } = await import('../src/core/support.js');
+  const clock = new PumpedClock(throttled);
+  const fired = [];
+  clock.setTimeout(() => fired.push('once'), 1500);
+  const id = clock.setInterval(() => fired.push('tick'), 1000);
+  now = 1000; clock.pump();
+  now = 2000; clock.pump();
+  now = 9000; clock.pump(); // late: the interval runs once, not seven times
+  clock.clearInterval(id);
+  now = 20000; clock.pump();
+  assert.deepEqual(fired, ['tick', 'once', 'tick', 'tick']);
+  assert.equal(clock.pending, 0);
+});

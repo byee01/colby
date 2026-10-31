@@ -41,8 +41,10 @@ Source: [WebBluetoothCG implementation status](https://github.com/WebBluetoothCG
 | Set target, set probe high/low alarms, silence alarms | Yes | Confirmed by the next status, as on desktop |
 | History backfill (Read Logs) and stored cooks | Yes | IndexedDB; CSV export |
 | App alerts (ready, 5 min, offline, battery, custom temperature rules) | Yes, while the page is open | Port of `AlertEngine` |
-| Alarm sound | Yes, while the page is open | Web Audio; needs one click on the page first |
-| System notifications | Yes, while the page is open | Notifications API, after permission |
+| Alerts while Colby's tab is in the background | Yes | Bluetooth data still arrives; a Web Worker heartbeat drives the app clock so timers stay on time; sound, notifications and a flashing tab title |
+| Alarm sound | Yes, also from a background tab | Web Audio; needs one click on the page first (the setup's "Test alert" does it) |
+| System notifications | Yes, after permission | Through the service worker, with Acknowledge and Snooze buttons that act without switching tabs; raised when an alert fires while the tab is hidden or unfocused |
+| First-run setup | Yes | Bluetooth check, notification permission, background tips; shown again while Bluetooth is unusable and nothing is set up (`#setup` forces it) |
 | Keep the computer awake during a cook | Partly | Screen Wake Lock; the browser releases it when the tab is hidden |
 | Kitchen mode | Yes | Full screen |
 | Reconnect after a dropped link | Yes | Backoff 1, 2, 4 … 30 s |
@@ -51,6 +53,24 @@ Source: [WebBluetoothCG implementation status](https://github.com/WebBluetoothCG
 | Probe serial and signal strength on a direct connection | Flag only | `watchAdvertisements()`, same flag. Without it a direct probe gets a stand-in ID (see below) |
 | Alerts with the tab closed or the computer asleep | No | Service workers cannot use Bluetooth |
 | Menu bar / tray icon, widgets, start at login | No | No web APIs |
+
+### Background tabs and notifications
+
+What keeps working with Colby in a background tab, and what stops it. Sources: [Chrome 88 timer throttling](https://developer.chrome.com/blog/timer-throttling-in-chrome-88/) (primary: hidden-tab timers batched to once a minute after 5 minutes, unless the page made sound in the last 30 s); worker timers are not batched per [secondary sources](https://www.github.com/chrisguttandin/worker-timers), so Colby drives its clock from a worker.
+
+| Situation | Alerts |
+|---|---|
+| Another tab or app in front | Work: sound, notification (if allowed), flashing tab title |
+| Notifications not allowed | Sound and the in-tab band and title only; no pop-up, no Acknowledge/Snooze outside Colby. The setup and Settings say how to allow them |
+| Tab closed, browser closed | Stop. Colby asks before closing during a cook |
+| Computer asleep | Stop. The screen is kept awake only while the tab is visible |
+| Chrome Memory Saver unloads the tab | Stop. Add the site to "Always keep these sites active" or pin the tab. On return Colby says it was unloaded |
+| Tab frozen and resumed | Colby reconnects dropped links on resume |
+| Android | Chrome pauses background tabs after a while; keep Colby on screen |
+
+Checked in Chromium with an emulated hidden tab: the demo's alert fired, the notification showed both buttons, Acknowledge
+from the notification cleared the alert without bringing the tab forward, and the tab title flashed. Real 5-minute
+throttling and Memory Saver were not reproduced in tests.
 
 Stand-in ID: a direct probe connection does not carry the probe serial (it is only in advertisements), and Web
 Bluetooth blocks the Serial Number characteristic `0x2A25` ("Block access to standardized unique identifiers, for
