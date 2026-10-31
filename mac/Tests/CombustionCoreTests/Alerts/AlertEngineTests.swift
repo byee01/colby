@@ -13,7 +13,7 @@ struct AlertEngineTests {
         let rig = AlertRig()
         await rig.follow([hot])
         await rig.snapshot(core: 61)
-        #expect(rig.sound.playing["hot"] == .alert)
+        #expect(rig.sound.history == ["once custom"])
         #expect(rig.notifications.visible["hot"] != nil)
 
         await rig.engine.acknowledge("hot")
@@ -35,7 +35,22 @@ struct AlertEngineTests {
         #expect(await rig.state("hot") == .firing)
     }
 
-    @Test func soundLoopsUntilAcknowledged() async {
+    @Test func alarmSoundLoopsUntilAcknowledged() async {
+        let rig = AlertRig()
+        await rig.follow([])
+        let id = "\(AF.serial.hex).alarm.high.core"
+        await rig.snapshot(alarms: AF.alarming(.high, .core))
+        for _ in 0..<10 {
+            await rig.clock.advance(by: .seconds(30))
+            await rig.snapshot(alarms: AF.alarming(.high, .core))
+        }
+        #expect(rig.sound.playing[id] == .probeAlarm, "five minutes later it is still going")
+        #expect(rig.sound.history == ["start \(id)"], "one loop, started once")
+        await rig.engine.acknowledge(id)
+        #expect(rig.sound.history == ["start \(id)", "stop \(id)"])
+    }
+
+    @Test func ruleSoundPlaysOncePerFiring() async {
         let rig = AlertRig()
         await rig.follow([hot])
         await rig.snapshot(core: 61)
@@ -43,10 +58,21 @@ struct AlertEngineTests {
             await rig.clock.advance(by: .seconds(30))
             await rig.snapshot(core: 62)
         }
-        #expect(rig.sound.playing["hot"] == .alert, "five minutes later it is still going")
-        #expect(rig.sound.history == ["start hot"], "one loop, started once")
+        #expect(await rig.state("hot") == .firing)
+        #expect(rig.sound.playing.isEmpty)
+        #expect(rig.sound.history == ["once custom"], "played when it fired, not again while it stays true")
         await rig.engine.acknowledge("hot")
-        #expect(rig.sound.history == ["start hot", "stop hot"])
+        #expect(rig.sound.history == ["once custom"], "nothing to stop")
+    }
+
+    @Test func soundPerAlertFollowsTheUxPlan() {
+        func sound(_ kind: AlertRuleKind) -> AlertSound { AlertSound(for: .rule(kind)) }
+        #expect(sound(.predictionDone) == .ready && sound(.restingDone) == .ready)
+        #expect(sound(.predictionWithin(seconds: 300)) == .countdown)
+        #expect(sound(.probeOffline()) == .problem && sound(.batteryLow) == .problem)
+        #expect(sound(.temperatureAbove(channel: .core, celsius: 60)) == .custom)
+        #expect(sound(.stall(minRise: 1)) == .custom)
+        #expect(AlertSound.allCases.filter(\.loops) == [.ready, .overheat, .probeAlarm])
     }
 
     @Test func snoozeMutesThenFiresAgainIfStillTrue() async {
@@ -63,7 +89,7 @@ struct AlertEngineTests {
         #expect(await rig.state("hot") == .snoozed)
         await rig.clock.advance(by: .seconds(2))
         #expect(await rig.state("hot") == .firing, "the timer alone brings it back, no new reading needed")
-        #expect(rig.sound.playing["hot"] == .alert)
+        #expect(rig.sound.history == ["once custom", "once custom"])
         #expect(rig.transitions == ["hot idle->firing", "hot firing->snoozed", "hot snoozed->firing"])
         #expect(await rig.active().first?.snoozedUntil == nil)
     }
@@ -119,6 +145,40 @@ struct AlertEngineTests {
         #expect(await rig.active().isEmpty)
     }
 
+    /// Asked for on hardware: Snooze left the phone ringing with no way to stop it from Colby.
+    @Test func snoozingAProbeAlarmSilencesTheProbeAndFiresAgainWhileTripped() async {
+        let rig = AlertRig()
+        await rig.follow([])
+        let id = "\(AF.serial.hex).alarm.high.core"
+        await rig.snapshot(alarms: AF.alarming(.high, .core))
+        await rig.engine.snooze(id, duration: .seconds(300))
+        #expect(rig.silencer.silenced == [AF.serial], "the Display and phone stop too")
+        #expect(rig.sound.playing.isEmpty)
+        // The probe confirms: still past the limit (tripped), no longer alarming. The snooze holds.
+        let silenced = AlarmConfig(high: [.core: Alarm(isSet: true, temperature: 80, tripped: true, alarming: false)])
+        await rig.snapshot(alarms: silenced)
+        #expect(await rig.state(id) == .snoozed)
+        await rig.clock.advance(by: .seconds(301))
+        await rig.snapshot(alarms: silenced)
+        #expect(await rig.state(id) == .firing, "Colby fires again; the probe has no snooze")
+        #expect(rig.sound.playing[id] == .probeAlarm)
+        await rig.engine.acknowledge(id)
+        await rig.snapshot(alarms: silenced)
+        #expect(await rig.active().isEmpty)
+    }
+
+    @Test func snoozedProbeAlarmEndsWhenTheTemperatureComesBack() async {
+        let rig = AlertRig()
+        await rig.follow([])
+        let id = "\(AF.serial.hex).alarm.high.core"
+        await rig.snapshot(alarms: AF.alarming(.high, .core))
+        await rig.engine.snooze(id, duration: .seconds(300))
+        await rig.snapshot(alarms: AF.alarming(.high, .core, false))   // not tripped any more
+        #expect(await rig.active().isEmpty)
+        await rig.clock.advance(by: .seconds(301))
+        #expect(rig.sound.playing.isEmpty)
+    }
+
     @Test func failedSilenceGoesBackToFiringWithTheReason() async {
         let rig = AlertRig()
         await rig.follow([])
@@ -147,17 +207,6 @@ struct AlertEngineTests {
         await rig.snapshot(overheating: [])
         #expect(rig.notifications.visible.isEmpty)
         #expect(await rig.active().isEmpty)
-    }
-
-    @Test func snoozingAProbeAlarmIsLocalOnly() async {
-        let rig = AlertRig()
-        await rig.follow([])
-        await rig.snapshot(alarms: AF.alarming(.high, .core))
-        let id = "\(AF.serial.hex).alarm.high.core"
-        await rig.engine.snooze(id, duration: .seconds(60))
-        #expect(rig.silencer.silenced.isEmpty)
-        await rig.clock.advance(by: .seconds(61))
-        #expect(await rig.state(id) == .firing, "the probe is still alarming")
     }
 
     @Test func silenceAllAcknowledgesEverythingAndSendsOneSilence() async {

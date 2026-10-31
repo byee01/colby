@@ -45,6 +45,7 @@ public final class SimulatedProbe: @unchecked Sendable {
     private var ticks = 0
     private var inRange = true
     private var legacy = false
+    private var shortStatus = false
     private var running = false
     private var task: Task<Void, Never>?
     private var setpoint = 0.0
@@ -149,6 +150,12 @@ public final class SimulatedProbe: @unchecked Sendable {
     public var legacyFirmware: Bool {
         get { lock.withLock { legacy } }
         set { lock.withLock { legacy = newValue } }
+    }
+
+    /// fw v2.3.3: 94 B status without session fields, but Read Session Information is answered.
+    public var statusWithoutSession: Bool {
+        get { lock.withLock { shortStatus } }
+        set { lock.withLock { shortStatus = newValue } }
     }
 
     public func setCurve(_ curve: @escaping Curve) { lock.withLock { self.curve = curve } }
@@ -334,7 +341,7 @@ public final class SimulatedProbe: @unchecked Sendable {
             guard inRange else { return .idle }
             let last = records[records.count - 1]
             let ad = (try? encodeAdvertisement(.probe(advertisement(last)))) ?? []
-            let status = sampled ? (try? encodeProbeStatus(statusPayload(last), layout: legacy ? .legacy : .current)) : nil
+            let status = sampled ? (try? encodeProbeStatus(statusPayload(last), layout: legacy || shortStatus ? .legacy : .current)) : nil
             return .send(advertisement: ad, status: status, drop: drop)
         }
         for observer in observers { observer() }
@@ -365,7 +372,7 @@ public final class SimulatedProbe: @unchecked Sendable {
             foodSafe: FoodSafe(mode: .simplified, product: 1, serving: .servedImmediately, state: .notSafe),
             overheating: hot, preferences: ThermometerPreferences(powerMode: .normal, highRadioPower: false),
             alarms: alarms,
-            session: legacy ? nil : SessionInfo(sessionId: session, samplePeriodMs: UInt16(samplePeriod.totalSeconds * 1000)))
+            session: legacy || shortStatus ? nil : SessionInfo(sessionId: session, samplePeriodMs: UInt16(samplePeriod.totalSeconds * 1000)))
     }
 
     /// Applies a command that arrived through a node, as the probe would after a node forwarded it.
@@ -399,7 +406,7 @@ public final class SimulatedProbe: @unchecked Sendable {
     private func pushStatusNow() {
         let status: [UInt8]? = lock.withLock {
             guard running, inRange, let last = records.last else { return nil }
-            return try? encodeProbeStatus(statusPayload(last), layout: legacy ? .legacy : .current)
+            return try? encodeProbeStatus(statusPayload(last), layout: legacy || shortStatus ? .legacy : .current)
         }
         if let status, transport.isConnected(peripheral) {
             transport.injectNotification(peripheral: peripheral, characteristic: .probeStatus, bytes: status)

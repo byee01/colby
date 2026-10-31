@@ -353,6 +353,10 @@ public sealed class ReplayWriter : IDisposable
         _handle = new FileStream(Path.Combine(directory, "events.jsonl"), FileMode.Create, FileAccess.Write, FileShare.Read);
     }
 
+    /// <summary>Rewrites meta.json, e.g. with the devices heard once a capture ends.</summary>
+    public void WriteMeta(ReplayMeta meta) =>
+        File.WriteAllBytes(Path.Combine(Directory, "meta.json"), Encoding.UTF8.GetBytes(ReplayJson.EncodeMeta(meta)));
+
     public string Directory { get; }
 
     public Exception? LastError

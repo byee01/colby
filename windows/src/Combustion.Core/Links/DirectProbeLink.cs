@@ -7,6 +7,12 @@ namespace Combustion.Core;
 /// Subscribes to Probe Status and publishes <c>ProbeObservation(Status)</c> with source <c>DirectConnection</c>,
 /// and owns a probe-variant <see cref="UartClient"/> on the UART characteristics. The GATT status payload does not carry
 /// the probe serial, so the caller supplies it (from the advertisement that led to the connection).
+/// <para>
+/// The 94 B status (fw v2.3.3 and older) has no session fields. On the first such status the link reads Session
+/// Info over UART and fills it into every later status, so history can tell cooks apart (docs/07). Statuses before
+/// the answer go out without it (<c>SessionTracker</c> adopts the id). If the log range goes backwards on the same
+/// link, the cached info is dropped and read again. Firmware that refuses the read keeps sending none.
+/// </para>
 /// </summary>
 public sealed class DirectProbeLink : ILogFetcher
 {
@@ -18,6 +24,10 @@ public sealed class DirectProbeLink : ILogFetcher
     private readonly SemaphoreSlim _readTurn = new(1, 1);
     private bool _started;
     private bool _finished;
+    private SessionInfo? _sessionInfo;
+    private bool _sessionReading;
+    private bool _sessionReadRefused;
+    private uint? _lastLogMax;
 
     public DirectProbeLink(ProbeSerial serial, IGattConnection connection, IClock clock)
     {
@@ -128,9 +138,61 @@ public sealed class DirectProbeLink : ILogFetcher
             StatusDecodeErrors++;
             return;
         }
+        if (payload.Session is null)
+        {
+            if (_lastLogMax is { } last && payload.LogRange.Max < last)
+            {
+                _sessionInfo = null;
+                _sessionReadRefused = false;
+            }
+            if (_sessionInfo is null)
+            {
+                RequestSessionInfo();
+            }
+            payload = payload with { Session = _sessionInfo };
+        }
+        _lastLogMax = payload.LogRange.Max;
         var now = _clock.Now();
         var source = new LinkSource(LinkKind.DirectConnection, now, HighRadioPower: payload.Preferences?.HighRadioPower);
         _observations.Send(new ProbeObservation(Serial, source, new ObservationPayload.Status(payload), now));
+    }
+
+    private void RequestSessionInfo()
+    {
+        if (_sessionReading || _sessionReadRefused)
+        {
+            return;
+        }
+        _sessionReading = true;
+        _ = ReadSessionInfoInBackgroundAsync();
+    }
+
+    private async Task ReadSessionInfoInBackgroundAsync()
+    {
+        // Swift starts this in a new Task: let the status that asked for it go out first.
+        await Task.Yield();
+        SessionInfo? info;
+        try
+        {
+            info = await ReadSessionInfoAsync();
+        }
+        catch (Exception)
+        {
+            info = null;
+        }
+        _sessionReading = false;
+        if (_finished)
+        {
+            return;
+        }
+        if (info is { } i)
+        {
+            _sessionInfo = i;
+        }
+        else
+        {
+            _sessionReadRefused = true;
+        }
     }
 
     // UART

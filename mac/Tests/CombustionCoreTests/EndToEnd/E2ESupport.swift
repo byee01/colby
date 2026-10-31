@@ -37,13 +37,15 @@ final class E2ERig: @unchecked Sendable {
     let app: CombustionApp
     let trace: JSONLTraceSink
 
-    init(policy: (any ConnectionPolicy)? = nil, alertSinks: [any AlertSink] = [], keepAwake: (any KeepAwake)? = nil) throws {
+    init(policy: (any ConnectionPolicy)? = nil, alertSinks: [any AlertSink] = [], keepAwake: (any KeepAwake)? = nil,
+         liveSnapshot: (any LiveSnapshotWriting)? = nil) throws {
         let clock = self.clock
         transport = SimulatedTransport(clock: clock)
         spy = ConnectSpyTransport(inner: transport, clock: clock)
         trace = try JSONLTraceSink(clock: clock)
         app = try CombustionApp(
-            transport: spy, clock: clock, policy: policy, trace: trace, alertSinks: alertSinks, keepAwake: keepAwake)
+            transport: spy, clock: clock, policy: policy, trace: trace, alertSinks: alertSinks, keepAwake: keepAwake,
+            liveSnapshot: liveSnapshot)
     }
 
     func probe(_ serial: ProbeSerial, preload: Int = 0, sessionId: UInt32 = 1, offset: Double = 0,

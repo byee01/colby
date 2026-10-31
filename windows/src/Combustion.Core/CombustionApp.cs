@@ -140,6 +140,10 @@ public sealed class CombustionApp : IDisposable
         PredictionPresenter.Start();
         Alerts.Start(Probes.Probes(), PredictionPresenter.Updates(), Probes.Followed());
         LiveSnapshot?.Start(Probes.Probes(), PredictionPresenter.Updates(), Probes.Followed());
+        if (LiveSnapshot is { } writer)
+        {
+            _ = ForEachAsync(History.CookNames(), writer.SetNamesAsync, ct);
+        }
 
         await _advertisements.StartAsync();
         await _policy.StartAsync(new ConnectionPolicyInput(
@@ -181,6 +185,15 @@ public sealed class CombustionApp : IDisposable
     public Task FollowAsync(ProbeSerial serial) => Probes.FollowAsync(serial);
 
     public Task UnfollowAsync(ProbeSerial serial) => Probes.UnfollowAsync(serial);
+
+    // Cook names
+
+    /// <summary>Each probe's current cook name (absent when unnamed): the latest map first, then changes.</summary>
+    public AsyncStream<ValueMap<ProbeSerial, string>> CookNames() => History.CookNames();
+
+    /// <summary>Names the probe's current cook, or its next one if none is open; null or blank clears it.
+    /// History rows and the widget snapshot show it.</summary>
+    public void SetCookName(string? name, ProbeSerial serial) => History.SetCookName(name, serial);
 
     // Diagnostics
 

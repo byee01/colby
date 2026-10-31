@@ -1,0 +1,19 @@
+{
+  "description": "Read Session Information response captured from fw v2.3.3",
+  "source": "hardware",
+  "kind": "decodeResponse",
+  "variant": "probe",
+  "hex": "CAFEB83C0301063DD760018813",
+  "expected": {
+    "messageType": 3,
+    "success": true,
+    "requestId": null,
+    "responseId": null,
+    "body": {
+      "type": "sessionInfo",
+      "probe": null,
+      "sessionId": 23123773,
+      "samplePeriodMs": 5000
+    }
+  }
+}

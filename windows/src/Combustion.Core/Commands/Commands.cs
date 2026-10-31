@@ -93,8 +93,9 @@ public sealed class Commands : IProbeAlarmSilencing
     public static readonly TimeSpan DefaultCommandTimeout = TimeSpan.FromSeconds(3);
     public static readonly TimeSpan DefaultConfirmTimeout = TimeSpan.FromSeconds(5);
 
-    /// <summary>Probe resolution is 0.1 °C and the codec rounds to it.</summary>
-    private const double Tolerance = 0.06;
+    /// <summary>Probe resolution is 0.1 °C and the codec rounds to it, but the probe can report one step off what it
+    /// was sent: on hardware (fw 2.3.3) a set point sent as 294 (85 °F) came back as 293. One step either way confirms.</summary>
+    private const double Tolerance = 0.11;
 
     private readonly ProbeStore _probes;
     private readonly ICommandRouting _routing;

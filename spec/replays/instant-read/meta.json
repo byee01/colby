@@ -1,0 +1,14 @@
+{
+  "adapter": "CoreBluetooth",
+  "devices": [
+    {
+      "firmware": "v2.3.3 (hw v11.0-A1)",
+      "name": "probe 1000D027",
+      "peripheral": "221047F5-4C98-1B33-B878-73E8362C1696"
+    }
+  ],
+  "formatVersion": 1,
+  "name": "instant-read",
+  "notes": "probe 1000D027 fw v2.3.3 hw v11.0-A1; dipped in hot water ~20 s in / 20 s out, 3x",
+  "os": "macOS Version 26.3.1 (a) (Build 25D771280a)"
+}

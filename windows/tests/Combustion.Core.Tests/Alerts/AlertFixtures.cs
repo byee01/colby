@@ -58,7 +58,7 @@ public sealed class AlertRig
     /// <param name="defaults">Seed the default alert set on follow (off by default so tests add their own rules).</param>
     public AlertRig(bool defaults = false, TimeSpan? cookIdle = null, ITraceSink? trace = null)
     {
-        IAlertSink[] sinks = [Sink, new LoopingSoundAlertSink(Sound), new NotificationAlertSink(Notifications)];
+        IAlertSink[] sinks = [Sink, new SoundAlertSink(Sound), new NotificationAlertSink(Notifications)];
         Engine = new AlertEngine(
             Clock, Store, sinks, KeepAwake, Silencer, trace,
             defaults ? AlertRule.Defaults : AlertEngine.NoDefaultRules, cookIdle ?? TimeSpan.FromSeconds(600));

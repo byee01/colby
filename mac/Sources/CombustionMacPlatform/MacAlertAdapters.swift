@@ -38,6 +38,13 @@ public final class UserNotificationPresenter: NotificationPresenting, @unchecked
         (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
     }
 
+    /// Whether banners can be shown: authorized (or provisional) and alerts not turned off in System Settings.
+    public func canShowBanners() async -> Bool {
+        let s = await center.notificationSettings()
+        let allowed = s.authorizationStatus == .authorized || s.authorizationStatus == .provisional
+        return allowed && s.alertSetting == .enabled
+    }
+
     public func post(_ alert: AlertInstance) async {
         let text = format(alert)
         let content = UNMutableNotificationContent()
@@ -81,13 +88,58 @@ public final class UserNotificationPresenter: NotificationPresenting, @unchecked
     }
 }
 
+/// What the user did with a posted alert notification.
+public enum NotificationActionKind: Sendable, Equatable {
+    case acknowledge, snooze, open
+
+    /// nil for a dismiss or an action that is not ours.
+    public init?(actionIdentifier: String) {
+        switch actionIdentifier {
+        case UserNotificationPresenter.acknowledgeAction: self = .acknowledge
+        case UserNotificationPresenter.snoozeAction: self = .snooze
+        case UNNotificationDefaultActionIdentifier: self = .open
+        default: return nil
+        }
+    }
+}
+
+/// `UNUserNotificationCenter` delegate: routes Acknowledge / Snooze / click on a banner to `handler` with the
+/// alert id, and shows banners while the app is frontmost (without the notification sound: the alert's own
+/// sound already plays in-app). Set it as the delegate before launch finishes; the center holds it weakly.
+public final class NotificationActionRouter: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    public typealias Handler = @Sendable (NotificationActionKind, String) async -> Void
+    private let handler: Handler
+
+    public init(center: UNUserNotificationCenter = .current(), handler: @escaping Handler) {
+        self.handler = handler
+        super.init()
+        center.delegate = self
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
+    ) async {
+        guard let kind = NotificationActionKind(actionIdentifier: response.actionIdentifier),
+              let id = response.notification.request.content.userInfo["alertId"] as? String else { return }
+        await handler(kind, id)
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter, willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .list]
+    }
+}
+
 // MARK: - Sound
 
-/// Loops built-in system sounds with `NSSound` (06 §17.3). Nothing is bundled; sounds are played by name.
+/// Plays built-in system sounds with `NSSound` (06 §17.3), once or looped. Nothing is bundled; sounds are
+/// played by name.
 public final class SystemSoundPlayer: SoundPlaying, @unchecked Sendable {
     /// Built-in macOS sound per alert sound.
     public static let names: [AlertSound: String] = [
-        .ready: "Glass", .overheat: "Sosumi", .probeAlarm: "Hero", .alert: "Submarine",
+        .ready: "Glass", .overheat: "Sosumi", .probeAlarm: "Hero",
+        .countdown: "Ping", .problem: "Basso", .custom: "Submarine",
     ]
 
     @MainActor private var playing: [String: NSSound] = [:]
@@ -95,6 +147,16 @@ public final class SystemSoundPlayer: SoundPlaying, @unchecked Sendable {
 
     /// - Parameter volume: 0...1 (Settings → Alarm volume, default 0.8).
     public init(volume: Float = 0.8) { self.volume = volume }
+
+    public func play(_ sound: AlertSound) async {
+        let name = Self.names[sound] ?? "Glass"
+        let volume = self.volume
+        await MainActor.run {
+            guard let s = NSSound(named: NSSound.Name(name))?.copy() as? NSSound else { return }
+            s.volume = volume
+            s.play()
+        }
+    }
 
     public func startLoop(_ sound: AlertSound, id: String) async {
         let name = Self.names[sound] ?? "Glass"

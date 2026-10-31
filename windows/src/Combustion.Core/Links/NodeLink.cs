@@ -8,6 +8,11 @@ namespace Combustion.Core;
 /// each becomes a <c>ProbeObservation(Status)</c> with source <c>NodeConnection</c> (<c>Via</c> = this node, <c>HopCount</c>
 /// from the Network Information byte). 0x49 heartbeats feed the node's <see cref="NodeSnapshot"/>. Requests for a
 /// probe (history, session info) are addressed by probe serial, so one connection serves every probe the node relays.
+/// <para>
+/// The 94 B status inside 0x45 (probe fw v2.3.3) has no session fields. As <see cref="DirectProbeLink"/> does, the link
+/// reads Session Info for each probe on its first such status, through this node, and fills it into later
+/// statuses; a log range that goes backwards drops that probe's cached info and reads it again.
+/// </para>
 /// </summary>
 public sealed class NodeLink : ILogFetcher
 {
@@ -24,6 +29,15 @@ public sealed class NodeLink : ILogFetcher
     private NodeSnapshot _current;
     private bool _started;
     private bool _finished;
+    private readonly Dictionary<ProbeSerial, ProbeSession> _sessions = [];
+
+    private sealed class ProbeSession
+    {
+        public SessionInfo? Info { get; set; }
+        public bool Reading { get; set; }
+        public bool Refused { get; set; }
+        public uint? LastLogMax { get; set; }
+    }
 
     /// <param name="requestIds">Source of request IDs; inject a deterministic one in tests.</param>
     public NodeLink(string serial, NodeProductType productType, IGattConnection connection, IClock clock, Func<uint>? requestIds = null)
@@ -131,6 +145,7 @@ public sealed class NodeLink : ILogFetcher
         }
         _finished = true;
         _tasks.Cancel();
+        _sessions.Clear();
         Uart.Close();
         _coverage.Clear();
         _current = _current with
@@ -178,12 +193,74 @@ public sealed class NodeLink : ILogFetcher
             StatusDecodeErrors++;
             return;
         }
+        if (node.Status.Session is null)
+        {
+            if (!_sessions.TryGetValue(node.Serial, out var s))
+            {
+                s = new ProbeSession();
+                _sessions[node.Serial] = s;
+            }
+            if (s.LastLogMax is { } last && node.Status.LogRange.Max < last)
+            {
+                s.Info = null;
+                s.Refused = false;
+            }
+            node = node with { Status = node.Status with { Session = s.Info } };
+            if (s.Info is null)
+            {
+                RequestSessionInfo(node.Serial, s);
+            }
+        }
+        if (!_sessions.TryGetValue(node.Serial, out var session))
+        {
+            session = new ProbeSession();
+            _sessions[node.Serial] = session;
+        }
+        session.LastLogMax = node.Status.LogRange.Max;
         var now = _clock.Now();
         var source = new LinkSource(LinkKind.NodeConnection, now, Serial, node.HopCount, HighRadioPower: node.Status.Preferences?.HighRadioPower);
         _observations.Send(new ProbeObservation(node.Serial, source, new ObservationPayload.Status(node.Status), now));
         if (_coverage.Note(node.Serial, node.HopCount, now))
         {
             RefreshProbes(now);
+        }
+    }
+
+    private void RequestSessionInfo(ProbeSerial probe, ProbeSession s)
+    {
+        if (s.Reading || s.Refused)
+        {
+            return;
+        }
+        s.Reading = true;
+        _ = ReadSessionInfoInBackgroundAsync(probe, s);
+    }
+
+    private async Task ReadSessionInfoInBackgroundAsync(ProbeSerial probe, ProbeSession s)
+    {
+        // Swift starts this in a new Task: let the status that asked for it go out first.
+        await Task.Yield();
+        SessionInfo? info;
+        try
+        {
+            info = await ReadSessionInfoAsync(probe);
+        }
+        catch (Exception)
+        {
+            info = null;
+        }
+        s.Reading = false;
+        if (_finished || !_sessions.TryGetValue(probe, out var current) || current != s)
+        {
+            return;
+        }
+        if (info is { } i)
+        {
+            s.Info = i;
+        }
+        else
+        {
+            s.Refused = true;
         }
     }
 

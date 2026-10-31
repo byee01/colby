@@ -20,8 +20,9 @@ public protocol NotificationPresenting: Sendable {
     func withdraw(id: String) async
 }
 
-/// Plays a sound in a loop until stopped. macOS: `AVAudioPlayer`; Windows: `MediaPlayer`.
+/// Plays alert sounds, once or in a loop until stopped. macOS: `NSSound`; Windows: `MediaPlayer`.
 public protocol SoundPlaying: Sendable {
+    func play(_ sound: AlertSound) async
     func startLoop(_ sound: AlertSound, id: String) async
     func stopLoop(id: String) async
 }
@@ -46,16 +47,22 @@ public struct NotificationAlertSink: AlertSink {
     }
 }
 
-/// Sound sink: loops the alert's sound from the moment it fires until it is acknowledged, snoozed or clears.
-public struct LoopingSoundAlertSink: AlertSink {
+/// Sound sink (06 §17.3): a looping sound plays from the moment the alert fires until it is acknowledged,
+/// snoozed or clears; any other sound plays once each time the alert fires.
+public struct SoundAlertSink: AlertSink {
     private let player: any SoundPlaying
 
     public init(_ player: any SoundPlaying) { self.player = player }
 
     public func deliver(_ event: AlertEvent) async {
+        let sound = event.instance.sound
         if event.to == .firing {
-            await player.startLoop(event.instance.sound, id: event.instance.id)
-        } else if event.from == .firing {
+            if sound.loops {
+                await player.startLoop(sound, id: event.instance.id)
+            } else {
+                await player.play(sound)
+            }
+        } else if event.from == .firing, sound.loops {
             await player.stopLoop(id: event.instance.id)
         }
     }
@@ -77,7 +84,7 @@ public final class RecordingAlertSink: AlertSink, @unchecked Sendable {
     public func deliver(_ event: AlertEvent) async { lock.withLock { stored.append(event) } }
 }
 
-/// A sound player that remembers which loops are running.
+/// A sound player that remembers which loops are running and what played once.
 public final class FakeSoundPlayer: SoundPlaying, @unchecked Sendable {
     public struct Loop: Sendable, Equatable {
         public var sound: AlertSound
@@ -92,8 +99,12 @@ public final class FakeSoundPlayer: SoundPlaying, @unchecked Sendable {
 
     /// Loops playing right now, by alert id.
     public var playing: [String: AlertSound] { lock.withLock { running } }
-    /// `"start <id>"` / `"stop <id>"`, in order.
+    /// `"start <id>"` / `"stop <id>"` / `"once <sound>"`, in order.
     public var history: [String] { lock.withLock { log } }
+
+    public func play(_ sound: AlertSound) async {
+        lock.withLock { log.append("once \(sound)") }
+    }
 
     public func startLoop(_ sound: AlertSound, id: String) async {
         lock.withLock {

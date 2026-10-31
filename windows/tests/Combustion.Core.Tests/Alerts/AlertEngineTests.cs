@@ -19,7 +19,7 @@ public class AlertEngineTests
         var rig = new AlertRig();
         await rig.FollowAsync([Hot]);
         await rig.SnapshotAsync(core: 61);
-        Assert.Equal(AlertSound.Alert, rig.Sound.Playing["hot"]);
+        Assert.Equal(["once custom"], rig.Sound.History);
         Assert.True(rig.Notifications.Visible.ContainsKey("hot"));
 
         await rig.Engine.AcknowledgeAsync("hot");
@@ -42,7 +42,25 @@ public class AlertEngineTests
     });
 
     [Fact]
-    public void SoundLoopsUntilAcknowledged() => Det.Run(async () =>
+    public void AlarmSoundLoopsUntilAcknowledged() => Det.Run(async () =>
+    {
+        var rig = new AlertRig();
+        await rig.FollowAsync([]);
+        var id = $"{AF.Serial.Hex}.alarm.high.core";
+        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core));
+        for (var i = 0; i < 10; i++)
+        {
+            await rig.Clock.AdvanceAsync(30);
+            await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core));
+        }
+        Assert.Equal(AlertSound.ProbeAlarm, rig.Sound.Playing[id]); // five minutes later it is still going
+        Assert.Equal([$"start {id}"], rig.Sound.History); // one loop, started once
+        await rig.Engine.AcknowledgeAsync(id);
+        Assert.Equal([$"start {id}", $"stop {id}"], rig.Sound.History);
+    });
+
+    [Fact]
+    public void RuleSoundPlaysOncePerFiring() => Det.Run(async () =>
     {
         var rig = new AlertRig();
         await rig.FollowAsync([Hot]);
@@ -52,11 +70,24 @@ public class AlertEngineTests
             await rig.Clock.AdvanceAsync(30);
             await rig.SnapshotAsync(core: 62);
         }
-        Assert.Equal(AlertSound.Alert, rig.Sound.Playing["hot"]); // five minutes later it is still going
-        Assert.Equal(["start hot"], rig.Sound.History); // one loop, started once
+        Assert.Equal(AlertState.Firing, rig.State("hot"));
+        Assert.Empty(rig.Sound.Playing);
+        Assert.Equal(["once custom"], rig.Sound.History); // played when it fired, not again while it stays true
         await rig.Engine.AcknowledgeAsync("hot");
-        Assert.Equal(["start hot", "stop hot"], rig.Sound.History);
+        Assert.Equal(["once custom"], rig.Sound.History); // nothing to stop
     });
+
+    [Fact]
+    public void SoundPerAlertFollowsTheUxPlan()
+    {
+        static AlertSound Sound(AlertRuleKind kind) => AlertSounds.For(new AlertSource.Rule(kind));
+        Assert.True(Sound(new AlertRuleKind.PredictionDone()) == AlertSound.Ready && Sound(new AlertRuleKind.RestingDone()) == AlertSound.Ready);
+        Assert.Equal(AlertSound.Countdown, Sound(new AlertRuleKind.PredictionWithin(300)));
+        Assert.True(Sound(new AlertRuleKind.ProbeOffline()) == AlertSound.Problem && Sound(new AlertRuleKind.BatteryLow()) == AlertSound.Problem);
+        Assert.Equal(AlertSound.Custom, Sound(new AlertRuleKind.TemperatureAbove(AlarmChannel.Core, 60)));
+        Assert.Equal(AlertSound.Custom, Sound(new AlertRuleKind.Stall(minRise: 1)));
+        Assert.Equal([AlertSound.Ready, AlertSound.Overheat, AlertSound.ProbeAlarm], Enum.GetValues<AlertSound>().Where(s => s.Loops()));
+    }
 
     [Fact]
     public void SnoozeMutesThenFiresAgainIfStillTrue() => Det.Run(async () =>
@@ -74,7 +105,7 @@ public class AlertEngineTests
         Assert.Equal(AlertState.Snoozed, rig.State("hot"));
         await rig.Clock.AdvanceAsync(2);
         Assert.Equal(AlertState.Firing, rig.State("hot")); // the timer alone brings it back, no new reading needed
-        Assert.Equal(AlertSound.Alert, rig.Sound.Playing["hot"]);
+        Assert.Equal(["once custom", "once custom"], rig.Sound.History);
         Assert.Equal(["hot idle->firing", "hot firing->snoozed", "hot snoozed->firing"], rig.Transitions);
         Assert.Null(rig.Active().First().SnoozedUntil);
     });
@@ -138,6 +169,47 @@ public class AlertEngineTests
         Assert.Empty(rig.Active());
     });
 
+    /// <summary>Asked for on hardware: Snooze left the phone ringing with no way to stop it from Colby.</summary>
+    [Fact]
+    public void SnoozingAProbeAlarmSilencesTheProbeAndFiresAgainWhileTripped() => Det.Run(async () =>
+    {
+        var rig = new AlertRig();
+        await rig.FollowAsync([]);
+        var id = $"{Hex}.alarm.high.core";
+        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core));
+        await rig.Engine.SnoozeAsync(id, TimeSpan.FromSeconds(300));
+        Assert.Equal([AF.Serial], rig.Silencer.Silenced); // the Display and phone stop too
+        Assert.Empty(rig.Sound.Playing);
+        // The probe confirms: still past the limit (tripped), no longer alarming. The snooze holds.
+        var silenced = new AlarmConfig(high: new Dictionary<AlarmChannel, Alarm>
+        {
+            [AlarmChannel.Core] = new(true, 80, Tripped: true, Alarming: false),
+        });
+        await rig.SnapshotAsync(alarms: silenced);
+        Assert.Equal(AlertState.Snoozed, rig.State(id));
+        await rig.Clock.AdvanceAsync(301);
+        await rig.SnapshotAsync(alarms: silenced);
+        Assert.Equal(AlertState.Firing, rig.State(id)); // Colby fires again; the probe has no snooze
+        Assert.Equal(AlertSound.ProbeAlarm, rig.Sound.Playing[id]);
+        await rig.Engine.AcknowledgeAsync(id);
+        await rig.SnapshotAsync(alarms: silenced);
+        Assert.Empty(rig.Active());
+    });
+
+    [Fact]
+    public void SnoozedProbeAlarmEndsWhenTheTemperatureComesBack() => Det.Run(async () =>
+    {
+        var rig = new AlertRig();
+        await rig.FollowAsync([]);
+        var id = $"{Hex}.alarm.high.core";
+        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core));
+        await rig.Engine.SnoozeAsync(id, TimeSpan.FromSeconds(300));
+        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core, on: false)); // not tripped any more
+        Assert.Empty(rig.Active());
+        await rig.Clock.AdvanceAsync(301);
+        Assert.Empty(rig.Sound.Playing);
+    });
+
     [Fact]
     public void FailedSilenceGoesBackToFiringWithTheReason() => Det.Run(async () =>
     {
@@ -172,18 +244,6 @@ public class AlertEngineTests
         Assert.Empty(rig.Active());
     });
 
-    [Fact]
-    public void SnoozingAProbeAlarmIsLocalOnly() => Det.Run(async () =>
-    {
-        var rig = new AlertRig();
-        await rig.FollowAsync([]);
-        await rig.SnapshotAsync(alarms: AF.Alarming(AlarmKind.High, AlarmChannel.Core));
-        var id = $"{Hex}.alarm.high.core";
-        await rig.Engine.SnoozeAsync(id, TimeSpan.FromSeconds(60));
-        Assert.Empty(rig.Silencer.Silenced);
-        await rig.Clock.AdvanceAsync(61);
-        Assert.Equal(AlertState.Firing, rig.State(id)); // the probe is still alarming
-    });
 
     [Fact]
     public void SilenceAllAcknowledgesEverythingAndSendsOneSilence() => Det.Run(async () =>

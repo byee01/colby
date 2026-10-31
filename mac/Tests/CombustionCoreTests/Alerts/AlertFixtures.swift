@@ -59,7 +59,7 @@ final class AlertRig: @unchecked Sendable {
 
     /// - Parameter defaults: seed the default alert set on follow (off by default so tests add their own rules).
     init(defaults: Bool = false, cookIdle: Duration = .seconds(600), trace: (any TraceSink)? = nil) {
-        let sinks: [any AlertSink] = [sink, LoopingSoundAlertSink(sound), NotificationAlertSink(notifications)]
+        let sinks: [any AlertSink] = [sink, SoundAlertSink(sound), NotificationAlertSink(notifications)]
         let seed: (@Sendable (ProbeSerial) -> [AlertRule])? = defaults ? { @Sendable (serial: ProbeSerial) in AlertRule.defaults(for: serial) } : nil
         engine = AlertEngine(
             clock: clock, ruleStore: store, sinks: sinks, keepAwake: keepAwake, silencer: silencer, trace: trace,

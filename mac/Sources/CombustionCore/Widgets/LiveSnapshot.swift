@@ -99,6 +99,12 @@ public actor LiveSnapshotWriter {
         await changed()
     }
 
+    /// Replaces every cook name (`HistoryStore.cookNames`).
+    public func setNames(_ map: [ProbeSerial: String]) async {
+        names = map
+        await changed()
+    }
+
     public func setFollowed(_ set: Set<ProbeSerial>) async {
         followed = set
         await changed()

@@ -84,7 +84,7 @@ Matches the official app's layout (§17.5). Board: `Main1` (1 probe), `Main`, `M
 | Target | Light horizontal line `#d9d9d9`, labeled at the right edge outside the plot (`203°`) |
 | Scrub | Pointer over plot: vertical line + white-ringed dot per series; readout row shows the values at that time; label above graph = prediction state + time (`Predicting / 11:24`). Off the plot: `Now · 13:20` and live values. Keyboard: ←/→ moves the scrub point when the graph has focus |
 | X range | Selected probe's start to now (range buttons narrow it) |
-| Y range | 50° to max(ambient, target) + 30, rounded to 50; ticks every 50 (every 100 if span > 300) |
+| Y range | Fits the visible readings and the target, padded 10%, at least 10° tall; ticks on a 1-2-5 step, at most five gaps (like the phone app) |
 | Gaps | Missing data is a break, not interpolated; hatched while backfilling |
 | Stale | Lines stop at the last sample; header shows "stale" |
 | Data | `TemperatureSeries.downsampled(maxPoints = pixel width × 2)` (02 §6.3) |
@@ -113,13 +113,14 @@ Badge: neutral `#2a2a2a` circle with probe number; 2 px ring in the physical pro
 ```
 Set target — ① Brisket
   Target core temp  [ 203 ] °F        range 32–216 °F (0–102.3 °C)
-  Mode              (•) Time to removal   ( ) Removal + resting
+  Mode              ( ) Time to removal   (•) Removal + resting
   Current core 165.2 °F
                                      [Clear target]  [Cancel]  [Set]
 ```
 - Entry in the user's unit; converted to °C, rounded to 0.1 °C, clamped to 0–102.3 °C with an inline error outside range (02 §8 `outOfRange`).
 - "Set" shows a spinner until the next status confirms (02 §8); on `notConfirmed` show "Probe didn't confirm. Retry."
 - "Clear target" → `cancelPrediction`.
+- Mode defaults to Removal + resting for a new target (accounts for carryover); changing a target keeps its mode.
 - Optional nickname field at the top (stored per cook, see §11).
 
 ## 6. Alarms & rules sheet

@@ -6,8 +6,12 @@ namespace Combustion.Core;
 /// Merge state of one probe: many sources in, one <see cref="ProbeSnapshot"/> out. docs/02 §6.1. Pure (no clock, no I/O);
 /// <see cref="ProbeStore"/> supplies arrival times.
 /// <list type="bullet">
-/// <item>Live fields (temperatures, mode, color, probe number, battery, virtual sensors, overheating) come from the
-/// freshest observation of any kind. An absent overheating byte keeps the previous value.</item>
+/// <item>Live fields (color, probe number, battery, overheating) come from the freshest observation of any kind.
+/// An absent overheating byte keeps the previous value.</item>
+/// <item>Mode: a probe out of the charger interleaves Instant Read and Normal packets several times a second
+/// (fw v2.3.3, docs/07). As in the iOS SDK, Normal packets set T1-T8 and virtual sensors, Instant Read packets
+/// set only the filtered Instant Read value, and the probe counts as in Instant Read until
+/// <see cref="InstantReadStale"/> passes without an Instant Read packet.</item>
 /// <item>Status-only fields (prediction, alarms, food safe, session/log range) come from the freshest full status.
 /// Advertisements never touch them, and they survive loss of every source (the probe is shown offline).</item>
 /// <item>Freshness is <c>ProbeObservation.ReceivedAt</c>; ties go to the later arrival.</item>
@@ -18,16 +22,28 @@ internal sealed class ProbeMerger(ProbeSerial serial)
     internal readonly record struct Entry(LinkSource Source, DateTimeOffset ArrivedAt);
 
     private sealed record Live(
-        ProbeTemperatures Temperatures, ProbeMode Mode, ProbeColor Color, int ProbeNumber, bool BatteryLow,
-        VirtualSensors VirtualSensors, SensorSet Overheating, DateTimeOffset ReceivedAt);
+        ProbeColor Color, int ProbeNumber, bool BatteryLow, VirtualSensors VirtualSensors, SensorSet Overheating,
+        DateTimeOffset ReceivedAt);
+
+    /// <summary>Latest Normal (or Error) mode packet: the only source of T1-T8.</summary>
+    private sealed record Normal(
+        ProbeTemperatures Temperatures, ProbeMode Mode, VirtualSensors VirtualSensors, DateTimeOffset ReceivedAt);
 
     private sealed record StatusPart(
         PredictionStatus Prediction, AlarmConfig? Alarms, FoodSafe? FoodSafe, ProbeSessionState Session, DateTimeOffset ReceivedAt);
 
+    /// <summary>The iOS SDK uses 5 s, but while a link is up the probe advertises far less (~0.8/s instead of ~4/s) and
+    /// Instant Read packets come 5-10 s apart, so 5 s made the mode (and the app's Instant Read view) flip every
+    /// few seconds on hardware (2026-10-23). 15 s covers the gaps seen; leaving Instant Read shows 15 s late.</summary>
+    internal const double InstantReadStale = 15;
+
     private readonly Dictionary<PathKey, Entry> _sources = [];
     private Live? _live;
+    private Normal? _normal;
     private StatusPart? _status;
     private InstantReadFilter _filter;
+    /// <summary>Last Instant Read packet: its time and raw T1.</summary>
+    private (DateTimeOffset At, double? T1)? _instant;
 
     public ProbeSerial Serial { get; } = serial;
 
@@ -68,11 +84,26 @@ internal sealed class ProbeMerger(ProbeSerial serial)
         {
             return;
         }
-        _live = new Live(temperatures, mode, color, probeNumber, batteryLow, virtualSensors,
+        _live = new Live(color, probeNumber, batteryLow, virtualSensors,
             overheating ?? _live?.Overheating ?? SensorSet.Empty, receivedAt);
-        // Instant Read: only T1 is meaningful; filter it. Any other mode resets the filter.
-        _filter.AddReading(mode == ProbeMode.InstantRead ? temperatures[SensorIndex.T1] : null);
+        if (mode == ProbeMode.InstantRead)
+        {
+            // Only T1 is meaningful. The filter restarts after Instant Read went stale.
+            if (!InstantActive(receivedAt))
+            {
+                _filter = new InstantReadFilter();
+            }
+            _filter.AddReading(temperatures[SensorIndex.T1]);
+            _instant = (receivedAt, temperatures[SensorIndex.T1]);
+        }
+        else
+        {
+            _normal = new Normal(temperatures, mode, virtualSensors, receivedAt);
+        }
     }
+
+    private bool InstantActive(DateTimeOffset time) =>
+        _instant is { } instant && time.Since(instant.At) < InstantReadStale;
 
     /// <summary>Drops sources with no data for <paramref name="ttl"/> seconds. Returns true if any was dropped.</summary>
     public bool Expire(DateTimeOffset now, double ttl)
@@ -93,19 +124,25 @@ internal sealed class ProbeMerger(ProbeSerial serial)
         {
             return null;
         }
-        var instant = live.Mode == ProbeMode.InstantRead;
-        var temps = live.Temperatures.Celsius.Select((c, i) => instant && i != 0 ? (double?)null : c).ToArray();
-        var vs = live.VirtualSensors;
+        var instantOn = InstantActive(live.ReceivedAt);
+        // T1-T8 from the last Normal packet, however old (Normal packets can be 18 s apart in Instant Read, see
+        // spec/replays/instant-read; the iOS SDK keeps them too). Before the first one, T1 from Instant Read alone.
+        var temps = _normal is { } normal
+            ? normal.Temperatures.Celsius.Select(c => (double?)c).ToArray()
+            : [_instant?.T1, null, null, null, null, null, null, null];
+        var vs = _normal?.VirtualSensors ?? live.VirtualSensors;
         var @virtual = new VirtualTemps(vs.Core, vs.Surface, vs.Ambient,
             temps[(int)vs.Core], temps[(int)vs.Surface], temps[(int)vs.Ambient]);
         var ordered = _sources.Values.Select(e => e.Source).ToList();
         ordered.Sort(Compare);
         return new ProbeSnapshot(
-            Serial, live.ProbeNumber, live.Color, live.Mode, temps, @virtual, live.BatteryLow,
+            Serial, live.ProbeNumber, live.Color,
+            instantOn ? ProbeMode.InstantRead : _normal?.Mode ?? ProbeMode.Normal,
+            temps, @virtual, live.BatteryLow,
             new LinkInfo(ordered, ordered.Count > 0 ? ordered[0] : null),
             live.ReceivedAt,
-            InstantRead: instant ? _filter.Celsius : null,
-            InstantReadFahrenheit: instant ? _filter.Fahrenheit : null,
+            InstantRead: instantOn ? _filter.Celsius : null,
+            InstantReadFahrenheit: instantOn ? _filter.Fahrenheit : null,
             Overheating: live.Overheating,
             Prediction: _status?.Prediction,
             Alarms: _status?.Alarms,

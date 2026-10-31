@@ -112,6 +112,56 @@ struct M4MeatNetTests {
         await rig.app.stop()
     }
 
+    /// spec/replays/display-relay-1hop: a Display relays fw v2.3.3's 94 B status, so `0x45` has no session id either.
+    @Test func sessionIdIsReadThroughTheNodeWhenTheRelayedStatusHasNone() async throws {
+        let rig = try E2ERig()
+        let probe = rig.probe(serialA, preload: 60, sessionId: 7)
+        probe.statusWithoutSession = true
+        probe.setInRange(false)
+        let display = rig.node(relaying: [probe])
+        await rig.app.start()
+        await rig.app.follow(serialA)
+        #expect(await rig.run(until: { await rig.nodeConnected() }, limit: .seconds(30)))
+        await rig.run(.seconds(30))
+
+        var sessions = try await rig.app.history.sessions(serial: serialA)
+        #expect(sessions.map(\.key.sessionId) == [7])
+        #expect(try #require(await rig.snapshot(serialA)).session?.info?.sessionId == 7)
+        func sessionReads() -> Int {
+            display.requests.filter { if case .readSessionInfo = $0.request { $0.probe == serialA } else { false } }.count
+        }
+        #expect(sessionReads() == 1, "read once per probe, not per status")
+
+        // A new cook while relayed: the log range goes backwards and the id is read again.
+        probe.newSession()
+        await rig.run(.seconds(30))
+        sessions = try await rig.app.history.sessions(serial: serialA)
+        #expect(sessions.map(\.key.sessionId) == [8, 7])
+        #expect(sessionReads() == 2)
+        await rig.app.stop()
+    }
+
+    /// spec/replays/display-relay-1hop: the connected Display paused its repeated advertisements for 16 s and
+    /// the app opened a direct link to a probe it was still getting `0x45` for.
+    @Test func relayedStatusesKeepTheNodeCoveringWhenItsRepeatedAdvertisementsPause() async throws {
+        let rig = try E2ERig()
+        let probe = rig.probe(serialA, preload: 10)
+        let display = rig.node(relaying: [probe])
+        display.quietWhileConnected = true
+        await rig.app.start()
+        await rig.app.follow(serialA)
+        #expect(await rig.run(until: { await rig.nodeConnected() }, limit: .seconds(30)))
+        await rig.run(.seconds(5), step: .seconds(1))
+        var directSeconds = 0
+        for _ in 0..<60 {
+            await rig.run(.seconds(1), step: .seconds(1))
+            if rig.transport.isConnected(probe.peripheral) { directSeconds += 1 }
+        }
+        #expect(directSeconds == 0)
+        #expect(await rig.app.diagnostics().links[serialA] == .viaNode(displayD))
+        await rig.app.stop()
+    }
+
     @Test func probeComingBackInMacRangeStaysOnTheNodeAndOpensNoDirectLink() async throws {
         let rig = try E2ERig()
         let probe = rig.probe(serialA, preload: 40)
@@ -157,8 +207,10 @@ struct M4MeatNetTests {
         #expect(!(await rig.nodeConnected()))
         #expect(try #require(await rig.snapshot(serialA)).link.primary?.kind == .directConnection)
         #expect(await rig.eventually { (try? await rig.storedSeqs(serialA).count) ?? 0 >= probe.recordCount - 1 })
-        let viaDirect = readLogCount(probe)
-        #expect(viaDirect > 0, "the hole was backfilled over the direct link")
+        // Direct statuses are stored as records; anything the switch skipped is read over the direct link.
+        #expect(await rig.eventually {
+            (try? await rig.storedSeqs(serialA)) == contiguous(0...probe.logRange.max)
+        }, "history is complete over the direct link")
 
         // The Display returns: the node takes over and the direct link is released.
         display.setInRange(true)

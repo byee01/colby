@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>Colby.Capture</RootNamespace>
+    <AssemblyName>colby-capture</AssemblyName>
+    <Description>Records real Combustion devices into a replay directory (docs/07 §2). Port of mac/Sources/ColbyCapture.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Combustion.Core\Combustion.Core.csproj" />
+    <ProjectReference Include="..\..\src\Combustion.Sim\Combustion.Sim.csproj" />
+    <ProjectReference Include="..\..\src\Combustion.Transport.WinRT\Combustion.Transport.WinRT.csproj" />
+  </ItemGroup>
+</Project>

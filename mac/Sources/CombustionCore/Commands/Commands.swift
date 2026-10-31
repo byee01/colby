@@ -135,8 +135,9 @@ public actor Commands: ProbeAlarmSilencing {
 
     // MARK: Validation and matching
 
-    /// Probe resolution is 0.1 °C and the codec rounds to it.
-    private static let tolerance = 0.06
+    /// Probe resolution is 0.1 °C and the codec rounds to it, but the probe can report one step off what it was
+    /// sent: on hardware (fw 2.3.3) a set point sent as 294 (85 °F) came back as 293. One step either way confirms.
+    private static let tolerance = 0.11
 
     private static func validateSetpoint(_ value: Double) throws {
         guard value.isFinite, (0...maxPredictionSetpoint).contains(value) else {

@@ -83,7 +83,9 @@ public interface IConnectionPolicy
 /// <item>MeatNet node step: when a node repeats the advertisement of a followed probe, connect to the node
 /// (one connection gets every probe on its network and keeps probe slots free for the phone app).
 /// While a node is connected and covers a probe, that probe gets no direct connection, and an existing
-/// one is closed. A node whose first connect attempt is still under way holds direct connects back.</item>
+/// one is closed. A connected node covers a probe while it relays its 0x45 statuses or repeats its
+/// advertisement (a connected Display advertises the probe with gaps of up to 16 s,
+/// spec/replays/display-relay-1hop). A node whose first connect attempt is still under way holds direct connects back.</item>
 /// <item>Otherwise connect directly to each followed probe once its own advertisement has been heard. If the
 /// node link drops (or stops repeating the probe) the probe falls back to direct, starting from the initial backoff.</item>
 /// <item>Reconnect with backoff 1, 2, 4 ... 30 s, for probes and nodes alike. Give up on a probe when it has
@@ -132,6 +134,7 @@ public sealed class DirectConnectionPolicy : IConnectionPolicy
     /// <summary>When each followed probe was last repeated by each node peripheral (monotonic).</summary>
     private readonly Dictionary<ProbeSerial, Dictionary<PeripheralId, TimeSpan>> _viaNode = [];
     private readonly Dictionary<string, Supervisor> _nodeSupervisors = [];
+    private readonly Dictionary<string, NodeLink> _nodeLinks = [];
     private readonly Dictionary<string, ProbeConnectionState> _stateByNode = [];
 
     public DirectConnectionPolicy(Timing? timing = null)
@@ -490,9 +493,11 @@ public sealed class DirectConnectionPolicy : IConnectionPolicy
 
     private bool NodeHearsFollowed(string serial) => FollowedViaNode(serial).Count > 0;
 
-    /// <summary>A connected node that repeats <paramref name="probe"/> right now.</summary>
+    /// <summary>A connected node that relays or repeats <paramref name="probe"/> right now.</summary>
     private string? CoveringNode(ProbeSerial probe) =>
-        NodesHearing(probe).FirstOrDefault(n => _stateByNode.GetValueOrDefault(n) is ProbeConnectionState.Connected);
+        _nodeLinks.Keys.Order(StringComparer.Ordinal).FirstOrDefault(n =>
+            _stateByNode.GetValueOrDefault(n) is ProbeConnectionState.Connected && _nodeLinks[n].Covers(probe))
+        ?? NodesHearing(probe).FirstOrDefault(n => _stateByNode.GetValueOrDefault(n) is ProbeConnectionState.Connected);
 
     /// <summary>A node that repeats <paramref name="probe"/> is waiting to connect or on its first attempt.</summary>
     private bool NodePending(ProbeSerial probe) =>
@@ -614,8 +619,10 @@ public sealed class DirectConnectionPolicy : IConnectionPolicy
             return null;
         }
         SetNode(serial, ProbeConnectionState.IsConnected);
+        _nodeLinks[serial] = link;
         await input.Delegate.NodeLinkEstablishedAsync(link);
         var reason = await FirstReasonAsync(drops, ct) ?? DisconnectReason.Requested;
+        _nodeLinks.Remove(serial);
         await link.CloseAsync();
         if (ct.IsCancellationRequested)
         {

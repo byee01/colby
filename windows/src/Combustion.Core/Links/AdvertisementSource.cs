@@ -24,6 +24,10 @@ public sealed record AdvertisementDiagnostics
     /// <summary>Valid Combustion packets of a product type this version ignores.</summary>
     public int UnknownPackets { get; init; }
 
+    /// <summary>Probe packets with serial 0: a node with no probe in that slot yet (a Display right after power-on
+    /// repeats all-zero packets). Dropped.</summary>
+    public int EmptySlotPackets { get; init; }
+
     /// <summary>Advertisements the codec rejected (wrong vendor, too short). Counted, never thrown.</summary>
     public int CodecErrors { get; init; }
 }
@@ -103,6 +107,10 @@ public sealed class AdvertisementSource
         }
         switch (packet)
         {
+            case AdvertisementPacket.Probe { Advertisement.Serial.Raw: 0 }:
+            case AdvertisementPacket.Repeated { Advertisement.Serial.Raw: 0 }:
+                _stats = _stats with { EmptySlotPackets = _stats.EmptySlotPackets + 1 };
+                break;
             case AdvertisementPacket.Probe { Advertisement: var probe }:
                 _stats = _stats with { ProbePackets = _stats.ProbePackets + 1 };
                 Publish(probe, LinkKind.Advertisement, null, null, raw);

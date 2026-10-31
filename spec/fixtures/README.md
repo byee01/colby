@@ -8,8 +8,8 @@ Regenerate the `advertisement/`, `probe_status/`, `node_status/` and `uart_frame
 specs and does not use the Swift codec. Do not hand-edit generated files.
 
 Every file is `{ "description", "source", ...}`. `source` is `spec` (built from the upstream spec),
-`android-test` (bytes or values ported from the Android SDK unit tests) or `hand-built`. There are no
-hardware captures yet (M0).
+`android-test` (bytes or values ported from the Android SDK unit tests), `hand-built` or `hardware`
+(bytes captured from a real device; the replay is named in the description or the generator).
 
 Conventions: `hex` is uppercase, no separators. Temperatures are plain °C numbers; compare numbers with
 an absolute tolerance of 1e-6. Enums are strings equal to the Swift case name (`instantRead`,

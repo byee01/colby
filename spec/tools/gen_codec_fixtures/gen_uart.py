@@ -153,6 +153,11 @@ def gen_uart():
     dec("probe_session_info_max", "Session ID and period at maximum", "probe", resp_probe(3, 1, u32(0xFFFFFFFF) + u16(0xFFFF)),
         info(3, 1, {"type": "sessionInfo", "probe": None, "sessionId": 0xFFFFFFFF, "samplePeriodMs": 65535}))
     dec("probe_session_info_trailing_ignored", "Extra payload bytes after the known fields are ignored", "probe", resp_probe(3, 1, sess + bytes([1, 2, 3])), info(3, 1, sbody))
+    # Probe 1000D027, fw v2.3.3 (spec/replays/verify-fixes): the bytes resp_probe builds must match the wire.
+    hw = resp_probe(3, 1, u32(0x0160D73D) + u16(5000))
+    assert hw == bytes.fromhex("CAFEB83C0301063DD760018813"), hx(hw)
+    dec("probe_session_info_hw_fw_2_3_3", "Read Session Information response captured from fw v2.3.3", "probe", hw,
+        info(3, 1, {"type": "sessionInfo", "probe": None, "sessionId": 0x0160D73D, "samplePeriodMs": 5000}), source="hardware")
     dec("probe_session_info_failure", "success = 0 with no payload decodes as a failed ack", "probe", resp_probe(3, 0), ack(3, 0))
     dec("probe_session_info_failure_with_payload", "success = 0 ignores the payload", "probe", resp_probe(3, 0, sess), ack(3, 0))
 

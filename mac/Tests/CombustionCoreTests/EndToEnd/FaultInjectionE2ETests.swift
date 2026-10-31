@@ -68,7 +68,7 @@ struct FaultInjectionE2ETests {
         await rig.run(.seconds(6))
         // The partial download was kept.
         let partial = try await rig.storedSeqs(serialA)
-        #expect(partial.count == 50)
+        #expect(partial.count == 51)   // 50 records plus the status's own
         #expect(await rig.app.diagnostics().links[serialA] != .connected)
 
         #expect(await rig.run(until: { await rig.connected(serialA) }, limit: .seconds(30)))

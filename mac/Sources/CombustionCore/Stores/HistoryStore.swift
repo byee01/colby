@@ -28,6 +28,9 @@ public actor HistoryStore {
     private var liveRunning: Set<Int64> = []
     private var livePending: [Int64: LogRange] = [:]
     private var backfilling: Set<Int64> = []
+    /// Names given while the probe had no open cook; the next cook it starts takes it.
+    private var pendingNames: [ProbeSerial: String] = [:]
+    private let namesBroadcaster: Broadcaster<[ProbeSerial: String]>
 
     /// Log downloads running right now (live fetches plus backfills), for diagnostics.
     public var fetchesInFlight: Int { liveRunning.count + backfilling.count }
@@ -40,6 +43,7 @@ public actor HistoryStore {
         self.clock = clock
         self.logFetcher = logFetcher
         try Schema.migrate(database)
+        self.namesBroadcaster = Broadcaster(initial: try Self.openCookNames(database), replayLatest: true)
     }
 
     /// `":memory:"` or a file path.
@@ -49,6 +53,7 @@ public actor HistoryStore {
         self.clock = clock
         self.logFetcher = logFetcher
         try Schema.migrate(database)
+        self.namesBroadcaster = Broadcaster(initial: try Self.openCookNames(database), replayLatest: true)
     }
 
     /// Default fetcher for live record fetches (direct or node link). Replace as links come and go.
@@ -69,6 +74,11 @@ public actor HistoryStore {
     @discardableResult
     public func ingest(status event: ProbeStatusEvent, using fetcher: (any LogFetcher)? = nil) async throws -> SessionKey {
         let (key, rowId) = try record(event)
+        // A Normal status is the record at `logRange.max` (iOS SDK `addDataToLog`), so it is stored as one and
+        // never requested. Instant Read statuses carry only T1.
+        if event.status.mode != .instantRead, try insert([Self.logRecord(event.status)], rowId: rowId) > 0 {
+            publishSeries(rowId)
+        }
         if let f = fetcher ?? logFetcher {
             await liveFetch(serial: event.serial, rowId: rowId, range: event.status.logRange, fetcher: f)
         }
@@ -85,6 +95,7 @@ public actor HistoryStore {
         let periodMs = status.session.map { Int64($0.samplePeriodMs) }
         let predictive = status.prediction.mode != .none && status.prediction.mode != .reserved
 
+        var opened = false
         let rowId: Int64 = try db.transaction {
             var rowId = rt.rowId
             if case .newSession = decision, let old = rowId {
@@ -98,12 +109,14 @@ public actor HistoryStore {
                 try db.run("""
                     INSERT INTO session(serial, session_id, sample_period_ms, started_at, ended_at, anchor_seq,
                                         anchor_time, nickname, kind, ready_since, thumbnail)
-                    VALUES(?,?,?,?,NULL,?,?,NULL,?,NULL,NULL)
+                    VALUES(?,?,?,?,NULL,?,?,?,?,NULL,NULL)
                     """, [.integer(Int64(serial.rawValue)), .integer(Int64(sessionId)),
                           .integer(periodMs ?? Self.defaultSamplePeriodMs), .integer(Self.ms(at)),
                           .integer(Int64(status.logRange.max)), .integer(Self.ms(at)),
+                          pendingNames[serial].map { .text($0) } ?? .null,
                           .text((predictive ? SessionKind.predictive : .manual).rawValue)])
                 rowId = db.lastInsertRowId
+                opened = true
             } else {
                 // Re-anchor (never backwards in time).
                 try db.run("""
@@ -139,6 +152,10 @@ public actor HistoryStore {
         runtime[serial] = rt
         if isLatest || lastRanges[rowId] == nil { lastRanges[rowId] = status.logRange }
         publishSeries(rowId)
+        if opened {
+            pendingNames[serial] = nil
+            publishNames()
+        }
         let row = try loadRow(rowId)!
         return (row.key, rowId)
     }
@@ -170,6 +187,7 @@ public actor HistoryStore {
         try endSession(rowId: rowId, at: time ?? rt.lastStatusAt)
         runtime[serial] = Runtime(tracker: SessionTracker(), rowId: nil, lastStatusAt: rt.lastStatusAt)
         publishSeries(rowId)
+        publishNames()
     }
 
     /// The open session of `serial`, if any.
@@ -180,11 +198,26 @@ public actor HistoryStore {
 
     // MARK: - Live fetch and backfill
 
-    private func maxStoredSeq(_ rowId: Int64) throws -> UInt32? {
-        if case .integer(let v)? = try db.query("SELECT MAX(seq) FROM sample WHERE session=?", [.integer(rowId)]).first?.first {
+    /// Highest stored seq below `limit`.
+    private func maxStoredSeq(_ rowId: Int64, below limit: UInt32) throws -> UInt32? {
+        if case .integer(let v)? = try db.query("SELECT MAX(seq) FROM sample WHERE session=? AND seq<?",
+                                                [.integer(rowId), .integer(Int64(limit))]).first?.first {
             return UInt32(v)
         }
         return nil
+    }
+
+    private func hasSeq(_ rowId: Int64, _ seq: UInt32) throws -> Bool {
+        try !db.query("SELECT 1 FROM sample WHERE session=? AND seq=?", [.integer(rowId), .integer(Int64(seq))]).isEmpty
+    }
+
+    private static func logRecord(_ status: ProbeStatusPayload) -> LogRecord {
+        let p = status.prediction
+        return LogRecord(
+            sequence: status.logRange.max, temperatures: status.temperatures,
+            prediction: PredictionLog(virtualSensors: status.virtualSensors, state: p.state, mode: p.mode, type: p.type,
+                                      setpoint: p.setpoint, rawSecondsRemaining: p.rawSecondsRemaining,
+                                      estimatedCore: p.estimatedCore))
     }
 
     private func liveFetch(serial: ProbeSerial, rowId: Int64, range: LogRange, fetcher: any LogFetcher) async {
@@ -196,13 +229,14 @@ public actor HistoryStore {
         defer { liveRunning.remove(rowId) }
         var target = range
         while true {
-            let stored = (try? maxStoredSeq(rowId)) ?? nil
-            if let stored, stored >= target.max { break }
-            // New seqs since the last stored one, at most one chunk; older holes are backfill's job.
+            // New seqs since the last stored one below the newest (usually stored from the status itself),
+            // at most one chunk; older holes are backfill's job.
+            let end = Int64(target.max) - ((try? hasSeq(rowId, target.max)) == true ? 1 : 0)
+            let stored = (try? maxStoredSeq(rowId, below: target.max)) ?? nil
             let from = stored.map { Int64($0) + 1 } ?? Int64(target.min)
-            let start = max(from, Int64(target.max) - Int64(BackfillPlanner.defaultChunkSize) + 1, Int64(target.min))
-            guard start <= Int64(target.max) else { break }
-            _ = await fetchChunk(serial: serial, rowId: rowId, UInt32(start)...target.max, fetcher: fetcher)
+            let start = max(from, end - Int64(BackfillPlanner.defaultChunkSize) + 1, Int64(target.min))
+            guard start <= end else { break }
+            _ = await fetchChunk(serial: serial, rowId: rowId, UInt32(start)...UInt32(end), fetcher: fetcher)
             if let p = livePending.removeValue(forKey: rowId), p.max > target.max {
                 target = p
             } else {
@@ -361,7 +395,71 @@ public actor HistoryStore {
 
     public func rename(_ session: SessionKey, nickname: String?) throws {
         guard let id = try rowId(for: session) else { return }
-        try db.run("UPDATE session SET nickname=? WHERE id=?", [nickname.map { .text($0) } ?? .null, .integer(id)])
+        try db.run("UPDATE session SET nickname=? WHERE id=?", [Self.cleanName(nickname).map { .text($0) } ?? .null, .integer(id)])
+        publishNames()
+    }
+
+    // MARK: - Cook names
+
+    /// Nicknames of the probes' open cooks, including names waiting for a probe's next cook; the latest map
+    /// first, then changes. A probe without a name is absent.
+    public nonisolated var cookNames: AsyncStream<[ProbeSerial: String]> { namesBroadcaster.stream() }
+
+    /// The name of the probe's open cook, or the name waiting for its next one.
+    public func cookName(of serial: ProbeSerial) throws -> String? {
+        try currentNames()[serial]
+    }
+
+    /// Names the probe's open cook; nil or blank clears it. With no cook open, the name waits for the probe's
+    /// next cook (a cook that a charger cycle starts later is a new cook and starts unnamed).
+    public func setCookName(_ name: String?, for serial: ProbeSerial) throws {
+        let name = Self.cleanName(name)
+        if let id = try openRowId(serial) {
+            try db.run("UPDATE session SET nickname=? WHERE id=?", [name.map { .text($0) } ?? .null, .integer(id)])
+        } else {
+            pendingNames[serial] = name
+        }
+        publishNames()
+    }
+
+    private func openRowId(_ serial: ProbeSerial) throws -> Int64? {
+        if let rt = runtime[serial] { return rt.rowId }
+        // Not seen since launch: the latest session, if it is still open (as `restore` would pick it).
+        let rows = try db.query("""
+            SELECT id, ended_at FROM session WHERE serial=? ORDER BY started_at DESC, id DESC LIMIT 1
+            """, [.integer(Int64(serial.rawValue))])
+        guard let r = rows.first, case .integer(let id) = r[0], case .null = r[1] else { return nil }
+        return id
+    }
+
+    private func currentNames() throws -> [ProbeSerial: String] {
+        var names = try Self.openCookNames(db)
+        for (serial, name) in pendingNames where try openRowId(serial) == nil { names[serial] = name }
+        return names
+    }
+
+    private func publishNames() {
+        guard let names = try? currentNames() else { return }
+        namesBroadcaster.send(names)
+    }
+
+    /// Nickname of each probe's latest session, where that session is open and named.
+    private static func openCookNames(_ db: SQLiteDatabase) throws -> [ProbeSerial: String] {
+        let rows = try db.query("""
+            SELECT s.serial, s.nickname FROM session s
+            WHERE s.ended_at IS NULL AND s.nickname IS NOT NULL
+              AND s.id = (SELECT id FROM session WHERE serial=s.serial ORDER BY started_at DESC, id DESC LIMIT 1)
+            """)
+        var names: [ProbeSerial: String] = [:]
+        for r in rows {
+            if case .integer(let serial) = r[0], case .text(let name) = r[1] { names[ProbeSerial(UInt32(serial))] = name }
+        }
+        return names
+    }
+
+    private static func cleanName(_ name: String?) -> String? {
+        guard let t = name?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { return nil }
+        return t
     }
 
     public func delete(_ session: SessionKey) throws {
@@ -373,6 +471,7 @@ public actor HistoryStore {
         for (serial, rt) in runtime where rt.rowId == id { runtime[serial]?.rowId = nil }
         lastRanges[id] = nil
         seriesBroadcasters.removeValue(forKey: id)?.finish()
+        publishNames()
     }
 
     /// Scrub readout at `time`: core, surface, ambient (linearly interpolated between stored neighbours

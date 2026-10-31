@@ -117,6 +117,23 @@ struct AdvertisementSourceTests {
         #expect(direct.serial == viaNode.serial)
     }
 
+    @Test func emptySlotFromADisplayIsNotAProbe() async throws {
+        let rig = Rig()
+        let obs = rig.source.observations
+        let repeats = rig.source.repeatedSightings
+        await rig.source.start()
+        // C7 09 02 then 22 zero bytes: captured from a Display in the first 20 s after power-on.
+        let empty: [UInt8] = [0xC7, 0x09, 0x02] + [UInt8](repeating: 0, count: 22)
+        rig.transport.injectAdvertisement(peripheral: "NODE-A", mfrData: empty)
+        try rig.inject(.repeated(probeAd(), hopCount: 1), from: "NODE-A")
+        let o = try #require(await firstValue(obs))
+        #expect(o.serial == ProbeSerial(0x1000_5A3F), "the empty slot published nothing")
+        #expect(try #require(await firstValue(repeats)).serial == ProbeSerial(0x1000_5A3F))
+        let d = await rig.source.diagnostics
+        #expect(d.emptySlotPackets == 1)
+        #expect(d.probePackets == 1)
+    }
+
     @Test func garbageIsCountedNotThrown() async throws {
         let rig = Rig()
         let obs = rig.source.observations

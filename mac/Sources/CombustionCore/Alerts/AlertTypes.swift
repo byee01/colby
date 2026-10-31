@@ -94,9 +94,34 @@ public enum AlertState: Sendable, Equatable {
     }
 }
 
-/// The sound a sink should play for an alert (06 §17.3: Ready, Overheat and probe alarms each have their own).
-public enum AlertSound: Sendable, Equatable {
-    case ready, overheat, probeAlarm, alert
+/// The sound a sink should play for an alert (06 §17.3). Ready, Overheat and probe alarms loop until
+/// acknowledged; the rest play once each time the alert fires.
+public enum AlertSound: Sendable, Equatable, CaseIterable {
+    case ready, overheat, probeAlarm
+    /// A countdown rule (`predictionWithin`), e.g. the default 5-minute warning.
+    case countdown
+    /// Probe offline or battery low.
+    case problem
+    /// Any other rule: temperature, ambient range, stall.
+    case custom
+
+    public init(for source: AlertSource) {
+        switch source {
+        case .overheat: self = .overheat
+        case .probeAlarm: self = .probeAlarm
+        case .rule(.predictionDone), .rule(.restingDone): self = .ready
+        case .rule(.predictionWithin): self = .countdown
+        case .rule(.probeOffline), .rule(.batteryLow): self = .problem
+        case .rule: self = .custom
+        }
+    }
+
+    public var loops: Bool {
+        switch self {
+        case .ready, .overheat, .probeAlarm: return true
+        case .countdown, .problem, .custom: return false
+        }
+    }
 }
 
 public struct AlertInstance: Sendable, Equatable, Identifiable {
@@ -120,14 +145,7 @@ public struct AlertInstance: Sendable, Equatable, Identifiable {
         }
     }
 
-    public var sound: AlertSound {
-        switch source {
-        case .overheat: return .overheat
-        case .probeAlarm: return .probeAlarm
-        case .rule(.predictionDone), .rule(.restingDone): return .ready
-        case .rule: return .alert
-        }
-    }
+    public var sound: AlertSound { AlertSound(for: source) }
 }
 
 /// One state change of an alert. `instance` is the alert after the change (state `idle` when it cleared).

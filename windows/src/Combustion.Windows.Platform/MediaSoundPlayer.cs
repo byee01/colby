@@ -4,21 +4,26 @@ using Windows.Media.Playback;
 
 namespace Combustion.Windows.Platform;
 
-/// <summary>Loops built-in Windows sounds with <see cref="MediaPlayer"/> (06 §17.3). Nothing is bundled; sounds are
-/// addressed as <c>ms-winsoundevent:</c> URIs. Untested on Windows (built on Linux only).</summary>
+/// <summary>Plays built-in Windows sounds with <see cref="MediaPlayer"/> (06 §17.3), once or looped. Nothing is bundled;
+/// sounds are addressed as <c>ms-winsoundevent:</c> URIs. Untested on hardware.</summary>
 public sealed class MediaSoundPlayer : ISoundPlaying, IDisposable
 {
-    /// <summary>Built-in Windows sound per alert sound (looping system sounds).</summary>
+    /// <summary>Built-in Windows sound per alert sound: looping alarms for the sounds that loop, short notification
+    /// sounds for the ones that play once (macOS uses Ping, Basso and Submarine for those).</summary>
     public static readonly IReadOnlyDictionary<AlertSound, string> Sounds = new Dictionary<AlertSound, string>
     {
         [AlertSound.Ready] = "ms-winsoundevent:Notification.Looping.Alarm",
         [AlertSound.Overheat] = "ms-winsoundevent:Notification.Looping.Alarm10",
         [AlertSound.ProbeAlarm] = "ms-winsoundevent:Notification.Looping.Alarm2",
-        [AlertSound.Alert] = "ms-winsoundevent:Notification.Looping.Alarm4",
+        [AlertSound.Countdown] = "ms-winsoundevent:Notification.Reminder",
+        [AlertSound.Problem] = "ms-winsoundevent:Notification.Default",
+        [AlertSound.Custom] = "ms-winsoundevent:Notification.IM",
     };
 
     private readonly object _lock = new();
     private readonly Dictionary<string, MediaPlayer> _playing = [];
+    /// <summary>One-shot players, held until they end so they are not collected mid-sound.</summary>
+    private readonly HashSet<MediaPlayer> _once = [];
     private readonly double _volume;
 
     /// <param name="volume">0...1 (Settings → Alarm volume, default 0.8).</param>
@@ -27,16 +32,39 @@ public sealed class MediaSoundPlayer : ISoundPlaying, IDisposable
         _volume = volume;
     }
 
+    public Task PlayAsync(AlertSound sound)
+    {
+        var player = MakePlayer(sound, looping: false);
+        player.MediaEnded += (p, _) => Release(p);
+        player.MediaFailed += (p, _) => Release(p);
+        lock (_lock)
+        {
+            _once.Add(player);
+        }
+        player.Play();
+        return Task.CompletedTask;
+    }
+
+    private void Release(MediaPlayer player)
+    {
+        lock (_lock)
+        {
+            _once.Remove(player);
+        }
+        player.Dispose();
+    }
+
+    private MediaPlayer MakePlayer(AlertSound sound, bool looping) => new()
+    {
+        Source = MediaSource.CreateFromUri(new Uri(Sounds.TryGetValue(sound, out var s) ? s : Sounds[AlertSound.Ready])),
+        IsLoopingEnabled = looping,
+        Volume = _volume,
+        AudioCategory = MediaPlayerAudioCategory.Alerts,
+    };
+
     public Task StartLoopAsync(AlertSound sound, string id)
     {
-        var uri = new Uri(Sounds.TryGetValue(sound, out var s) ? s : Sounds[AlertSound.Alert]);
-        var player = new MediaPlayer
-        {
-            Source = MediaSource.CreateFromUri(uri),
-            IsLoopingEnabled = true,
-            Volume = _volume,
-            AudioCategory = MediaPlayerAudioCategory.Alerts,
-        };
+        var player = MakePlayer(sound, looping: true);
         MediaPlayer? old;
         lock (_lock)
         {
@@ -68,8 +96,9 @@ public sealed class MediaSoundPlayer : ISoundPlaying, IDisposable
         List<MediaPlayer> all;
         lock (_lock)
         {
-            all = [.. _playing.Values];
+            all = [.. _playing.Values, .. _once];
             _playing.Clear();
+            _once.Clear();
         }
         foreach (var p in all)
         {

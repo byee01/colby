@@ -1,5 +1,6 @@
 import CombustionCodec
 import CombustionCore
+import CombustionSim
 import Foundation
 import Testing
 
@@ -173,12 +174,88 @@ struct ProbeStoreTests {
         #expect(await store.snapshot(of: F.serial)!.instantRead == 20.0)
         await feed(20.7)                          // > 20.55
         #expect(await store.snapshot(of: F.serial)!.instantRead == 21.0)
-        await feed(25, mode: .normal)             // leaving instant read clears
+        await feed(25, mode: .normal)             // a Normal packet fills T1-T8 but Instant Read stays on
         s = await store.snapshot(of: F.serial)!
-        #expect(s.instantRead == nil && s.instantReadFahrenheit == nil)
+        #expect(s.mode == .instantRead && s.instantRead == 21.0)
         #expect(s.temperatures.allSatisfy { $0 != nil })
+        for _ in 0..<180 { await feed(25, mode: .normal) }  // 15 s without Instant Read
+        s = await store.snapshot(of: F.serial)!
+        #expect(s.mode == .normal)
+        #expect(s.instantRead == nil && s.instantReadFahrenheit == nil)
         await feed(30.0)                          // filter restarted: rounds, no memory of 21
         #expect(await store.snapshot(of: F.serial)!.instantRead == 30.0)
+    }
+
+    /// Captured on fw v2.3.3 (spec/replays/idle-interleaved-modes): Instant Read and Normal packets alternate.
+    /// Surface and ambient must not blank and the mode must not flip with each packet.
+    @Test func interleavedModesKeepAllSensorsAndInstantRead() async {
+        let clock = TestClock()
+        let store = makeStore(clock)
+        for i in 0..<40 {
+            let mode: ProbeMode = i % 3 == 2 ? .normal : .instantRead
+            await store.ingest(F.observe(.advertisement(F.advertisement(mode: mode, t1: 23.5)), kind: .advertisement,
+                                         at: clock.now()))
+            await clock.advance(by: .milliseconds(250))
+            guard i >= 2 else { continue }
+            let s = await store.snapshot(of: F.serial)!
+            #expect(s.mode == .instantRead)
+            #expect(s.instantRead == 24.0)
+            #expect(s.temperatures.allSatisfy { $0 != nil })
+            #expect(s.virtual.surface != nil && s.virtual.ambient != nil)
+        }
+    }
+
+    /// While the app holds a link the probe advertises far less: Instant Read packets 5-10 s apart, Normal in
+    /// between. The mode must hold (it flipped every few seconds on hardware with a 5 s hold).
+    @Test func sparseInstantReadPacketsWhileConnectedKeepTheMode() async {
+        let clock = TestClock()
+        let store = makeStore(clock)
+        var changes = 0
+        var last: ProbeMode?
+        for i in 0..<60 {
+            let mode: ProbeMode = i % 8 == 0 ? .instantRead : .normal  // Instant Read every 9.6 s
+            await store.ingest(F.observe(.advertisement(F.advertisement(mode: mode, t1: 23.5)), kind: .advertisement,
+                                         at: clock.now()))
+            let s = await store.snapshot(of: F.serial)!
+            if let last, last != s.mode { changes += 1 }
+            last = s.mode
+            await clock.advance(by: .milliseconds(1200))
+        }
+        #expect(changes == 0)
+        #expect(last == .instantRead)
+    }
+
+    /// The real capture: every advert of `spec/replays/idle-interleaved-modes` at its recorded time. It has
+    /// stretches of 5 s and more with only Normal packets, so Instant Read may lapse there, but the mode must not
+    /// follow each packet (it did ~70 times in 2 min before) and the Normal sensors must never blank.
+    @Test func capturedInterleavedAdvertsGiveAStableSnapshot() async throws {
+        let dir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("spec/replays/idle-interleaved-modes")
+        let adverts = try ReplayReader(directory: dir).events.filter { $0.type == .adv }
+        #expect(adverts.count > 300)
+        let clock = TestClock()
+        let store = makeStore(clock)
+        var elapsed = 0.0
+        var checked = 0
+        var modeChanges = 0
+        var lastMode: ProbeMode?
+        for event in adverts {
+            await clock.advance(by: .seconds(event.t - elapsed))
+            elapsed = event.t
+            guard case .probe(let ad) = try decodeAdvertisement(event.bytes) else { continue }
+            await store.ingest(F.observe(.advertisement(ad), kind: .advertisement, at: clock.now(), serial: ad.serial))
+            // The capture starts with 15 s of Instant Read only.
+            guard event.t > 16, let s = await store.snapshot(of: ad.serial) else { continue }
+            #expect(s.virtual.core != nil && s.virtual.surface != nil && s.virtual.ambient != nil)
+            #expect((s.mode == .instantRead) == (s.instantRead != nil))
+            if let lastMode, lastMode != s.mode { modeChanges += 1 }
+            lastMode = s.mode
+            checked += 1
+        }
+        #expect(checked > 250)
+        #expect(modeChanges <= 1, "\(modeChanges) mode changes")
     }
 
     @Test func instantReadFilterMatchesAndroidSdkBehaviour() {

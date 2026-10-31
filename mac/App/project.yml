@@ -1,0 +1,45 @@
+# XcodeGen spec for the macOS app bundle (M7). Generate with `xcodegen` in this folder; the .xcodeproj is not
+# committed. The UI lives in the ColbyUI package library so `swift build` / `swift test` cover it.
+name: Colby
+options:
+  bundleIdPrefix: app.colby
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  Colby:
+    path: ..
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Local runs are ad-hoc signed; set DEVELOPMENT_TEAM for TestFlight and the App Group (widgets).
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Colby:
+    type: application
+    platform: macOS
+    sources: [Colby]
+    dependencies:
+      - package: Colby
+        product: ColbyUI
+    info:
+      path: Colby/Info.plist
+      properties:
+        CFBundleDisplayName: Colby
+        LSApplicationCategoryType: public.app-category.utilities
+        NSBluetoothAlwaysUsageDescription: Colby reads temperatures from your Combustion thermometers over Bluetooth.
+        NSHumanReadableCopyright: "Not affiliated with Combustion Inc."
+    entitlements:
+      path: Colby/Colby.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.device.bluetooth: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.colby.mac
+        PRODUCT_NAME: Colby
+        GENERATE_INFOPLIST_FILE: NO

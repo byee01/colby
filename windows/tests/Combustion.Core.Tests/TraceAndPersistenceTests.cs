@@ -104,6 +104,32 @@ public class PersistenceTests
     }
 
     [Fact]
+    public void ASecondConnectionWaitsForTheFirstsWriteLock()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"busy-{Guid.NewGuid()}.sqlite");
+        try
+        {
+            using (var a = new SqliteDatabase(path))
+            using (var b = new SqliteDatabase(path))
+            {
+                a.Exec("CREATE TABLE t(x INTEGER)");
+                a.Exec("BEGIN IMMEDIATE");
+                a.Run("INSERT INTO t VALUES(1)");
+                using var release = new Timer(_ => a.Exec("COMMIT"), null, 200, Timeout.Infinite);
+                b.Run("INSERT INTO t VALUES(2)"); // waits instead of failing with SQLITE_BUSY
+                Assert.Equal(2L, b.Query("SELECT count(*) FROM t")[0][0]);
+            }
+        }
+        finally
+        {
+            foreach (var ext in new[] { "", "-wal", "-shm" })
+            {
+                File.Delete(path + ext);
+            }
+        }
+    }
+
+    [Fact]
     public void MigrationsRunOnceAndSetUserVersion()
     {
         using var db = SqliteDatabase.InMemory();

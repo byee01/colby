@@ -1,7 +1,7 @@
 # Combustion.Transport.WinRT
 
 Windows `IBleTransport` / `IGattConnection` on WinRT Bluetooth LE (docs/02 §5.1). Port of
-`mac/Sources/CombustionCoreBluetooth`. Targets `net8.0-windows10.0.19041.0` with `EnableWindowsTargeting`, so it
+`mac/Sources/CombustionCoreBluetooth`. Targets `net10.0-windows10.0.19041.0` with `EnableWindowsTargeting`, so it
 compiles on Linux. **Not yet run on Windows hardware.**
 
 ## Implemented
