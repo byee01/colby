@@ -1,0 +1,10 @@
+{
+  "name": "colby-web",
+  "private": true,
+  "description": "Colby web: browser monitor for Combustion thermometers. Static files, no server, no build step.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "serve": "python3 -m http.server 8080"
+  }
+}
