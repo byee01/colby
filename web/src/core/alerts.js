@@ -33,10 +33,21 @@ export function priorityOf(source) {
   return 0;
 }
 
-/** 'ready' | 'overheat' | 'probeAlarm' | 'alert'. */
+/**
+ * The sound for an alert (06 §17.3): 'ready', 'overheat', 'probeAlarm' (these loop until acknowledged),
+ * 'countdown' (predictionWithin), 'problem' (offline, battery) and 'custom' (other rules) play once per firing.
+ */
 export function soundOf(source) {
-  return ['alert', 'ready', 'probeAlarm', 'overheat'][priorityOf(source)];
+  if (source.type === 'overheat') return 'overheat';
+  if (source.type === 'probeAlarm') return 'probeAlarm';
+  const t = source.kind.type;
+  if (t === 'predictionDone' || t === 'restingDone') return 'ready';
+  if (t === 'predictionWithin') return 'countdown';
+  if (t === 'probeOffline' || t === 'batteryLow') return 'problem';
+  return 'custom';
 }
+
+export const soundLoops = (sound) => sound === 'ready' || sound === 'overheat' || sound === 'probeAlarm';
 
 /** The reading a channel stands for. Instant Read leaves only T1 valid. */
 export function channelTemperature(channel, s) {
@@ -152,6 +163,11 @@ export class AlertEngine extends Emitter {
   #cooks = new Map();
   #held = false;
   #wake = null;
+  /**
+   * Probe alarms a snooze silenced on the probe: they stay active while the alarm is still tripped (the probe no
+   * longer says alarming), so the snooze can run out and fire again.
+   */
+  #snoozeSilenced = new Set();
 
   constructor({
     clock = systemClock, ruleStore = new MemoryRuleStore(), sinks = [], keepAwake = null, silencer = null,
@@ -206,18 +222,28 @@ export class AlertEngine extends Emitter {
     const a = this.instances.get(id);
     if (!a || (a.state !== 'firing' && a.state !== 'snoozed')) return;
     this.#transition(id, 'acknowledged', this.clock.now());
+    // An alert kept only by a snooze silence ends here if the probe already stopped alarming.
+    if (this.#snoozeSilenced.delete(id)) this.#evaluate(a.serial);
     this.#finishRound();
-    if (a.source.type === 'probeAlarm') await this.#silenceProbe(a.serial, [id]);
+    if (a.source.type === 'probeAlarm' && this.instances.has(id)) await this.#silenceProbe(a.serial, [id]);
   }
 
-  /** Mutes a firing alert for `ms`; it fires again then if the condition still holds. */
-  snooze(id, ms) {
+  /**
+   * Mutes a firing alert for `ms`; it fires again then if the condition still holds. A probe alarm is also silenced on
+   * the probe (so its Display and phone stop too); the alert is kept while the alarm stays tripped and fires again
+   * when the snooze runs out. The probe stays quiet after that: it has no snooze.
+   */
+  async snooze(id, ms) {
     const a = this.instances.get(id);
     if (!a || a.state !== 'firing') return;
     const now = this.clock.now();
     a.snoozedUntil = now + ms;
     this.#transition(id, 'snoozed', now);
     this.#finishRound();
+    if (a.source.type === 'probeAlarm') {
+      this.#snoozeSilenced.add(id);
+      await this.#silenceProbe(a.serial, [id]);
+    }
   }
 
   /** Acknowledges everything firing; sends Silence Alarms to each probe with a probe alarm among them. */
@@ -241,7 +267,8 @@ export class AlertEngine extends Emitter {
       // The probe is still alarming: the app must not stay quiet about it.
       const now = this.clock.now();
       for (const id of ids) {
-        if (this.instances.get(id)?.state === 'acknowledged') this.#transition(id, 'firing', now, String(e?.message ?? e));
+        const state = this.instances.get(id)?.state;
+        if (state === 'acknowledged' || state === 'snoozed') this.#transition(id, 'firing', now, String(e?.message ?? e));
       }
       this.#finishRound();
     }
@@ -333,8 +360,9 @@ export class AlertEngine extends Emitter {
       for (const kind of ['high', 'low']) {
         for (const channel of ALARM_CHANNELS) {
           const a = snap.alarms[kind][channel];
-          if (!online || !a?.alarming) continue;
-          desired.set(alarmId(serial, kind, channel), {
+          const id = alarmId(serial, kind, channel);
+          if (!online || !a || !(a.alarming || (a.tripped && this.#snoozeSilenced.has(id)))) continue;
+          desired.set(id, {
             source: { type: 'probeAlarm', kind, channel }, outcome: { met: true, value: a.temperature }, sustain: 0, latch: false,
           });
         }
@@ -411,7 +439,10 @@ export class AlertEngine extends Emitter {
       a.acknowledgedAt = now;
       a.snoozedUntil = null;
     }
-    if (to === 'idle') this.instances.delete(id);
+    if (to === 'idle') {
+      this.instances.delete(id);
+      this.#snoozeSilenced.delete(id);
+    }
     const event = { instance: { ...a }, from, to, at: now, failure };
     this.emit('event', event);
     for (const sink of this.sinks) {

@@ -7,7 +7,7 @@ import { PredictionSmoother } from '../src/core/presenter.js';
 import { UartClient } from '../src/core/uartClient.js';
 import { AlertEngine, defaultRules, evaluateRule } from '../src/core/alerts.js';
 import { SessionTracker, planBackfill } from '../src/core/history.js';
-import { InstantReadFilter } from '../src/core/probeStore.js';
+import { InstantReadFilter, ProbeStore } from '../src/core/probeStore.js';
 import { ColbyApp } from '../src/core/app.js';
 import { SimProbe, SimProbeConnection, SimNodeConnection } from '../src/transport/simulated.js';
 import { GATT } from '../src/transport/gatt.js';
@@ -254,4 +254,59 @@ test('emitter once resolves null on timeout', async () => {
 
 test('gatt constants are lowercase', () => {
   for (const v of Object.values(GATT)) assert.equal(v, v.toLowerCase());
+});
+
+test('legacy firmware (94 B status): the link reads Session Info once and history keys the cook by it', async () => {
+  const clock = new FakeClock();
+  const probe = new SimProbe({ serial: '10005A3F', clock, startedAt: clock.now() - HOUR / 4, sessionId: 7, legacy: true });
+  const app = new ColbyApp({ clock });
+  await app.start();
+  app.addDevice({ id: 'p', name: 'Probe', open: async () => new SimProbeConnection(probe), identify: async () => ({ serial: probe.serial }) });
+  await until(clock, () => app.store.snapshot('10005A3F')?.session?.info?.sessionId === 7);
+  await clock.advance(30_000);
+  assert.equal(probe.requests.filter((r) => r === 'readSessionInfo').length, 1, 'read once per link, not per status');
+  assert.deepEqual(app.history.list().map((s) => s.sessionId), [7], 'the id is adopted by the same cook');
+  app.stop();
+});
+
+test('snoozing a probe alarm silences the probe and fires again when the snooze ends', async () => {
+  const clock = new FakeClock();
+  const probe = new SimProbe({ serial: '10005A3F', clock, startedAt: clock.now() - HOUR });
+  const app = new ColbyApp({ clock });
+  await app.start();
+  app.addDevice({ id: 'p', name: 'Probe', open: async () => new SimProbeConnection(probe), identify: async () => ({ serial: probe.serial }) });
+  await until(clock, () => app.store.snapshot('10005A3F')?.alarms);
+  await Promise.all([clock.advance(1000), app.commands.setAlarm('10005A3F', 'core', 'high', 30)]);
+  const id = '10005A3F.alarm.high.core';
+  await until(clock, () => app.alerts.instances.get(id)?.state === 'firing');
+  const snoozed = app.alerts.snooze(id, 60_000);
+  await clock.advance(1000);
+  await snoozed;
+  await clock.advance(10_000);
+  assert.equal(app.store.snapshot('10005A3F').alarms.high.core.alarming, false, 'silenced on the probe');
+  assert.equal(app.alerts.instances.get(id)?.state, 'snoozed', 'kept while still tripped');
+  await clock.advance(55_000);
+  assert.equal(app.alerts.instances.get(id)?.state, 'firing');
+  app.stop();
+});
+
+test('interleaved Instant Read and Normal advertisements keep all sensors and the mode', () => {
+  const store = new ProbeStore({ clock: new FakeClock() });
+  const ad = (mode, t1) => ({
+    serial: 'AAAA0001', temperatures: mode === 'instantRead' ? [t1, -20, -20, -20, -20, -20, -20, -20] : [t1, 30, 30, 40, 50, 60, 70, 80],
+    mode, color: 'yellow', probeNumber: 1, batteryLow: false, virtualSensors: { core: 't1', surface: 't4', ambient: 't8' },
+    overheating: [], preferences: null,
+  });
+  let t = 0;
+  for (let i = 0; i < 40; i++) {
+    const mode = i % 3 === 2 ? 'normal' : 'instantRead';
+    store.ingest({ serial: 'AAAA0001', source: { kind: 'advertisement', lastSeen: t }, payload: { advertisement: ad(mode, 23.5) }, receivedAt: t });
+    t += 250;
+    if (i < 2) continue;
+    const s = store.snapshot('AAAA0001');
+    assert.equal(s.mode, 'instantRead');
+    assert.equal(s.instantRead, 24);
+    assert.ok(s.temperatures.every((x) => x != null));
+  }
+  store.stop();
 });

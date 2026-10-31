@@ -183,8 +183,12 @@ worker for offline use. Port of the Swift codec and core (store, presenter, UART
 commands, alert engine, session tracking, backfill) plus an in-browser simulated probe and node for demo mode (`#demo`).
 Feature and browser support table: `web/README.md`.
 
-Tests: `cd web && npm test` (Node 22, no dependencies): 345 passing (all codec fixtures, core on a fake clock, app
-end-to-end against the simulator). CI: `.github/workflows/web.yml`. Checked in headless Chromium against the demo
+Tests: `cd web && npm test` (Node 22, no dependencies): 359 passing (all codec fixtures, core on a fake clock, app
+end-to-end against the simulator, and the app fed every hardware capture in `spec/replays`: 0 decode, framing or
+codec errors; direct captures backfill fully; `verify-session-charger` splits into two cooks by the session ids read
+over UART). Ports the hardware fixes from the Swift core: set point ±0.1 °C confirms, serial-0 node slots dropped,
+Session Info read for 94 B statuses, Instant Read/Normal interleaving (15 s hold), snooze silences probe alarms,
+countdown/problem sounds play once, the Normal status stored as the record at `logRange.max`. CI: `.github/workflows/web.yml`. Checked in headless Chromium against the demo
 (connect, backfill, set target, probe alarm, acknowledge, kitchen mode, history); never run against hardware.
 
 Web-only limits: alerts only while the tab is open; reconnect after reload, passive scanning and the probe serial on a

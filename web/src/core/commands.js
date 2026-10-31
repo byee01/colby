@@ -18,8 +18,11 @@ export class CommandError extends Error {
   }
 }
 
-/** Probe resolution is 0.1 °C and the codec rounds to it. */
-const TOLERANCE = 0.06;
+/**
+ * Probe resolution is 0.1 °C and the codec rounds to it, but the probe can report one step off what it was sent: on
+ * hardware (fw 2.3.3) a set point sent as 294 (85 °F) came back as 293. One step either way confirms.
+ */
+const TOLERANCE = 0.11;
 
 const clean = (config) => {
   const strip = (side) => Object.fromEntries(ALARM_CHANNELS.map((ch) => {

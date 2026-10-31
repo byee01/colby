@@ -79,6 +79,8 @@ cd web && npm test     # node --test, no dependencies; Node 20+
 
 The suite runs all codec fixtures plus core tests on a fake clock: prediction smoothing, UART correlation, alert engine,
 session tracking and backfill, and the whole app against a simulated probe and a simulated node (connect, backfill,
-commands, alarm acknowledge, reconnect).
+commands, alarm acknowledge and snooze, legacy firmware, reconnect). `test/replay.test.js` feeds every hardware
+capture in `spec/replays` (probe fw v2.3.3, Display fw v2.6.0, recorded on macOS and Windows) through the app.
 
-Not tested here: real hardware. As on desktop, nothing has run against a real probe yet (docs/HANDOFF.md, M0).
+Not tested: Web Bluetooth itself against real hardware. The captures cover the bytes and their timing, not the browser's
+Bluetooth stack.

@@ -49,10 +49,23 @@ export function sourceOrder(a, b) {
 
 const pathKey = (s) => `${s.kind}|${s.via ?? ''}`;
 
-/** Merge state of one probe. Pure: arrival times are passed in. */
+/**
+ * Merge state of one probe. Pure: arrival times are passed in.
+ *
+ * Mode: a probe out of the charger interleaves Instant Read and Normal packets several times a second (fw v2.3.3,
+ * spec/replays/idle-interleaved-modes). As in the iOS SDK, Normal packets set T1-T8 and the virtual sensors, Instant
+ * Read packets set only the filtered Instant Read value, and the probe counts as in Instant Read until
+ * `INSTANT_READ_STALE_MS` passes without an Instant Read packet (15 s: while a link is up, Instant Read packets come
+ * 5-10 s apart on hardware).
+ */
 export class ProbeMerger {
+  static INSTANT_READ_STALE_MS = 15_000;
   sources = new Map();
   live = null;
+  /** Latest Normal (or Error) packet: the only source of T1-T8. */
+  normal = null;
+  /** Last Instant Read packet: time and raw T1. */
+  instant = null;
   status = null;
   filter = new InstantReadFilter();
 
@@ -81,8 +94,6 @@ export class ProbeMerger {
   #acceptLive(receivedAt, p) {
     if (this.live && receivedAt < this.live.receivedAt) return;
     this.live = {
-      temperatures: p.temperatures,
-      mode: p.mode,
       color: p.color,
       probeNumber: p.probeNumber,
       batteryLow: p.batteryLow,
@@ -90,7 +101,18 @@ export class ProbeMerger {
       overheating: p.overheating ?? this.live?.overheating ?? [],
       receivedAt,
     };
-    this.filter.addReading(p.mode === 'instantRead' ? p.temperatures[0] : null);
+    if (p.mode === 'instantRead') {
+      // Only T1 is meaningful. The filter restarts after Instant Read went stale.
+      if (!this.#instantActive(receivedAt)) this.filter = new InstantReadFilter();
+      this.filter.addReading(p.temperatures[0]);
+      this.instant = { at: receivedAt, t1: p.temperatures[0] };
+    } else {
+      this.normal = { temperatures: p.temperatures, mode: p.mode, virtualSensors: p.virtualSensors, receivedAt };
+    }
+  }
+
+  #instantActive(time) {
+    return this.instant != null && time - this.instant.at < ProbeMerger.INSTANT_READ_STALE_MS;
   }
 
   /** Drops sources with no data for `ttlMs`. Returns true if any was dropped. */
@@ -108,16 +130,18 @@ export class ProbeMerger {
   snapshot() {
     const live = this.live;
     if (!live) return null;
-    const instant = live.mode === 'instantRead';
-    const temps = live.temperatures.map((c, i) => (instant && i !== 0 ? null : c));
-    const vs = live.virtualSensors;
+    const instant = this.#instantActive(live.receivedAt);
+    // T1-T8 from the last Normal packet, however old (they can be 18 s apart in Instant Read, see
+    // spec/replays/instant-read). Before the first one, T1 from Instant Read alone.
+    const temps = this.normal ? [...this.normal.temperatures] : [this.instant?.t1 ?? null, ...new Array(7).fill(null)];
+    const vs = this.normal?.virtualSensors ?? live.virtualSensors;
     const at = (sensor) => temps[SENSORS.indexOf(sensor)];
     const sources = [...this.sources.values()].map((e) => e.source).sort(sourceOrder);
     return {
       serial: this.serial,
       probeNumber: live.probeNumber,
       color: live.color,
-      mode: live.mode,
+      mode: instant ? 'instantRead' : this.normal?.mode ?? 'normal',
       temperatures: temps,
       instantRead: instant ? this.filter.celsius : null,
       instantReadFahrenheit: instant ? this.filter.fahrenheit : null,

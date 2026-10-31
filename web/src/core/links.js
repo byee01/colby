@@ -33,6 +33,45 @@ export async function readDeviceInfo(connection) {
   return info.firmware || info.hardware || info.model ? info : null;
 }
 
+/**
+ * Fills in the session of statuses that carry none. The 94 B status of fw v2.3.3 and older has no session fields
+ * (spec/replays/charger-new-session), so on the first such status the link reads Session Info over UART and adds it to
+ * every later status; history can then tell cooks apart. Statuses before the answer go out without it (the session
+ * tracker adopts the id). A log range that goes backwards drops the cached info and reads it again. Firmware that
+ * refuses the read keeps sending none. Port of the session handling in DirectProbeLink.swift / NodeLink.swift.
+ */
+class SessionFiller {
+  info = null;
+  reading = false;
+  refused = false;
+  lastLogMax = null;
+
+  /** Returns the status with `session` filled in when known; starts a read with `read()` when needed. */
+  fill(status, read) {
+    if (status.session) {
+      this.lastLogMax = status.logRange.max;
+      return status;
+    }
+    if (this.lastLogMax != null && status.logRange.max < this.lastLogMax) {
+      this.info = null;
+      this.refused = false;
+    }
+    this.lastLogMax = status.logRange.max;
+    if (!this.info && !this.reading && !this.refused) {
+      this.reading = true;
+      read().then(
+        (r) => {
+          if (r.body.type === 'sessionInfo' && r.body.sessionId !== 0) {
+            this.info = { sessionId: r.body.sessionId, samplePeriodMs: r.body.samplePeriodMs };
+          } else this.refused = true;
+        },
+        () => (this.refused = true),
+      ).finally(() => (this.reading = false));
+    }
+    return this.info ? { ...status, session: this.info } : status;
+  }
+}
+
 class Link extends Emitter {
   finished = false;
   statusDecodeErrors = 0;
@@ -78,6 +117,7 @@ class Link extends Emitter {
 export class DirectProbeLink extends Link {
   kind = 'probe';
   #readChain = Promise.resolve();
+  #session = new SessionFiller();
 
   constructor(serial, connection, { clock = systemClock } = {}) {
     super(connection, clock);
@@ -101,6 +141,7 @@ export class DirectProbeLink extends Link {
       this.statusDecodeErrors++;
       return;
     }
+    status = this.#session.fill(status, () => this.uart.send({ type: 'readSessionInfo' }));
     const now = this.clock.now();
     this.emit('observation', {
       serial: this.serial,
@@ -136,6 +177,7 @@ export const NODE_COVERAGE_TTL_MS = 10_000;
 export class NodeLink extends Link {
   kind = 'node';
   #coverage = new Map();
+  #sessions = new Map();
 
   constructor(serial, productType, connection, { clock = systemClock, requestIds } = {}) {
     super(connection, clock);
@@ -184,6 +226,9 @@ export class NodeLink extends Link {
       this.statusDecodeErrors++;
       return;
     }
+    const serial = node.probeSerial;
+    if (!this.#sessions.has(serial)) this.#sessions.set(serial, new SessionFiller());
+    node.status = this.#sessions.get(serial).fill(node.status, () => this.uart.send({ type: 'readSessionInfo' }, { probe: serial }));
     const now = this.clock.now();
     this.emit('observation', {
       serial: node.probeSerial,

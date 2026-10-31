@@ -201,6 +201,8 @@ export class ColbyApp extends Emitter {
       return;
     }
     const now = this.clock.now();
+    // Serial 0: a node with no probe in that slot yet (a Display right after power-on repeats all-zero packets).
+    if ((packet.kind === 'probe' || packet.kind === 'repeated') && packet.serial === '00000000') return;
     if (packet.kind === 'probe' || packet.kind === 'repeated') {
       const { kind, hopCount, ...advertisement } = packet;
       this.store.ingest({

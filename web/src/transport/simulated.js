@@ -36,9 +36,11 @@ export function cookCurve({ start = 4, asymptote = 112, tauHours = 3, oven = 121
 export class SimProbe {
   constructor({
     serial, probeNumber = 1, color = 'yellow', sessionId = 0x1a2b3c4d, samplePeriodMs = 5000, clock = systemClock,
-    startedAt = clock.now(), curve = cookCurve(), setpoint = null, mode = 'none',
+    startedAt = clock.now(), curve = cookCurve(), setpoint = null, mode = 'none', legacy = false,
   }) {
-    Object.assign(this, { serial, probeNumber, color, sessionId, samplePeriodMs, clock, startedAt, curve });
+    // `legacy`: fw v2.3.3 and older, a 94 B status without session fields (Read Session Info still answers).
+    Object.assign(this, { serial, probeNumber, color, sessionId, samplePeriodMs, clock, startedAt, curve, legacy });
+    this.requests = [];
     this.virtualSensors = { core: 't2', surface: 't5', ambient: 't8' };
     this.prediction = { mode, setpoint: setpoint ?? 0 };
     this.alarms = { high: {}, low: {} };
@@ -106,9 +108,11 @@ export class SimProbe {
       overheating: [],
       preferences: { powerMode: 'normal', highRadioPower: false },
       alarms: this.#alarmsFor(temps),
-      session: { sessionId: this.sessionId, samplePeriodMs: this.samplePeriodMs },
+      session: this.legacy ? null : { sessionId: this.sessionId, samplePeriodMs: this.samplePeriodMs },
     };
   }
+
+  get layout() { return this.legacy ? 'legacy' : 'current'; }
 
   logRecord(seq) {
     const t = (seq * this.samplePeriodMs) / 1000;
@@ -125,6 +129,7 @@ export class SimProbe {
 
   /** Applies a decoded request; returns response bodies (several for readLogs). */
   handle(request) {
+    this.requests.push(request.type);
     switch (request.type) {
       case 'readSessionInfo':
         return [{ type: 'sessionInfo', sessionId: this.sessionId, samplePeriodMs: this.samplePeriodMs }];
@@ -221,12 +226,12 @@ export class SimProbeConnection extends SimConnection {
       [GATT.probeStatus, GATT.uartRX, GATT.uartTX, GATT.firmwareRevision, GATT.serialNumber, GATT.modelNumber],
       { [GATT.firmwareRevision]: 'v2.4.0', [GATT.serialNumber]: probe.serial, [GATT.modelNumber]: 'Predictive Probe' });
     this.probe = probe;
-    this.every(probe.samplePeriodMs, () => this.notify(GATT.probeStatus, encodeProbeStatus(probe.status())));
+    this.every(probe.samplePeriodMs, () => this.notify(GATT.probeStatus, encodeProbeStatus(probe.status(), probe.layout)));
   }
 
   /** The first status comes right after subscribing, instead of at the next sample. */
   onSubscribe(uuid) {
-    if (uuid === GATT.probeStatus) this.notify(GATT.probeStatus, encodeProbeStatus(this.probe.status()));
+    if (uuid === GATT.probeStatus) this.notify(GATT.probeStatus, encodeProbeStatus(this.probe.status(), this.probe.layout));
   }
 
   async write(uuid, bytes) {
@@ -243,7 +248,7 @@ export class SimProbeConnection extends SimConnection {
           this.notify(GATT.uartTX, encodeResponse({ messageType: type, success, body: success ? body : { type: 'ack' } }, 'probe'));
         }
         if (type !== MessageType.readLogs && type !== MessageType.readSessionInfo) {
-          this.notify(GATT.probeStatus, encodeProbeStatus(this.probe.status()));
+          this.notify(GATT.probeStatus, encodeProbeStatus(this.probe.status(), this.probe.layout));
         }
       }, 20);
     }
@@ -276,7 +281,7 @@ export class SimNodeConnection extends SimConnection {
   }
 
   #sendStatus(p) {
-    const payload = encodeNodeProbeStatus({ probeSerial: p.serial, hopCount: this.hops, status: p.status() });
+    const payload = encodeNodeProbeStatus({ probeSerial: p.serial, hopCount: this.hops, status: p.status() }, p.layout);
     this.notify(GATT.uartTX, encodeFrame({
       variant: 'node', direction: 'request', messageType: MessageType.probeStatus, requestId: this.#id(), payload,
     }));

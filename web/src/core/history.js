@@ -133,6 +133,15 @@ export function sampleFromRecord(r) {
   };
 }
 
+/** A Normal status is the log record at `logRange.max` (iOS SDK `addDataToLog`). */
+export function sampleFromStatus(status) {
+  return sampleFromRecord({
+    sequence: status.logRange.max,
+    temperatures: status.temperatures,
+    prediction: { ...status.prediction, virtualSensors: status.virtualSensors },
+  });
+}
+
 /**
  * Sessions and their samples. Consumes ProbeStore `status` events; fetches records with `fetcher(serial)` (a link
  * with `readLogs(serial, start, end, onRecord)`, or null when no link can). Emits `sessions` (list) and
@@ -173,15 +182,20 @@ export class HistoryStore extends Emitter {
   async samples(key) {
     const session = this.sessions.get(key);
     if (!session) return [];
+    const cache = await this.#cache(key);
+    const { anchor, samplePeriodMs } = session;
+    return [...cache.values()]
+      .sort((a, b) => a.seq - b.seq)
+      .map((s) => ({ ...s, time: anchor.time - (anchor.seq - s.seq) * samplePeriodMs }));
+  }
+
+  async #cache(key) {
     let cache = this.#samples.get(key);
     if (!cache) {
       cache = new Map((await this.storage.loadSamples(key)).map((s) => [s.seq, s]));
       this.#samples.set(key, cache);
     }
-    const { anchor, samplePeriodMs } = session;
-    return [...cache.values()]
-      .sort((a, b) => a.seq - b.seq)
-      .map((s) => ({ ...s, time: anchor.time - (anchor.seq - s.seq) * samplePeriodMs }));
+    return cache;
   }
 
   async rename(key, name) {
@@ -237,6 +251,15 @@ export class HistoryStore extends Emitter {
     session.startedAt = Math.min(session.startedAt, receivedAt - (status.logRange.max - status.logRange.min) * session.samplePeriodMs);
     await this.storage.putSession(session);
     if (d.decision === 'new') this.emit('sessions', this.list());
+    // Stored straight from the status, so the newest record is never requested. Instant Read statuses carry only T1.
+    if (status.mode !== 'instantRead') {
+      const cache = await this.#cache(session.key);
+      const sample = sampleFromStatus(status);
+      if (!cache.has(sample.seq)) {
+        cache.set(sample.seq, sample);
+        await this.#store(session, [sample]);
+      }
+    }
     this.#fetch(session);
   }
 
@@ -258,8 +281,7 @@ export class HistoryStore extends Emitter {
     try {
       do {
         this.#again.delete(session.key);
-        await this.samples(session.key);
-        const cache = this.#samples.get(session.key);
+        const cache = await this.#cache(session.key);
         const plan = planBackfill(cache.keys(), session.logRange, this.chunkSize);
         for (const [start, end] of plan) {
           if (this.sessions.get(session.key) !== session) return;

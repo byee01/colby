@@ -56,11 +56,16 @@ const PATTERNS = {
   ready: { tones: [[660, 0.15], [880, 0.15], [1100, 0.3]], pause: 1.2 },
   overheat: { tones: [[1200, 0.12], [900, 0.12], [1200, 0.12], [900, 0.12]], pause: 0.4 },
   probeAlarm: { tones: [[1000, 0.2], [750, 0.2]], pause: 0.8 },
-  alert: { tones: [[880, 0.25]], pause: 1.5 },
+  countdown: { tones: [[880, 0.2], [880, 0.2]], pause: 0 },
+  problem: { tones: [[520, 0.35]], pause: 0 },
+  custom: { tones: [[880, 0.25]], pause: 0 },
 };
-const ORDER = ['overheat', 'probeAlarm', 'ready', 'alert'];
+const ORDER = ['overheat', 'probeAlarm', 'ready'];
 
-/** Loops the most urgent firing alert's pattern until nothing is firing. Synthesized with Web Audio (no files). */
+/**
+ * Ready, overheat and probe alarms loop the most urgent pattern until nothing of theirs is firing; the other sounds
+ * play once each time an alert fires. Synthesized with Web Audio (no files).
+ */
 export class SoundSink {
   #ctx = null;
   #firing = new Map();
@@ -68,8 +73,9 @@ export class SoundSink {
   enabled = true;
   volume = 0.25;
 
-  constructor(soundOf) {
+  constructor(soundOf, loops) {
     this.soundOf = soundOf;
+    this.loops = loops;
   }
 
   /** Browsers allow audio only after a user gesture; call from any click. */
@@ -80,7 +86,12 @@ export class SoundSink {
 
   deliver(event) {
     const { instance: a, to } = event;
-    if (to === 'firing') this.#firing.set(a.id, this.soundOf(a.source));
+    const sound = this.soundOf(a.source);
+    if (to === 'firing' && !this.loops(sound)) {
+      if (this.enabled) this.#play(sound);
+      return;
+    }
+    if (to === 'firing') this.#firing.set(a.id, sound);
     else this.#firing.delete(a.id);
     this.#update();
   }
@@ -101,7 +112,7 @@ export class SoundSink {
   }
 
   #loop() {
-    const sound = ORDER.find((s) => [...this.#firing.values()].includes(s)) ?? 'alert';
+    const sound = ORDER.find((s) => [...this.#firing.values()].includes(s)) ?? 'ready';
     const seconds = this.#play(sound);
     this.#timer = setTimeout(() => {
       this.#timer = null;

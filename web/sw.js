@@ -1,5 +1,5 @@
 // Offline support: network first (so a new deploy is picked up at once), cache as the fallback.
-const CACHE = 'colby-v1';
+const CACHE = 'colby-v2';
 const FILES = [
   './', 'index.html', 'app.css', 'icon.svg', 'manifest.webmanifest',
   'src/ui/main.js', 'src/ui/graph.js', 'src/ui/format.js', 'src/ui/platform.js',

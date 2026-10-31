@@ -2,7 +2,7 @@
 
 import { ColbyApp } from '../core/app.js';
 import { IndexedDbHistoryStorage, prefs, prefsRuleStore } from '../core/storage.js';
-import { soundOf } from '../core/alerts.js';
+import { soundOf, soundLoops } from '../core/alerts.js';
 import { CommandError } from '../core/commands.js';
 import * as ble from '../transport/webBluetooth.js';
 import { GATT } from '../transport/gatt.js';
@@ -39,7 +39,7 @@ const liveSeries = new Map();
 
 // MARK: App setup
 
-const sound = new SoundSink(soundOf);
+const sound = new SoundSink(soundOf, soundLoops);
 sound.enabled = prefs.get('sound', true);
 const wake = new ScreenWakeLock();
 wake.enabled = prefs.get('keepAwake', true);
@@ -113,7 +113,7 @@ function toast(text, ms = 3500) {
 function recordLive(map) {
   const now = Date.now();
   for (const [serial, s] of map) {
-    if (s.isOffline || s.mode !== 'normal') continue;
+    if (s.isOffline || s.temperatures.some((t) => t == null)) continue;
     const series = liveSeries.get(serial) ?? [];
     if (series.length && now - series.at(-1).time < 5000) continue;
     const vs = [s.virtual.coreSensor, s.virtual.surfaceSensor, s.virtual.ambientSensor].map((x) => SENSORS.indexOf(x));
