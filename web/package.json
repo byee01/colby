@@ -1,10 +1,16 @@
 {
   "name": "colby-web",
   "private": true,
-  "description": "Colby web: browser monitor for Combustion thermometers. Static files, no server, no build step.",
+  "description": "Colby web: browser monitor for Combustion thermometers. Static files, no server; the source runs without a build.",
   "type": "module",
+  "engines": { "node": ">=20" },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "serve": "python3 -m http.server 8080"
+    "serve": "python3 -m http.server 8080",
+    "build": "node build.mjs",
+    "preview": "node build.mjs && cd dist && python3 -m http.server 8080"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2"
   }
 }

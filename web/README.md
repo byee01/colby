@@ -5,17 +5,44 @@ Everything (Bluetooth, decoding, alerts, history) runs in the page. Data stays i
 
 ## Run and host
 
-| Where | How |
+The source runs as is (plain ES modules, no build). The deployed site is built from it.
+
+| Task | Command |
 |---|---|
-| Locally | `cd web && python3 -m http.server 8080`, then open http://localhost:8080 |
-| Any static host | Upload the `web/` folder as is (GitHub Pages, Netlify, Cloudflare Pages, S3, nginx). Works from a sub-path. |
-| Try without hardware | Open the page with `#demo` (or click "Try the demo"): a simulated Display relaying two probes |
+| Develop | `cd web && npm run serve`, then open http://localhost:8080 (any static server works) |
+| Test | `npm test` (Node 20+, no install needed) |
+| Production build | `npm ci && npm run build` → `web/dist/` |
+| Preview the build | `npm run preview`, then open http://localhost:8080 |
+| Try without hardware | add `#demo` to the URL; `#setup` reopens the first-run setup |
 
-Web Bluetooth needs a secure context: serve over HTTPS, or use `localhost`. Opening `index.html` from disk
-(`file://`) does not work, because browsers block ES modules there.
+Web Bluetooth needs a secure context: HTTPS, or `localhost`. Opening `index.html` from disk (`file://`) does not work.
 
-A service worker caches the app, so it opens offline after the first visit. Chromium browsers can install it as an
-app (PWA).
+### GitHub Pages
+
+`.github/workflows/web.yml` tests and builds on every change to `web/` and deploys `web/dist` from `main` (or from
+"Run workflow" in the Actions tab). One-time setup: Settings → Pages → Build and deployment → Source: **GitHub Actions**.
+The site then lives at `https://<owner>.github.io/<repo>/`; all paths are relative, so the sub-path needs no config.
+
+Limits to know:
+- A private repository can use Pages only on a paid plan (GitHub Pro, Team or Enterprise); on GitHub Free the repo must
+  be public.
+- The `github-pages` environment only accepts deployments from the default branch unless you add other branches under
+  Settings → Environments → github-pages.
+- Pages sets `Cache-Control: max-age=600` and cannot be configured; hashed asset names and the service worker make that
+  irrelevant for repeat visits.
+
+### Why this setup
+
+| Choice | Reason |
+|---|---|
+| No build for development | Edit, reload, test with nothing but Node and a static server; the tests import the source directly |
+| esbuild for the deployed site only | One pinned dev dependency, builds in ~20 ms. One minified bundle instead of 25 modules imported five levels deep: 39 KB instead of 66 KB of JS (gzipped) and one request instead of five round trips. On a simulated slow link (150 ms RTT, 1.6 Mbps) the demo view appeared in 1.67 s instead of 2.18 s |
+| Content-hashed names (`assets/app-<hash>.js`) | A deploy never mixes old and new files; the service worker serves them cache-first |
+| Fonts preloaded (Barlow 400, Barlow Condensed 500) | They are on the first screen; the other weights load only when used |
+| Generated service-worker file list | It always matches what was deployed; the cache name changes with the content, so old caches are dropped |
+
+A first visit downloads about 64 KB gzipped before the page is usable (HTML, CSS, JS, two fonts); `npm run build`
+prints the per-file sizes. After that the site works offline.
 
 ## Browser support
 

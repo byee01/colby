@@ -1,13 +1,24 @@
 name: web
 
+# Tests and builds web/ on every change; deploys web/dist to GitHub Pages from main (or by hand).
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+
 on:
   push:
     paths: ["web/**", "spec/**", ".github/workflows/web.yml"]
   pull_request:
     paths: ["web/**", "spec/**", ".github/workflows/web.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -17,4 +28,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
       - run: npm test
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

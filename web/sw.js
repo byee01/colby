@@ -1,18 +1,15 @@
-// Offline support: network first (so a new deploy is picked up at once), cache as the fallback.
-const CACHE = 'colby-v3';
+// Offline support. Hashed build assets (assets/*) never change, so they are served from the cache first; everything
+// else is network first (a new deploy is picked up at once) with the cache as the fallback.
+// The build (build.mjs) replaces the block between the markers with the real file list and a content-hashed cache name.
+// @precache-start
+const CACHE = 'colby-dev';
 const FILES = [
   './', 'index.html', 'app.css', 'icon.svg', 'manifest.webmanifest',
-  'src/ui/main.js', 'src/ui/graph.js', 'src/ui/format.js', 'src/ui/platform.js', 'src/ui/background.js',
-  'src/ui/onboarding.js',
-  'src/core/app.js', 'src/core/support.js', 'src/core/probeStore.js', 'src/core/presenter.js', 'src/core/uartClient.js',
-  'src/core/links.js', 'src/core/commands.js', 'src/core/alerts.js', 'src/core/history.js', 'src/core/storage.js',
-  'src/transport/gatt.js', 'src/transport/webBluetooth.js', 'src/transport/simulated.js',
-  'src/codec/index.js', 'src/codec/bytes.js', 'src/codec/fields.js', 'src/codec/advertisement.js', 'src/codec/status.js',
-  'src/codec/uart.js',
   'fonts/barlow-latin-400-normal.woff2', 'fonts/barlow-latin-500-normal.woff2', 'fonts/barlow-latin-600-normal.woff2',
   'fonts/barlow-latin-700-normal.woff2', 'fonts/barlow-condensed-latin-500-normal.woff2',
   'fonts/barlow-condensed-latin-600-normal.woff2',
 ];
+// @precache-end
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)));
@@ -28,6 +25,10 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (url.pathname.includes('/assets/')) {
+    e.respondWith(caches.match(e.request).then((hit) => hit ?? fetch(e.request)));
+    return;
+  }
   e.respondWith(fetch(e.request)
     .then((response) => {
       if (response.ok) {
