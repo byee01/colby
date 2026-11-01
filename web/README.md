@@ -46,6 +46,9 @@ prints the per-file sizes. After that the site works offline.
 
 ## Browser support
 
+**Chrome or Edge only** (desktop or Android). Firefox, Safari and every iPhone/iPad browser are not supported: they
+have no Web Bluetooth, so they cannot connect to a thermometer (the demo still runs there). The app says so on first load.
+
 Source: [WebBluetoothCG implementation status](https://github.com/WebBluetoothCG/web-bluetooth/blob/main/implementation-status.md) (primary).
 
 | Browser | Works |
@@ -89,6 +92,7 @@ What keeps working with Colby in a background tab, and what stops it. Sources: [
 |---|---|
 | Another tab or app in front | Work: sound, notification (if allowed), flashing tab title |
 | Notifications not allowed | Sound and the in-tab band and title only; no pop-up, no Acknowledge/Snooze outside Colby. The setup and Settings say how to allow them |
+| Incognito / private window | Chrome blocks notifications there without asking; use a normal window |
 | Tab closed, browser closed | Stop. Colby asks before closing during a cook |
 | Computer asleep | Stop. The screen is kept awake only while the tab is visible |
 | Chrome Memory Saver unloads the tab | Stop. Add the site to "Always keep these sites active" or pin the tab. On return Colby says it was unloaded |

@@ -27,10 +27,22 @@ export async function bluetoothStatus() {
   return 'ready';
 }
 
+/** The browser's name when it is one that cannot run Colby, for naming it in the text. */
+export function unsupportedBrowser() {
+  const ua = globalThis.navigator?.userAgent ?? '';
+  if (/Firefox\//.test(ua)) return 'Firefox';
+  if (/iPhone|iPad|iPod/.test(ua)) return 'iPhone and iPad browsers';
+  if (/Safari\//.test(ua) && !/Chrome\/|Chromium\//.test(ua)) return 'Safari';
+  return globalThis.navigator?.bluetooth ? null : 'This browser';
+}
+
+/** One line on browser support, shown wherever it matters. */
+export const BROWSER_SUPPORT = 'Colby works only in Chrome or Edge (desktop or Android). Firefox, Safari and iPhone/iPad browsers are not supported: they have no Web Bluetooth.';
+
 const BT_TEXT = {
   ready: ['ok', 'Bluetooth is available.', 'Pick your probe, or better, your Display or Booster: one connection covers every probe on it.'],
   insecure: ['no', 'This page is not on a secure address.', 'Web Bluetooth only works over HTTPS or on localhost. Open Colby from its https:// address.'],
-  unsupported: ['no', 'This browser has no Web Bluetooth.', 'Use Chrome or Edge on Windows, macOS, ChromeOS or Android. Firefox, Safari and all iPhone and iPad browsers cannot connect; the demo still works there. On Linux, Chrome needs chrome://flags/#enable-experimental-web-platform-features.'],
+  unsupported: ['no', 'This browser is not supported.', 'Colby needs Chrome or Edge on Windows, macOS, ChromeOS or Android. Firefox, Safari and all iPhone and iPad browsers have no Web Bluetooth, so they cannot connect to your thermometer; only the demo works there. On Linux, Chrome needs chrome://flags/#enable-experimental-web-platform-features.'],
   off: ['no', 'Bluetooth is off or not found.', 'Turn Bluetooth on in your system settings (and allow your browser to use it on macOS: System Settings → Privacy & Security → Bluetooth), then check again.'],
   denied: ['no', 'Bluetooth is blocked for this site.', 'Click the icon left of the address, open Site settings, set Bluetooth devices to Allow, then check again.'],
 };
@@ -145,6 +157,7 @@ export class Onboarding {
     return `<h2 id="ob-title">Welcome to Colby</h2>
       <p>Colby shows your Combustion thermometer on this computer: live temperatures, the prediction countdown, history and alerts.</p>
       <p>It runs entirely in this page. Nothing is sent to a server; cooks are stored in this browser.</p>
+      ${unsupportedBrowser() ? `<div class="ob-status no"><strong>${esc(unsupportedBrowser())} is not supported.</strong><br>${esc(BROWSER_SUPPORT)} Open this page in Chrome or Edge, or try the demo here.</div>` : `<p class="caption">${esc(BROWSER_SUPPORT)}</p>`}
       <p>Setup takes a minute: Bluetooth, notifications, and how to keep alerts working while you use other tabs.</p>
       <div class="row"><button class="btn" data-ob="skip">Skip setup</button><button class="btn primary" data-ob="next">Start</button></div>`;
   }
@@ -168,7 +181,7 @@ export class Onboarding {
     const status = {
       granted: ['ok', 'Notifications are on.', 'Alerts pop up while Colby is in another tab or behind other windows, with Acknowledge and Snooze buttons.'],
       default: ['maybe', 'Allow notifications?', 'Colby asks only for alerts you set up: ready, 5 minutes left, probe alarms, overheat, disconnected, low battery.'],
-      denied: ['no', 'Notifications are blocked for this site.', 'To turn them on: click the icon left of the address, set Notifications to Allow, then reload. Also check that your system lets the browser show notifications (and Focus / Do Not Disturb is off).'],
+      denied: ['no', 'Notifications are blocked for this site.', 'In an Incognito or private window they are always blocked: open Colby in a normal window. Otherwise: click the icon left of the address, set Notifications to Allow, then reload. Also check that your system lets the browser show notifications (and Focus / Do Not Disturb is off).'],
       unsupported: ['no', 'This browser cannot show notifications.', ''],
     }[p];
     return `<h2 id="ob-title">Notifications</h2>

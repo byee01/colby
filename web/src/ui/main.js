@@ -12,7 +12,7 @@ import { Graph } from './graph.js';
 import * as fmt from './format.js';
 import { NotificationSink, SoundSink, ScreenWakeLock } from './platform.js';
 import { startHeartbeat, watchLifecycle, guardUnload, TitleFlasher } from './background.js';
-import { Onboarding, bluetoothStatus } from './onboarding.js';
+import { Onboarding, bluetoothStatus, BROWSER_SUPPORT, unsupportedBrowser } from './onboarding.js';
 import { PumpedClock } from '../core/support.js';
 import { isCooking } from '../core/alerts.js';
 
@@ -211,7 +211,7 @@ function renderEmpty() {
   const devices = [...app.devices.values()];
   const remembered = prefs.get('devices', []).filter((d) => !app.devices.has(d.id));
   const unsupported = !caps.bluetooth
-    ? `<p class="warn">This browser has no Web Bluetooth. Use Chrome or Edge on Windows, macOS, ChromeOS or Android${caps.secureContext ? '' : ', and open the page over HTTPS or localhost'}. Demo mode works anywhere.</p>`
+    ? `<p class="warn">${caps.secureContext ? `${esc(unsupportedBrowser() ?? 'This browser')} is not supported. ${esc(BROWSER_SUPPORT)}` : 'Open this page over HTTPS: Web Bluetooth does not work on insecure addresses.'} The demo works anywhere.</p>`
     : '';
   const deviceList = devices.length
     ? `<ul class="support">${devices.map((d) => `<li class="maybe">${esc(d.name)} · ${esc(deviceStateText(d))}</li>`).join('')}</ul>`
@@ -669,7 +669,7 @@ function devicesDialog() {
     </div>
     ${probes.length ? `<fieldset><legend>Probes</legend>${probes.map((p) => `<label><input type="checkbox" data-probe="${esc(p.serial)}" ${app.hidden.has(p.serial) ? '' : 'checked'}> ${esc(probeName(p.serial))} <span class="caption">${esc(p.serial)} · ${esc(connectionText(p))}</span></label>`).join('')}
       <p class="note">Unchecked probes are hidden and get no alerts.</p></fieldset>` : ''}
-    <p class="note">${caps.bluetooth ? '' : 'This browser has no Web Bluetooth (use Chrome or Edge on desktop or Android). '}${caps.getDevices ? '' : 'After a reload you will need to pick devices again (automatic reconnect needs the Chrome flag “Experimental Web Platform features”). '}Direct probe connections cannot read the probe serial without that flag; the app then uses a stand-in ID.</p>
+    <p class="note">${caps.bluetooth ? '' : `${BROWSER_SUPPORT} `}${caps.getDevices ? '' : 'After a reload you will need to pick devices again (automatic reconnect needs the Chrome flag “Experimental Web Platform features”). '}Direct probe connections cannot read the probe serial without that flag; the app then uses a stand-in ID.</p>
     <div class="row"><button class="btn" data-do="close">Done</button></div>`, {
     close: closeDialog,
     retry: (b) => app.retry(b.dataset.id),
@@ -750,7 +750,7 @@ function settingsDialog() {
     <div class="item"><span class="grow">System notifications: ${esc({ granted: 'on', default: 'not asked yet', denied: 'blocked', unsupported: 'not supported' }[NotificationSink.permission])}</span>
       ${NotificationSink.permission === 'default' ? '<button class="btn" data-do="notify">Allow</button>' : ''}
       ${NotificationSink.permission === 'granted' ? '<button class="btn" data-do="test-notify">Test</button>' : ''}</div>
-    ${NotificationSink.permission === 'granted' ? '' : `<p class="note">Without notifications, alerts show only in this tab (red band, flashing tab title) and as sound; nothing pops up while you are in another tab or app.${NotificationSink.permission === 'denied' ? ' To allow them: click the icon left of the address, set Notifications to Allow, then reload.' : ''}</p>`}
+    ${NotificationSink.permission === 'granted' ? '' : `<p class="note">Without notifications, alerts show only in this tab (red band, flashing tab title) and as sound; nothing pops up while you are in another tab or app.${NotificationSink.permission === 'denied' ? ' In an Incognito or private window they are always blocked; otherwise click the icon left of the address, set Notifications to Allow, then reload.' : ''}</p>`}
     <p class="note">Alerts keep working in a background tab (sound, notifications) while this tab stays open and the computer stays awake. The screen is kept awake only while the tab is visible.</p>
     <div class="row" style="justify-content:flex-start"><button class="btn" data-do="setup">Run setup again</button></div>
     <fieldset><legend>This browser</legend>
