@@ -40,6 +40,20 @@ export function requestDevice() {
   });
 }
 
+/**
+ * The device's name as the browser knows it, or null when it has none worth showing. Without an advertised name,
+ * Chrome falls back to the Bluetooth address (Windows, Linux) or an identifier, and its chooser lists
+ * "Unknown or Unsupported Device (…)".
+ */
+export function advertisedName(device) {
+  const name = device?.name?.trim();
+  if (!name) return null;
+  if (/^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(name)) return null; // MAC address
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(name)) return null; // UUID
+  if (/^unknown|unsupported device/i.test(name)) return null;
+  return name;
+}
+
 /** Devices this origin was given before (needs the experimental flag); [] otherwise. */
 export async function knownDevices() {
   if (!capabilities().getDevices) return [];
@@ -141,7 +155,7 @@ export class WebBleConnection {
     this.device = device;
     this.server = server;
     this.id = device.id;
-    this.name = device.name ?? 'Combustion device';
+    this.name = advertisedName(device) ?? 'Combustion device';
     this.onGattDisconnected = () => {
       device.removeEventListener('gattserverdisconnected', this.onGattDisconnected);
       const reason = this.#closing ? 'requested' : 'linkLost';

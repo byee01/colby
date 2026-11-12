@@ -8,11 +8,11 @@ import * as ble from '../transport/webBluetooth.js';
 import { GATT } from '../transport/gatt.js';
 import { SimProbe, SimNodeConnection, cookCurve } from '../transport/simulated.js';
 import { ALARM_CHANNELS, MAX_PREDICTION_SETPOINT, SENSORS, cString } from '../codec/index.js';
-import { Graph } from './graph.js';
+import { Graph, seriesId } from './graph.js';
 import * as fmt from './format.js';
 import { NotificationSink, SoundSink, ScreenWakeLock } from './platform.js';
 import { startHeartbeat, watchLifecycle, guardUnload, TitleFlasher } from './background.js';
-import { Onboarding, bluetoothStatus, BROWSER_SUPPORT, unsupportedBrowser } from './onboarding.js';
+import { Onboarding, bluetoothStatus, BROWSER_SUPPORT, CHOOSER_HINT, notifyTroubleshooting, unsupportedBrowser } from './onboarding.js';
 import { PumpedClock } from '../core/support.js';
 import { isCooking } from '../core/alerts.js';
 
@@ -28,6 +28,8 @@ const state = {
   primaryTime: prefs.get('primaryTime', 'relative'),
   range: prefs.get('range', 'all'),
   sensorMode: prefs.get('sensorMode', 'csa'),
+  /** Graph lines turned off from the sensor tiles: 'core', 'surface', 'ambient', 't0'…'t7'. */
+  hiddenLines: new Set(prefs.get('hiddenLines', [])),
   names: prefs.get('names', {}),
   selected: null,
   scrub: null,
@@ -77,7 +79,10 @@ app.on('probes', (map) => {
   invalidate();
 });
 app.on('prediction', () => invalidate());
-app.on('devices', () => invalidate());
+app.on('devices', (devices) => {
+  announceIdentified(devices);
+  invalidate();
+});
 app.on('nodes', () => invalidate());
 app.alerts.on('active', (list) => {
   state.active = list;
@@ -214,7 +219,7 @@ function renderEmpty() {
     ? `<p class="warn">${caps.secureContext ? `${esc(unsupportedBrowser() ?? 'This browser')} is not supported. ${esc(BROWSER_SUPPORT)}` : 'Open this page over HTTPS: Web Bluetooth does not work on insecure addresses.'} The demo works anywhere.</p>`
     : '';
   const deviceList = devices.length
-    ? `<ul class="support">${devices.map((d) => `<li class="maybe">${esc(d.name)} · ${esc(deviceStateText(d))}</li>`).join('')}</ul>`
+    ? `<ul class="support">${devices.map((d) => `<li class="maybe">${esc(deviceLabel(d))} · ${esc(deviceStateText(d))}</li>`).join('')}</ul>`
     : '';
   const rememberedList = remembered.length && caps.bluetooth
     ? `<p>Previously used: ${remembered.map((d) => esc(d.name)).join(', ')}. ${caps.getDevices ? '' : 'The browser needs you to pick them again after a reload.'}</p>`
@@ -231,6 +236,7 @@ function renderEmpty() {
       ${app.history.sessions.size ? '<button class="btn" data-action="history">History</button>' : ''}
     </div>
     <p class="caption">Tip: one connection to a Display or Booster covers all its probes and leaves the probes' own connection slots for the phone app.</p>
+    ${caps.bluetooth ? `<p class="caption">${esc(CHOOSER_HINT)}</p>` : ''}
     <ul class="support">
       <li class="${caps.bluetooth ? '' : 'no'}">Web Bluetooth connections</li>
       <li class="${caps.getDevices ? '' : 'maybe'}">Automatic reconnect after reload ${caps.getDevices ? '' : '(needs Chrome flag “Experimental Web Platform features”)'}</li>
@@ -357,7 +363,7 @@ function updateGraph() {
   const target = snap?.prediction && snap.prediction.mode !== 'none' ? snap.prediction.setpoint
     : state.samples.at(-1)?.setpoint || null;
   graph.set({
-    samples: state.samples, ...graphWindow(), target, unit: state.unit, mode: state.sensorMode,
+    samples: state.samples, ...graphWindow(), target, unit: state.unit, mode: state.sensorMode, hidden: state.hiddenLines,
     period: session?.samplePeriodMs ?? 5000,
   });
   const empty = $('graph-empty');
@@ -435,7 +441,14 @@ function renderInspector() {
   const sensors = SENSORS.map((s, i) => {
     const role = roles[s];
     const hot = snap.overheating.includes(s);
-    return `<div class="sensor ${role ?? ''}${hot ? ' hot' : ''}"><div class="label">${s.toUpperCase()}</div><div class="t">${fmt.temp(snap.temperatures[i], state.unit)}</div>${role ? `<span class="tag">${fmt.channelName(role)}</span>` : ''}</div>`;
+    const line = sensorLine(i, role);
+    const off = line != null && state.hiddenLines.has(line);
+    const plotted = line != null && !off;
+    const label = `${s.toUpperCase()}${role ? ` (${fmt.channelName(role)})` : ''}`;
+    const title = line == null ? `Show all 8 sensors on the graph, including ${s.toUpperCase()}`
+      : `${plotted ? 'Hide' : 'Show'} ${label} on the graph`;
+    return `<button type="button" class="sensor ${role ?? ''}${hot ? ' hot' : ''}${off ? ' off' : ''}" data-sensor="${i}" data-role="${role ?? ''}"
+      aria-pressed="${plotted}" title="${esc(title)}"><div class="label">${s.toUpperCase()}</div><div class="t">${fmt.temp(snap.temperatures[i], state.unit)}</div>${role ? `<span class="tag">${fmt.channelName(role)}</span>` : ''}</button>`;
   }).join('');
   const session = app.history.currentSession(snap.serial);
   const food = snap.foodSafe ? { notSafe: 'Not yet safe', safe: 'Safe', safetyImpossible: 'Not reachable' }[snap.foodSafe.state] : null;
@@ -445,7 +458,7 @@ function renderInspector() {
       <button class="btn" data-action="alarms">Alarms &amp; alerts</button>
     </div>
     ${reachable ? '' : '<p class="caption">Commands need a connection to the probe or a node.</p>'}
-    <div class="section-title">Sensors, tip to handle</div>
+    <div class="section-title">Sensors, tip to handle <span class="caption">· click to show or hide</span></div>
     <div class="sensors">${sensors}</div>
     <dl class="facts">
       <dt>Probe</dt><dd>${snap.color === 'grey' ? 'Grey' : snap.color === 'yellow' ? 'Yellow' : 'Probe'} · ${esc(snap.serial)}</dd>
@@ -456,6 +469,26 @@ function renderInspector() {
       ${wake.held ? '<dt>Screen</dt><dd>Kept awake</dd>' : ''}
       <dt>Alerts</dt><dd class="${NotificationSink.permission === 'granted' ? '' : 'warn'}">${NotificationSink.permission === 'granted' ? 'Sound + notifications' : 'Sound and this tab only'}</dd>
     </dl>`;
+}
+
+/** The graph line a sensor tile controls: its role in core/surface/ambient mode, its own line in all-sensors mode. */
+function sensorLine(i, role) {
+  if (state.sensorMode === 'all') return seriesId(i);
+  return role ?? null;
+}
+
+/** A sensor tile was clicked: hide or show its line. A sensor not plotted in this mode switches to all sensors. */
+function toggleSensorLine(tile) {
+  const i = Number(tile.dataset.sensor);
+  const line = sensorLine(i, tile.dataset.role || null);
+  if (line == null) {
+    state.sensorMode = 'all';
+    prefs.set('sensorMode', 'all');
+    state.hiddenLines.delete(seriesId(i));
+  } else if (state.hiddenLines.has(line)) state.hiddenLines.delete(line);
+  else state.hiddenLines.add(line);
+  prefs.set('hiddenLines', [...state.hiddenLines]);
+  invalidate();
 }
 
 function renderKitchen(probes) {
@@ -658,7 +691,7 @@ function devicesDialog() {
   const devices = [...app.devices.values()];
   const probes = [...app.store.snapshots().values()];
   openDialog(`<h2>Devices</h2>
-    <div class="list">${devices.map((d) => `<div class="item"><div class="grow"><strong>${esc(d.name)}</strong>${d.simulated ? ' <span class="caption">demo</span>' : ''}<br>
+    <div class="list">${devices.map((d) => `<div class="item"><div class="grow"><strong>${esc(deviceLabel(d))}</strong>${d.simulated ? ' <span class="caption">demo</span>' : ''}<br>
       <span class="caption">${d.kind === 'node' ? esc(d.productType ?? 'Node') : d.kind === 'probe' ? 'Probe' : ''} ${esc(d.serial ?? '')} · ${esc(deviceStateText(d))}</span></div>
       ${d.state !== 'connected' ? `<button class="btn" data-do="retry" data-id="${esc(d.id)}">Retry</button>` : ''}
       <button class="btn danger" data-do="remove" data-id="${esc(d.id)}">Remove</button></div>`).join('') || '<p class="note">No devices yet.</p>'}</div>
@@ -669,7 +702,7 @@ function devicesDialog() {
     </div>
     ${probes.length ? `<fieldset><legend>Probes</legend>${probes.map((p) => `<label><input type="checkbox" data-probe="${esc(p.serial)}" ${app.hidden.has(p.serial) ? '' : 'checked'}> ${esc(probeName(p.serial))} <span class="caption">${esc(p.serial)} · ${esc(connectionText(p))}</span></label>`).join('')}
       <p class="note">Unchecked probes are hidden and get no alerts.</p></fieldset>` : ''}
-    <p class="note">${caps.bluetooth ? '' : `${BROWSER_SUPPORT} `}${caps.getDevices ? '' : 'After a reload you will need to pick devices again (automatic reconnect needs the Chrome flag “Experimental Web Platform features”). '}Direct probe connections cannot read the probe serial without that flag; the app then uses a stand-in ID.</p>
+    <p class="note">${caps.bluetooth ? `${esc(CHOOSER_HINT)} ` : `${BROWSER_SUPPORT} `}${caps.getDevices ? '' : 'After a reload you will need to pick devices again (automatic reconnect needs the Chrome flag “Experimental Web Platform features”). '}Direct probe connections cannot read the probe serial without that flag; the app then uses a stand-in ID.</p>
     <div class="row"><button class="btn" data-do="close">Done</button></div>`, {
     close: closeDialog,
     retry: (b) => app.retry(b.dataset.id),
@@ -750,6 +783,7 @@ function settingsDialog() {
     <div class="item"><span class="grow">System notifications: ${esc({ granted: 'on', default: 'not asked yet', denied: 'blocked', unsupported: 'not supported' }[NotificationSink.permission])}</span>
       ${NotificationSink.permission === 'default' ? '<button class="btn" data-do="notify">Allow</button>' : ''}
       ${NotificationSink.permission === 'granted' ? '<button class="btn" data-do="test-notify">Test</button>' : ''}</div>
+    ${NotificationSink.permission === 'granted' ? `<details class="note"><summary>Test sent but nothing appeared?</summary>${notifyTroubleshooting()}</details>` : ''}
     ${NotificationSink.permission === 'granted' ? '' : `<p class="note">Without notifications, alerts show only in this tab (red band, flashing tab title) and as sound; nothing pops up while you are in another tab or app.${NotificationSink.permission === 'denied' ? ' In an Incognito or private window they are always blocked; otherwise click the icon left of the address, set Notifications to Allow, then reload.' : ''}</p>`}
     <p class="note">Alerts keep working in a background tab (sound, notifications) while this tab stays open and the computer stays awake. The screen is kept awake only while the tab is visible.</p>
     <div class="row" style="justify-content:flex-start"><button class="btn" data-do="setup">Run setup again</button></div>
@@ -771,7 +805,8 @@ function settingsDialog() {
     },
     'test-notify': async () => {
       sound.test('ready');
-      toast((await notifications.test()) ? 'Test notification sent.' : 'The notification could not be shown.');
+      toast((await notifications.test()) ? 'Test notification sent. Nothing appeared? See “Test sent but nothing appeared?” below.'
+        : 'The browser refused to show the notification.', 6000);
     },
     setup: () => {
       closeDialog();
@@ -826,6 +861,37 @@ function alertsDialog() {
 
 // MARK: Devices
 
+const PRODUCT_NAMES = { display: 'Display', booster: 'Booster', gauge: 'Gauge', engine: 'Engine' };
+
+/**
+ * What to call a device: what it turned out to be once connected (Display, Booster, probe number and color), else the
+ * browser's name for it. Never a Bluetooth address: Chrome uses one when the device advertises no name.
+ */
+function deviceLabel(d) {
+  if (d.kind === 'node') return `${PRODUCT_NAMES[d.productType] ?? 'Node'} ${d.serial ?? ''}`.trim();
+  if (d.kind === 'probe') {
+    const snap = d.serial ? app.store.snapshot(d.serial) : null;
+    const color = snap?.color === 'grey' ? ' (grey)' : snap?.color === 'yellow' ? ' (yellow)' : '';
+    return snap ? `Probe ${snap.probeNumber}${color}` : 'Probe';
+  }
+  return d.name && d.name !== 'Combustion device' ? d.name : 'Combustion device (identifying…)';
+}
+
+/** Says once what each newly connected device is, and remembers that name for the "previously used" list. */
+const announced = new Set();
+function announceIdentified(devices) {
+  for (const d of devices) {
+    if (d.state !== 'connected' || !d.kind || announced.has(d.id)) continue;
+    announced.add(d.id);
+    if (d.simulated) continue;
+    const label = deviceLabel(d);
+    toast(`Connected: ${label}`);
+    const known = prefs.get('devices', []);
+    if (known.some((k) => k.id === d.id)) prefs.set('devices', known.map((k) => (k.id === d.id ? { ...k, name: label } : k)));
+  }
+  for (const id of announced) if (!app.devices.has(id)) announced.delete(id);
+}
+
 /** Opens the browser's chooser and adds the picked device. Resolves true when a device was added. */
 async function connectDevice() {
   if (!ble.capabilities().bluetooth) {
@@ -843,7 +909,7 @@ async function connectDevice() {
   }
   addBleDevice(device);
   const known = prefs.get('devices', []).filter((d) => d.id !== device.id);
-  prefs.set('devices', [...known, { id: device.id, name: device.name ?? 'Combustion device' }]);
+  prefs.set('devices', [...known, { id: device.id, name: ble.advertisedName(device) ?? 'Combustion device' }]);
   return true;
 }
 
@@ -861,13 +927,13 @@ async function identify(device, connection, isProbe) {
   // Booster "Charger".
   const byModel = { Timer: 'display', Charger: 'booster', Gauge: 'gauge', Engine: 'engine' }[model.trim()];
   const productType = fromAd?.kind === 'node' ? fromAd.productType : byModel ?? 'display';
-  return { serial: fromAd?.kind === 'node' ? fromAd.serial : device.name || ble.pseudoSerial(device.id), productType };
+  return { serial: fromAd?.kind === 'node' ? fromAd.serial : ble.advertisedName(device) || ble.pseudoSerial(device.id), productType };
 }
 
 function addBleDevice(device) {
   app.addDevice({
     id: device.id,
-    name: device.name ?? 'Combustion device',
+    name: ble.advertisedName(device) ?? 'Combustion device',
     open: () => ble.WebBleConnection.connect(device),
     identify: (connection, isProbe) => identify(device, connection, isProbe),
   });
@@ -959,8 +1025,9 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('click', async (e) => {
-  const t = e.target.closest('[data-action], [data-select], [data-ack], [data-snooze]');
+  const t = e.target.closest('[data-action], [data-select], [data-ack], [data-snooze], [data-sensor]');
   if (!t || t.closest('dialog') || t.closest('#kitchen')) return;
+  if (t.dataset.sensor) return toggleSensorLine(t);
   if (t.dataset.select) {
     state.selected = t.dataset.select;
     state.scrub = null;

@@ -1,7 +1,10 @@
 // Temperature graph on a canvas (docs/06 §4.1): core/surface/ambient or all 8 sensors, target line, gaps as breaks,
-// pointer and keyboard scrubbing. Colors come from CSS custom properties so the page theme drives them.
+// pointer and keyboard scrubbing. Single lines can be hidden (`hidden`: 'core', 'surface', 'ambient', 't0'…'t7'). Colors come from CSS custom properties so the page theme drives them.
 
 import { toUnit, clock } from './format.js';
+
+/** Hide key of a line: a role name, or 't0'…'t7' for a sensor in all-sensors mode. */
+export const seriesId = (key) => (typeof key === 'number' ? `t${key}` : key);
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -9,7 +12,7 @@ const css = (name) => getComputedStyle(document.documentElement).getPropertyValu
  * @typedef {{time: number, temps: number[], vs: number[]}} Sample   vs = sensor index of core, surface, ambient
  */
 export class Graph {
-  #data = { samples: [], target: null, from: 0, to: 1, unit: 'F', mode: 'csa', period: 5000 };
+  #data = { samples: [], target: null, from: 0, to: 1, unit: 'F', mode: 'csa', period: 5000, hidden: new Set() };
   #scrubTime = null;
   #layout = null;
 
@@ -45,10 +48,13 @@ export class Graph {
     return samples.slice(Math.max(0, lo - 1), Math.min(samples.length, hi + 1));
   }
 
+  /** The lines drawn for one sample, without hidden ones. */
   #series(sample) {
-    const { mode } = this.#data;
-    if (mode === 'all') return sample.temps.map((t, i) => ({ i, t }));
-    return [{ i: 'core', t: sample.temps[sample.vs[0]] }, { i: 'surface', t: sample.temps[sample.vs[1]] }, { i: 'ambient', t: sample.temps[sample.vs[2]] }];
+    const { mode, hidden } = this.#data;
+    const all = mode === 'all'
+      ? sample.temps.map((t, i) => ({ i, t }))
+      : [{ i: 'core', t: sample.temps[sample.vs[0]] }, { i: 'surface', t: sample.temps[sample.vs[1]] }, { i: 'ambient', t: sample.temps[sample.vs[2]] }];
+    return all.filter((p) => !hidden.has(seriesId(p.i)));
   }
 
   #yRange(visible) {
@@ -153,7 +159,8 @@ export class Graph {
     g.lineJoin = 'round';
     g.lineCap = 'round';
     const colors = { core: css('--core'), surface: css('--surface'), ambient: css('--ambient') };
-    const keys = mode === 'all' ? [0, 1, 2, 3, 4, 5, 6, 7] : ['core', 'surface', 'ambient'];
+    const keys = (mode === 'all' ? [0, 1, 2, 3, 4, 5, 6, 7] : ['core', 'surface', 'ambient'])
+      .filter((k) => !this.#data.hidden.has(seriesId(k)));
     const roleOf = (s, i) => (i === s.vs[0] ? 'core' : i === s.vs[1] ? 'surface' : i === s.vs[2] ? 'ambient' : null);
     // In "all" mode draw grey sensors first so the colored ones sit on top.
     const order = mode === 'all' && visible.length
