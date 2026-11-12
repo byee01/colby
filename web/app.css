@@ -159,7 +159,12 @@ main { flex: 1; display: flex; min-height: 0; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .section-title { font-weight: 600; font-size: 14px; color: var(--text2); }
 .sensors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.sensor { border: 1px solid var(--line); border-radius: 12px; padding: 6px 4px; text-align: center; min-height: 72px; }
+.sensor { border: 1px solid var(--line); border-radius: 12px; padding: 6px 4px; text-align: center; min-height: 72px;
+  font: inherit; color: inherit; background: transparent; cursor: pointer; width: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+.sensor:hover { background: var(--raised); }
+.sensor:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.sensor.off { opacity: .4; border-style: dashed; }
 .sensor .label { font-size: 12px; color: var(--muted); }
 .sensor .t { font: 500 24px var(--font-num); }
 .sensor .tag { display: inline-block; font-size: 10px; font-weight: 600; border-radius: 999px; padding: 0 6px; color: #000; }

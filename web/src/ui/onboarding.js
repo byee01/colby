@@ -39,6 +39,9 @@ export function unsupportedBrowser() {
 /** One line on browser support, shown wherever it matters. */
 export const BROWSER_SUPPORT = 'Colby works only in Chrome or Edge (desktop or Android). Firefox, Safari and iPhone/iPad browsers are not supported: they have no Web Bluetooth.';
 
+/** Shown next to "Connect a device": the chooser often lists Combustion devices by address only. */
+export const CHOOSER_HINT = 'The browser lists only Combustion devices, but often without names, as “Unknown or Unsupported Device” and an address. Pick the one with the strongest signal, or any of them: once connected, Colby shows whether it is a probe, Display or Booster, and you can add the next one.';
+
 const BT_TEXT = {
   ready: ['ok', 'Bluetooth is available.', 'Pick your probe, or better, your Display or Booster: one connection covers every probe on it.'],
   insecure: ['no', 'This page is not on a secure address.', 'Web Bluetooth only works over HTTPS or on localhost. Open Colby from its https:// address.'],
@@ -52,12 +55,39 @@ const NOTIFY_LIMITS = `<div class="limits"><strong>Without notifications</strong
   <li>The alarm sound still plays from a background tab, so keep the sound on and the volume up.</li>
   <li>You get no pop-up while you are in another tab or app, and no Acknowledge or Snooze buttons outside Colby.</li></ul></div>`;
 
+/** Where to look when a test notification was sent but nothing appeared: the system, not the page, hid it. */
+export function notifyTroubleshooting() {
+  const ua = globalThis.navigator?.userAgent ?? '';
+  const browser = /Edg\//.test(ua) ? 'Microsoft Edge' : 'Google Chrome';
+  const os = /Mac OS X|Macintosh/.test(ua) ? 'mac' : /Windows/.test(ua) ? 'windows' : /CrOS/.test(ua) ? 'chromeos' : /Android/.test(ua) ? 'android' : 'other';
+  const steps = {
+    mac: [
+      `Open System Settings → Notifications → ${browser}. Turn on “Allow notifications” and pick Banners or Alerts (Alerts stay on screen until dismissed).`,
+      'Turn off Focus / Do Not Disturb (Control Center, top right of the menu bar).',
+      'Look in Notification Center (click the clock in the menu bar): a first notification is sometimes delivered there silently.',
+    ],
+    windows: [
+      `Open Settings → System → Notifications. Turn notifications on, and on for ${browser}.`,
+      'Turn off Do Not Disturb / Focus assist.',
+      'Look in the notification center (click the clock in the taskbar).',
+    ],
+    chromeos: ['Open Settings → Apps → Notifications and allow them for the browser; turn off Do Not Disturb.'],
+    android: [`Open Android Settings → Apps → ${browser} → Notifications and allow them; turn off Do Not Disturb.`],
+    other: ['Check that your system allows the browser to show notifications and that Do Not Disturb is off.'],
+  }[os];
+  steps.push(`In ${browser}, check Settings → Privacy and security → Site settings → Notifications: this site must not be listed under “Not allowed”.`);
+  return `<div class="limits"><strong>Nothing appeared? The browser sent it, so your system is hiding it:</strong>
+    <ol>${steps.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>Then send another test.</div>`;
+}
+
 const STEPS = ['welcome', 'bluetooth', 'notifications', 'background'];
 
 export class Onboarding {
   #step = 'welcome';
   #bt = 'ready';
   #note = '';
+  /** Notification test on the notifications step: null, 'sent' (asking whether it appeared) or 'missing'. */
+  #notifyTest = null;
 
   /**
    * @param {object} o
@@ -95,6 +125,7 @@ export class Onboarding {
   #go(step) {
     this.#step = step;
     this.#note = '';
+    this.#notifyTest = null;
     this.#render();
   }
 
@@ -127,11 +158,20 @@ export class Onboarding {
       }
       case 'allow': {
         const result = await NotificationSink.requestPermission();
-        if (result === 'granted') await this.notifications.test();
+        if (result === 'granted') return this.#sendTest();
+        this.#note = result === 'denied' ? 'Notifications were blocked. See above to allow them, or continue without.' : '';
         return this.#render();
       }
-      case 'test-notify':
-        this.#note = (await this.notifications.test()) ? 'Sent. You should see it now.' : 'It could not be shown.';
+      case 'test-notify': return this.#sendTest();
+      case 'notify-seen':
+        this.#notifyTest = null;
+        return this.#next();
+      case 'notify-missing':
+        this.#notifyTest = 'missing';
+        this.#note = '';
+        return this.#render();
+      case 'recheck':
+        this.#note = NotificationSink.permission === 'denied' ? 'Still blocked. After changing the setting, reload the page if this does not update.' : '';
         return this.#render();
       case 'test-alert':
         this.testAlert();
@@ -140,6 +180,13 @@ export class Onboarding {
         return this.#render();
       default:
     }
+  }
+
+  async #sendTest() {
+    const ok = await this.notifications.test();
+    this.#notifyTest = ok ? 'sent' : 'missing';
+    this.#note = ok ? '' : 'The browser refused to show it.';
+    return this.#render();
   }
 
   #render() {
@@ -167,7 +214,7 @@ export class Onboarding {
     const ready = this.#bt === 'ready';
     return `<h2 id="ob-title">Connect over Bluetooth</h2>
       <div class="ob-status ${kind}"><strong>${esc(title)}</strong><br>${esc(help)}</div>
-      ${ready ? '<p class="caption">The browser shows a list of nearby Combustion devices. Colby can only see the devices you pick there.</p>' : ''}
+      ${ready ? `<p class="caption">The browser shows a list of nearby Combustion devices. Colby can only see the devices you pick there.</p><p class="caption">${esc(CHOOSER_HINT)}</p>` : ''}
       <div class="row">
         ${ready ? '' : '<button class="btn" data-ob="check">Check again</button>'}
         <button class="btn" data-ob="demo">Try the demo</button>
@@ -187,12 +234,18 @@ export class Onboarding {
     return `<h2 id="ob-title">Notifications</h2>
       <div class="ob-status ${status[0]}"><strong>${esc(status[1])}</strong>${status[2] ? `<br>${esc(status[2])}` : ''}</div>
       ${p === 'granted' ? '' : NOTIFY_LIMITS}
+      ${p === 'granted' && this.#notifyTest === 'missing' ? notifyTroubleshooting() : ''}
+      ${p === 'granted' && this.#notifyTest === 'sent' ? `<p><strong>A test notification was sent. Did it appear?</strong></p>
       <div class="row">
+        <button class="btn" data-ob="notify-missing">No, nothing appeared</button>
+        <button class="btn primary" data-ob="notify-seen">Yes, I saw it</button>
+      </div>` : `<div class="row">
         <button class="btn" data-ob="back">Back</button>
-        ${p === 'granted' ? '<button class="btn" data-ob="test-notify">Send a test</button>' : ''}
-        <button class="btn${p === 'default' ? '' : ' primary'}" data-ob="next">${p === 'default' ? 'Not now' : 'Next'}</button>
+        ${p === 'granted' ? `<button class="btn${this.#notifyTest ? ' primary' : ''}" data-ob="test-notify">${this.#notifyTest ? 'Send another test' : 'Send a test'}</button>` : ''}
+        ${p === 'denied' ? '<button class="btn" data-ob="recheck">Check again</button>' : ''}
+        <button class="btn${p === 'granted' && !this.#notifyTest ? ' primary' : ''}" data-ob="next">${p === 'granted' ? 'Next' : 'Continue without'}</button>
         ${p === 'default' ? '<button class="btn primary" data-ob="allow">Allow notifications</button>' : ''}
-      </div>`;
+      </div>`}`;
   }
 
   #background() {

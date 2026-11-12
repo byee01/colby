@@ -45,12 +45,24 @@ export class NotificationSink {
     for (const [id, event] of this.#firing) if (!this.#shown.has(id)) this.#show(event);
   }
 
-  /** Shows a sample notification (onboarding and settings). Resolves false when it could not be shown. */
+  /**
+   * Shows a sample notification (onboarding and settings). Resolves false when the browser refused it. True means the
+   * browser took it; the system can still hide it (macOS or Windows settings, Focus / Do Not Disturb), which no web
+   * page can detect, so the UI asks whether it appeared.
+   */
   async test() {
     if (NotificationSink.permission !== 'granted') return false;
-    return this.#post('Colby: notifications are on', {
+    const ok = await this.#post('Colby: notifications are on', {
       body: 'Alerts appear like this while Colby is open in another tab or behind other windows.', tag: 'colby-test',
     });
+    if (!ok) return false;
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg?.active) return (await reg.getNotifications({ tag: 'colby-test' })).length > 0;
+    } catch {
+      /* cannot check */
+    }
+    return true;
   }
 
   async #show(event) {
