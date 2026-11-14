@@ -1,7 +1,8 @@
 # Colby web
 
-Browser version of Colby. It is plain static files: no server component, no build step, no third-party requests.
-Everything (Bluetooth, decoding, alerts, history) runs in the page. Data stays in the browser (IndexedDB, localStorage).
+Browser version of Colby, shipped as static files. The page talks to the thermometer over Web Bluetooth, decodes and
+alerts on its own, and keeps cook history in IndexedDB and localStorage, so you can host it anywhere that serves files.
+It makes no requests to other sites.
 
 ## Run and host
 
@@ -46,8 +47,11 @@ prints the per-file sizes. After that the site works offline.
 
 ## Browser support
 
-**Chrome or Edge only** (desktop or Android). Firefox, Safari and every iPhone/iPad browser are not supported: they
-have no Web Bluetooth, so they cannot connect to a thermometer (the demo still runs there). The app says so on first load.
+**Chrome or Edge only** (desktop or Android). Firefox, Safari and every iPhone and iPad browser lack Web Bluetooth, so
+they can't connect to a thermometer, though the demo still runs there. On a desktop browser without Web Bluetooth the
+first-run setup explains this. On a phone or tablet it instead links to the official Combustion app
+([App Store](https://apps.apple.com/app/id1658858290), [Google Play](https://play.google.com/store/apps/details?id=inc.combustion.app));
+Android Chrome users can still go on to use Colby.
 
 Source: [WebBluetoothCG implementation status](https://github.com/WebBluetoothCG/web-bluetooth/blob/main/implementation-status.md) (primary).
 

@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Colby</title>
-  <meta name="description" content="Browser monitor for Combustion Predictive Thermometers over Web Bluetooth. Runs entirely in the page; no server.">
+  <meta name="description" content="Monitor Combustion thermometers from your computer.">
   <meta name="theme-color" content="#000000">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="app.css">
   <script type="module" src="src/ui/main.js"></script>
@@ -15,7 +16,7 @@
   <div id="alert-band" class="alert-band" role="alert" aria-live="assertive" hidden></div>
 
   <header class="toolbar">
-    <div class="brand"><svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a2 2 0 0 1 4 0v10.3a4.5 4.5 0 1 1-4 0z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="17" r="2" fill="currentColor"/></svg>Colby</div>
+    <div class="brand"><img class="brand-icon" src="logo.svg" alt="" width="32" height="32">Colby</div>
     <div class="segmented" id="range" role="group" aria-label="Time range">
       <button data-range="live">Live</button><button data-range="1h">1h</button><button data-range="4h">4h</button><button data-range="all">All</button>
     </div>

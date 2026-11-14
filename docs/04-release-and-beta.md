@@ -78,7 +78,7 @@ Only the reporting each store provides. No third-party SDK, so no extra data sha
 | In-app extra | `MetricKit` subscriber: log `MXCrashDiagnostic` / hang diagnostics to the local diagnostics view | Log unhandled exceptions to a local file shown in the diagnostics view |
 | Privacy label | "Diagnostics → Crash Data, not linked to user" if Apple's collection is declared | Privacy policy URL in Store listing |
 
-Both stores require a privacy policy URL. Content: no account, no network calls, no data leaves the device except the OS crash reporting the user opted into.
+Both stores require a privacy policy URL. The policy says Colby has no accounts and makes no network calls, so the only data that leaves the device is OS crash reporting the user opted into.
 
 Upgrade path if store crash data is too thin: add Sentry (supports Swift and .NET). That changes the privacy labels and needs a privacy policy update. Not planned for v1.
 

@@ -52,8 +52,8 @@ export class NotificationSink {
    */
   async test() {
     if (NotificationSink.permission !== 'granted') return false;
-    const ok = await this.#post('Colby: notifications are on', {
-      body: 'Alerts appear like this while Colby is open in another tab or behind other windows.', tag: 'colby-test',
+    const ok = await this.#post('Colby notifications are on', {
+      body: 'Alerts will look like this.', tag: 'colby-test',
     });
     if (!ok) return false;
     try {
@@ -78,7 +78,8 @@ export class NotificationSink {
   }
 
   async #post(title, options) {
-    const full = { icon: 'icon.svg', badge: 'icon.svg', ...options };
+    // PNG: Android does not render SVG notification icons. The badge is drawn from its alpha channel only.
+    const full = { icon: 'icon-192.png', badge: 'badge-96.png', ...options };
     try {
       const reg = await navigator.serviceWorker?.getRegistration();
       if (reg?.active) {

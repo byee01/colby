@@ -53,7 +53,7 @@ export function describeAlert(a, unit) {
   const s = a.source;
   if (s.type === 'overheat') return { title: 'Overheat', detail: `${s.sensor.toUpperCase()} at ${temp(a.value, unit, { degree: true })}. Remove from heat.` };
   if (s.type === 'probeAlarm') {
-    return { title: `${channelName(s.channel)} ${s.kind} alarm`, detail: `Set at ${temp(a.value, unit, { degree: true })}. Acknowledge silences the probe and Display.` };
+    return { title: `${channelName(s.channel)} ${s.kind} alarm`, detail: `Set at ${temp(a.value, unit, { degree: true })}.` };
   }
   const k = s.kind;
   switch (k.type) {
