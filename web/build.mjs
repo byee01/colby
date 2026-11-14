@@ -41,7 +41,9 @@ const fonts = outputs.filter((p) => p.endsWith('.woff2'));
 // Fonts on the first screen: body text and the big condensed numbers.
 const preload = fonts.filter((p) => /barlow-latin-400|barlow-condensed-latin-500/.test(p));
 
-for (const f of ['icon.svg', 'manifest.webmanifest']) cpSync(join(root, f), join(out, f));
+// Icons and logo keep fixed names: the manifest, notifications and home-screen shortcuts refer to them.
+const STATIC = ['icon.svg', 'logo.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'badge-96.png', 'manifest.webmanifest'];
+for (const f of STATIC) cpSync(join(root, f), join(out, f));
 cpSync(join(root, 'fonts/OFL.txt'), join(out, 'assets/OFL.txt'));
 
 let html = readFileSync(join(root, 'index.html'), 'utf8');
@@ -55,7 +57,8 @@ if (!html.includes(js) || !html.includes(css)) throw new Error('index.html: scri
 writeFileSync(join(out, 'index.html'), html);
 
 // Service worker: the real file list and a cache name that changes with the content.
-const precache = ['./', 'index.html', 'icon.svg', 'manifest.webmanifest', js, css, ...fonts];
+// Install-time icons only (the large PNGs are fetched by the OS when installing to a home screen).
+const precache = ['./', 'index.html', 'icon.svg', 'logo.svg', 'icon-192.png', 'badge-96.png', 'manifest.webmanifest', js, css, ...fonts];
 const version = createHash('sha256').update(precache.join('\n')).update(html).digest('hex').slice(0, 10);
 const sw = readFileSync(join(root, 'sw.js'), 'utf8').replace(
   /\/\/ @precache-start[\s\S]*?\/\/ @precache-end/,

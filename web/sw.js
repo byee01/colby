@@ -4,7 +4,7 @@
 // @precache-start
 const CACHE = 'colby-dev';
 const FILES = [
-  './', 'index.html', 'app.css', 'icon.svg', 'manifest.webmanifest',
+  './', 'index.html', 'app.css', 'icon.svg', 'logo.svg', 'icon-192.png', 'badge-96.png', 'manifest.webmanifest',
   'fonts/barlow-latin-400-normal.woff2', 'fonts/barlow-latin-500-normal.woff2', 'fonts/barlow-latin-600-normal.woff2',
   'fonts/barlow-latin-700-normal.woff2', 'fonts/barlow-condensed-latin-500-normal.woff2',
   'fonts/barlow-condensed-latin-600-normal.woff2',

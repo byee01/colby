@@ -64,7 +64,7 @@ button { cursor: pointer; }
   border-bottom: 1px solid var(--line); flex-wrap: wrap;
 }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; margin-right: 8px; }
-.brand-icon { width: 24px; height: 24px; color: var(--surface); }
+.brand-icon { width: 32px; height: 32px; margin: -4px 0; }
 .spacer { flex: 1; }
 .segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-control); overflow: hidden; }
 .segmented button { background: none; border: 0; padding: 8px 14px; font-size: 14px; font-weight: 500; color: var(--text2); min-height: 36px; }
