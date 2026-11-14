@@ -157,6 +157,8 @@ main { flex: 1; display: flex; min-height: 0; }
 .btn.primary { background: var(--text); color: #000; border-color: var(--text); }
 .btn.danger { color: #ff9a9d; border-color: #4a1f21; background: transparent; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+a.btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; color: var(--text); }
+a.btn.primary { color: #000; }
 .section-title { font-weight: 600; font-size: 14px; color: var(--text2); }
 .sensors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .sensor { border: 1px solid var(--line); border-radius: 12px; padding: 6px 4px; text-align: center; min-height: 72px;
@@ -263,4 +265,7 @@ dialog .alarm-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10
 .limits strong { color: var(--warning); }
 .limits ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
 .ob-note { color: var(--text) !important; font-weight: 600; }
+.ob-logo { width: 64px; height: 64px; margin-bottom: -4px; }
+.app-handoff { background: var(--raised); border-radius: 14px; padding: 14px; margin: 12px 0; display: grid; gap: 10px; justify-items: start; }
+.app-handoff p { margin: 0 !important; }
 @media (max-width: 640px) { .ob-panel { padding: 20px; } .ob-panel h2 { font-size: 22px; } }

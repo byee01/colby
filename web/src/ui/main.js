@@ -12,7 +12,7 @@ import { Graph, seriesId } from './graph.js';
 import * as fmt from './format.js';
 import { NotificationSink, SoundSink, ScreenWakeLock } from './platform.js';
 import { startHeartbeat, watchLifecycle, guardUnload, TitleFlasher } from './background.js';
-import { Onboarding, bluetoothStatus, BROWSER_SUPPORT, CHOOSER_HINT, notifyTroubleshooting, unsupportedBrowser } from './onboarding.js';
+import { Onboarding, appStoreButton, bluetoothStatus, BROWSER_SUPPORT, CHOOSER_HINT, mobilePlatform, notifyTroubleshooting, unsupportedBrowser } from './onboarding.js';
 import { PumpedClock } from '../core/support.js';
 import { isCooking } from '../core/alerts.js';
 
@@ -215,6 +215,8 @@ function renderEmpty() {
   const caps = ble.capabilities();
   const devices = [...app.devices.values()];
   const remembered = prefs.get('devices', []).filter((d) => !app.devices.has(d.id));
+  const mobile = mobilePlatform();
+  const handoff = mobile ? `<div class="app-handoff"><p>Colby is built for desktop computers only. If you're on a mobile device, use the official Combustion app.</p>${appStoreButton(mobile)}</div>` : '';
   const unsupported = !caps.bluetooth
     ? `<p class="warn">${caps.secureContext ? `${esc(unsupportedBrowser() ?? 'This browser')} is not supported. ${esc(BROWSER_SUPPORT)}` : 'Open this page over HTTPS: Web Bluetooth does not work on insecure addresses.'} The demo works anywhere.</p>`
     : '';
@@ -227,7 +229,7 @@ function renderEmpty() {
   $('empty').innerHTML = `<div class="panel">
     <h2>${devices.length ? 'Waiting for data…' : 'Monitor your Combustion thermometer'}</h2>
     <p>Connect a Predictive Probe directly, or a Display, Timer or Booster to see every probe on its network. Everything runs in this page; nothing is sent to a server.</p>
-    ${unsupported}${deviceList}${rememberedList}
+    ${handoff}${unsupported}${deviceList}${rememberedList}
     <div class="actions">
       <button class="btn primary" data-action="connect" ${caps.bluetooth ? '' : 'disabled'}>Connect a device</button>
       ${caps.scan ? '<button class="btn" data-action="scan">Scan nearby</button>' : ''}
@@ -1132,6 +1134,9 @@ try {
 } catch {
   /* storage blocked */
 }
+// On a phone or tablet the first screen points to the official Combustion app instead.
 const bt = await bluetoothStatus();
-if (location.hash === '#setup' || (!prefs.get('onboarded', false) && location.hash !== '#demo')) onboarding.open('welcome');
-else if (bt !== 'ready' && app.devices.size === 0 && !setupDismissed) onboarding.open('bluetooth');
+const firstStep = (step) => (mobilePlatform() ? 'mobile' : step);
+if (location.hash === '#setup') onboarding.open('welcome');
+else if (!prefs.get('onboarded', false) && location.hash !== '#demo') onboarding.open(firstStep('welcome'));
+else if (bt !== 'ready' && app.devices.size === 0 && !setupDismissed) onboarding.open(firstStep('bluetooth'));

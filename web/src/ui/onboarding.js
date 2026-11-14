@@ -36,6 +36,29 @@ export function unsupportedBrowser() {
   return globalThis.navigator?.bluetooth ? null : 'This browser';
 }
 
+/**
+ * 'ios' or 'android' on a phone or tablet, else null. iPadOS reports itself as a Mac, so a Mac with a touch screen
+ * counts as iOS (no Mac has one).
+ */
+export function mobilePlatform() {
+  const nav = globalThis.navigator ?? {};
+  const ua = nav.userAgent ?? '';
+  if (/Android/.test(ua)) return 'android';
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1)) return 'ios';
+  return null;
+}
+
+/** The official Combustion app for each mobile platform. */
+export const COMBUSTION_APP = {
+  ios: { url: 'https://apps.apple.com/app/id1658858290' },
+  android: { url: 'https://play.google.com/store/apps/details?id=inc.combustion.app' },
+};
+
+/** Link to the official app for this phone or tablet, styled as a button. */
+export function appStoreButton(platform, primary = true) {
+  return `<a class="btn${primary ? ' primary' : ''}" href="${COMBUSTION_APP[platform].url}" target="_blank" rel="noopener">Get the Combustion app</a>`;
+}
+
 /** One line on browser support, shown wherever it matters. */
 export const BROWSER_SUPPORT = 'Colby works only in Chrome or Edge (desktop or Android). Firefox, Safari and iPhone/iPad browsers are not supported: they have no Web Bluetooth.';
 
@@ -143,6 +166,10 @@ export class Onboarding {
       case 'demo':
         this.demo();
         return this.#go('notifications');
+      case 'mobile-demo':
+        this.demo();
+        return this.close();
+      case 'browser': return this.#go('welcome');
       case 'check':
         this.#bt = await bluetoothStatus();
         this.#note = this.#bt === 'ready' ? '' : 'Still not available.';
@@ -192,12 +219,25 @@ export class Onboarding {
   #render() {
     const i = STEPS.indexOf(this.#step);
     const dots = STEPS.map((s, n) => `<span class="dot${n <= i ? ' on' : ''}"></span>`).join('');
-    const body = { welcome: () => this.#welcome(), bluetooth: () => this.#bluetooth(), notifications: () => this.#notifications(), background: () => this.#background() }[this.#step]();
+    const body = { mobile: () => this.#mobile(), welcome: () => this.#welcome(), bluetooth: () => this.#bluetooth(), notifications: () => this.#notifications(), background: () => this.#background() }[this.#step]();
     this.el.innerHTML = `<div class="ob-panel" role="dialog" aria-modal="true" aria-labelledby="ob-title">
-      <div class="ob-dots" aria-label="Step ${i + 1} of ${STEPS.length}">${dots}</div>
+      ${i < 0 ? '' : `<div class="ob-dots" aria-label="Step ${i + 1} of ${STEPS.length}">${dots}</div>`}
       ${body}
       ${this.#note ? `<p class="ob-note" role="status">${esc(this.#note)}</p>` : ''}
     </div>`;
+  }
+
+  /** Phones and tablets: point to the official Combustion app instead of a browser-support error. */
+  #mobile() {
+    const platform = mobilePlatform() ?? 'android';
+    const canConnect = platform === 'android' && this.#bt === 'ready';
+    return `<img class="ob-logo" src="logo.svg" alt="" width="64" height="64">
+      <h2 id="ob-title">Use the Combustion app</h2>
+      <p>Colby is built for desktop computers only. If you're on a mobile device, use the official Combustion app.</p>
+      <div class="row">
+        ${canConnect ? '<button class="btn" data-ob="browser">Use Colby anyway</button>' : '<button class="btn" data-ob="mobile-demo">Try the demo</button>'}
+        ${appStoreButton(platform)}
+      </div>`;
   }
 
   #welcome() {
