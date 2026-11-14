@@ -42,13 +42,11 @@ export function guardUnload(shouldWarn) {
 /** Alternates the tab title with an alert text while the tab is hidden, so the tab strip shows something is up. */
 export class TitleFlasher {
   #on = false;
+  base = 'Colby';
 
-  constructor(base = 'Colby') {
+  /** Call every second with the current alert text (or null) and the title to show without an alert. */
+  tick(alertText, base = 'Colby') {
     this.base = base;
-  }
-
-  /** Call every second with the current alert text (or null). */
-  tick(alertText) {
     if (!alertText) {
       this.#on = false;
       document.title = this.base;
