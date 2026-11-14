@@ -1,7 +1,8 @@
 # Colby web
 
-Browser version of Colby. It is plain static files: no server component, no build step, no third-party requests.
-Everything (Bluetooth, decoding, alerts, history) runs in the page. Data stays in the browser (IndexedDB, localStorage).
+Browser version of Colby, shipped as static files. The page talks to the thermometer over Web Bluetooth, decodes and
+alerts on its own, and keeps cook history in IndexedDB and localStorage, so you can host it anywhere that serves files.
+It makes no requests to other sites.
 
 ## Run and host
 

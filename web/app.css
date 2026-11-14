@@ -269,3 +269,4 @@ dialog .alarm-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10
 .app-handoff { background: var(--raised); border-radius: 14px; padding: 14px; margin: 12px 0; display: grid; gap: 10px; justify-items: start; }
 .app-handoff p { margin: 0 !important; }
 @media (max-width: 640px) { .ob-panel { padding: 20px; } .ob-panel h2 { font-size: 22px; } }
+.limits p { margin: 6px 0 0 !important; }

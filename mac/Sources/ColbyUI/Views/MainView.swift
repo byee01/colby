@@ -53,7 +53,7 @@ public struct MainView: View {
                 .pickerStyle(.segmented)
             }
         }
-        .navigationTitle(model.isDemo ? "Colby — Demo" : "Colby")
+        .navigationTitle(model.isDemo ? "Colby (demo)" : "Colby")
         .sheet(isPresented: Binding(get: { model.targetSheet != nil }, set: { if !$0 { model.targetSheet = nil } })) {
             if let serial = model.targetSheet {
                 SetTargetSheet(model: model, serial: serial) { model.targetSheet = nil }
@@ -261,7 +261,7 @@ struct Inspector: View {
                             }
                         }
                     } else {
-                        Text("Shown once the probe sends a full status.").font(F.caption).foregroundStyle(P.muted)
+                        Text("Appears once the probe sends a full status.").font(F.caption).foregroundStyle(P.muted)
                     }
                 }
                 section("Sensors") {

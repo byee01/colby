@@ -218,17 +218,17 @@ function renderEmpty() {
   const mobile = mobilePlatform();
   const handoff = mobile ? `<div class="app-handoff"><p>Colby is built for desktop computers only. If you're on a mobile device, use the official Combustion app.</p>${appStoreButton(mobile)}</div>` : '';
   const unsupported = !caps.bluetooth
-    ? `<p class="warn">${caps.secureContext ? `${esc(unsupportedBrowser() ?? 'This browser')} is not supported. ${esc(BROWSER_SUPPORT)}` : 'Open this page over HTTPS: Web Bluetooth does not work on insecure addresses.'} The demo works anywhere.</p>`
+    ? `<p class="warn">${caps.secureContext ? `${esc(unsupportedBrowser() ?? 'This browser')} isn't supported. Use Chrome or Edge.` : 'Open this page over https://.'} The demo works anywhere.</p>`
     : '';
   const deviceList = devices.length
     ? `<ul class="support">${devices.map((d) => `<li class="maybe">${esc(deviceLabel(d))} · ${esc(deviceStateText(d))}</li>`).join('')}</ul>`
     : '';
   const rememberedList = remembered.length && caps.bluetooth
-    ? `<p>Previously used: ${remembered.map((d) => esc(d.name)).join(', ')}. ${caps.getDevices ? '' : 'The browser needs you to pick them again after a reload.'}</p>`
+    ? `<p>Previously used: ${remembered.map((d) => esc(d.name)).join(', ')}. ${caps.getDevices ? '' : 'Pick them again after a reload.'}</p>`
     : '';
   $('empty').innerHTML = `<div class="panel">
     <h2>${devices.length ? 'Waiting for data…' : 'Monitor your Combustion thermometer'}</h2>
-    <p>Connect a Predictive Probe directly, or a Display, Timer or Booster to see every probe on its network. Everything runs in this page; nothing is sent to a server.</p>
+    <p>Connect a probe, or a Display, Timer or Booster to get all its probes.</p>
     ${handoff}${unsupported}${deviceList}${rememberedList}
     <div class="actions">
       <button class="btn primary" data-action="connect" ${caps.bluetooth ? '' : 'disabled'}>Connect a device</button>
@@ -237,7 +237,6 @@ function renderEmpty() {
       <button class="btn" data-action="setup">Setup</button>
       ${app.history.sessions.size ? '<button class="btn" data-action="history">History</button>' : ''}
     </div>
-    <p class="caption">Tip: one connection to a Display or Booster covers all its probes and leaves the probes' own connection slots for the phone app.</p>
     ${caps.bluetooth ? `<p class="caption">${esc(CHOOSER_HINT)}</p>` : ''}
     <ul class="support">
       <li class="${caps.bluetooth ? '' : 'no'}">Web Bluetooth connections</li>
@@ -459,7 +458,7 @@ function renderInspector() {
       <button class="btn primary" data-action="target" ${reachable ? '' : 'disabled title="Needs a connection to the probe or a node"'}>Set target</button>
       <button class="btn" data-action="alarms">Alarms &amp; alerts</button>
     </div>
-    ${reachable ? '' : '<p class="caption">Commands need a connection to the probe or a node.</p>'}
+    ${reachable ? '' : '<p class="caption">Connect to change these.</p>'}
     <div class="section-title">Sensors, tip to handle <span class="caption">· click to show or hide</span></div>
     <div class="sensors">${sensors}</div>
     <dl class="facts">
@@ -550,7 +549,7 @@ function setTargetDialog(serial) {
   const current = p && p.mode !== 'none' ? Math.round(fmt.toUnit(p.setpoint, u)) : u === 'F' ? 203 : 95;
   const max = Math.floor(fmt.toUnit(MAX_PREDICTION_SETPOINT, u));
   const presets = [['Beef rare', 49], ['Beef medium', 57], ['Pork', 63], ['Chicken', 74], ['Brisket', 95]];
-  openDialog(`<h2>Set target — ${esc(probeName(serial))}</h2>
+  openDialog(`<h2>Set target for ${esc(probeName(serial))}</h2>
     <label class="field">Nickname<input type="text" name="name" value="${esc(state.names[serial] ?? '')}" placeholder="${esc(`Probe ${snap?.probeNumber ?? ''}`)}"></label>
     <label class="field">Target core temperature <span><input type="number" name="target" min="${u === 'F' ? 32 : 0}" max="${max}" step="1" value="${current}" autofocus required> °${u}</span></label>
     <div class="actions">${presets.map(([n, c]) => `<button class="btn" data-do="preset" data-c="${c}">${n} ${fmt.temp(c, u, { degree: true })}</button>`).join('')}</div>
@@ -603,7 +602,7 @@ async function runCommand(button, fn) {
     toast('Confirmed by the probe.');
   } catch (e) {
     const text = e instanceof CommandError
-      ? { notReachable: 'No connection can reach this probe.', notConfirmed: "Probe didn't confirm. Retry.", alarmStateUnknown: 'Waiting for the probe to report its alarms. Retry in a few seconds.', outOfRange: 'Value out of range.', uart: `Probe didn't answer (${e.detail}). Retry.` }[e.kind]
+      ? { notReachable: "Can't reach this probe.", notConfirmed: "The probe didn't confirm. Try again.", alarmStateUnknown: 'Alarms are still loading. Try again in a few seconds.', outOfRange: 'Value out of range.', uart: `The probe didn't answer (${e.detail}). Try again.` }[e.kind]
       : String(e?.message ?? e);
     showError(text);
   } finally {
@@ -634,10 +633,10 @@ async function alarmsDialog(serial) {
   };
   const builtIn = rules.filter((r) => RULE_LABELS[r.kind.type]);
   const custom = rules.filter((r) => !RULE_LABELS[r.kind.type]);
-  openDialog(`<h2>Alarms &amp; alerts — ${esc(probeName(serial))}</h2>
+  openDialog(`<h2>Alarms &amp; alerts for ${esc(probeName(serial))}</h2>
     <fieldset><legend>Probe alarms</legend>
       ${alarmRow('core', 'high')}${alarmRow('surface', 'high')}${alarmRow('surface', 'low')}${alarmRow('ambient', 'high')}${alarmRow('ambient', 'low')}
-      <p class="note">Stored on the probe: they also sound on your Display and phone app. Leave empty for off.${reachable ? '' : ' Needs a connection.'}</p>
+      <p class="note">Saved on the probe. Leave empty to turn off.${reachable ? '' : ' Connect to change these.'}</p>
       <div class="row"><button class="btn primary" data-do="save-alarms" ${reachable && snap?.alarms ? '' : 'disabled'}>Save probe alarms</button></div>
     </fieldset>
     <fieldset><legend>App alerts</legend>
@@ -645,7 +644,7 @@ async function alarmsDialog(serial) {
       ${custom.map((r) => `<div class="item"><span class="grow">${esc(fmt.describeAlert({ source: { type: 'rule', kind: r.kind }, value: null }, u).title)}</span><button class="btn danger" data-do="remove-rule" data-id="${esc(r.id)}">Remove</button></div>`).join('')}
       <div class="alarm-row"><select name="newKind"><option value="temperatureAbove">Core above</option><option value="temperatureBelow">Core below</option><option value="ambientAbove">Ambient above</option><option value="ambientBelow">Ambient below</option></select>
         <input type="number" name="newTemp" step="1" placeholder="°${u}"><button class="btn" data-do="add-rule">Add</button></div>
-      <p class="note">Overheat warnings are always on. App alerts sound only while this page is open.</p>
+      <p class="note">Overheat warnings are always on. App alerts only work while this page is open.</p>
     </fieldset>
     <p class="error" hidden></p>
     <div class="row"><button class="btn" data-do="cancel">Done</button></div>`, {
@@ -703,8 +702,8 @@ function devicesDialog() {
       <button class="btn" data-do="demo">Add demo devices</button>
     </div>
     ${probes.length ? `<fieldset><legend>Probes</legend>${probes.map((p) => `<label><input type="checkbox" data-probe="${esc(p.serial)}" ${app.hidden.has(p.serial) ? '' : 'checked'}> ${esc(probeName(p.serial))} <span class="caption">${esc(p.serial)} · ${esc(connectionText(p))}</span></label>`).join('')}
-      <p class="note">Unchecked probes are hidden and get no alerts.</p></fieldset>` : ''}
-    <p class="note">${caps.bluetooth ? `${esc(CHOOSER_HINT)} ` : `${BROWSER_SUPPORT} `}${caps.getDevices ? '' : 'After a reload you will need to pick devices again (automatic reconnect needs the Chrome flag “Experimental Web Platform features”). '}Direct probe connections cannot read the probe serial without that flag; the app then uses a stand-in ID.</p>
+      <p class="note">Unchecked probes are hidden and don't alert.</p></fieldset>` : ''}
+    <p class="note">${caps.bluetooth ? `${esc(CHOOSER_HINT)} ` : `${BROWSER_SUPPORT} `}${caps.getDevices ? '' : 'Pick devices again after a reload. '}</p>
     <div class="row"><button class="btn" data-do="close">Done</button></div>`, {
     close: closeDialog,
     retry: (b) => app.retry(b.dataset.id),
@@ -740,7 +739,7 @@ function historyDialog() {
       <button class="btn" data-do="open" data-key="${esc(s.key)}">Open</button>
       <button class="btn" data-do="export" data-key="${esc(s.key)}">CSV</button>
       <button class="btn danger" data-do="delete" data-key="${esc(s.key)}">Delete</button></div>`).join('') || '<p class="note">No cooks yet.</p>'}</div>
-    <p class="note">Cooks are stored in this browser only (IndexedDB). Clearing site data deletes them.</p>
+    <p class="note">Cooks are saved in this browser. Clearing site data deletes them.</p>
     <div class="row"><button class="btn" data-do="close">Done</button></div>`, {
     close: closeDialog,
     open: async (b) => {
@@ -752,7 +751,7 @@ function historyDialog() {
     },
     export: (b) => exportCsv(b.dataset.key),
     delete: async (b) => {
-      if (!confirm('Delete this cook? This cannot be undone.')) return;
+      if (!confirm("Delete this cook? You can't undo this.")) return;
       if (state.viewSession === b.dataset.key) state.viewSession = null;
       await app.history.deleteSession(b.dataset.key);
       historyDialog();
@@ -785,9 +784,9 @@ function settingsDialog() {
     <div class="item"><span class="grow">System notifications: ${esc({ granted: 'on', default: 'not asked yet', denied: 'blocked', unsupported: 'not supported' }[NotificationSink.permission])}</span>
       ${NotificationSink.permission === 'default' ? '<button class="btn" data-do="notify">Allow</button>' : ''}
       ${NotificationSink.permission === 'granted' ? '<button class="btn" data-do="test-notify">Test</button>' : ''}</div>
-    ${NotificationSink.permission === 'granted' ? `<details class="note"><summary>Test sent but nothing appeared?</summary>${notifyTroubleshooting()}</details>` : ''}
-    ${NotificationSink.permission === 'granted' ? '' : `<p class="note">Without notifications, alerts show only in this tab (red band, flashing tab title) and as sound; nothing pops up while you are in another tab or app.${NotificationSink.permission === 'denied' ? ' In an Incognito or private window they are always blocked; otherwise click the icon left of the address, set Notifications to Allow, then reload.' : ''}</p>`}
-    <p class="note">Alerts keep working in a background tab (sound, notifications) while this tab stays open and the computer stays awake. The screen is kept awake only while the tab is visible.</p>
+    ${NotificationSink.permission === 'granted' ? `<details class="note"><summary>Notification not showing?</summary>${notifyTroubleshooting()}</details>` : ''}
+    ${NotificationSink.permission === 'granted' ? '' : `<p class="note">Without notifications, alerts only show in this tab.${NotificationSink.permission === 'denied' ? ' To allow them, use Site settings, then reload.' : ''}</p>`}
+    <p class="note">Alerts work in background tabs while this tab is open and your computer is awake.</p>
     <div class="row" style="justify-content:flex-start"><button class="btn" data-do="setup">Run setup again</button></div>
     <fieldset><legend>This browser</legend>
       <ul class="support">
@@ -807,15 +806,15 @@ function settingsDialog() {
     },
     'test-notify': async () => {
       sound.test('ready');
-      toast((await notifications.test()) ? 'Test notification sent. Nothing appeared? See “Test sent but nothing appeared?” below.'
-        : 'The browser refused to show the notification.', 6000);
+      toast((await notifications.test()) ? 'Test sent.'
+        : 'The browser blocked the notification.', 6000);
     },
     setup: () => {
       closeDialog();
       onboarding.open('welcome');
     },
     wipe: async () => {
-      if (!confirm('Delete all cooks, names and settings stored by Colby in this browser?')) return;
+      if (!confirm('Delete all Colby data in this browser?')) return;
       for (const s of app.history.list()) await app.history.deleteSession(s.key);
       try {
         for (const k of Object.keys(localStorage)) if (k.startsWith('colby.')) localStorage.removeItem(k);
@@ -974,7 +973,7 @@ function startDemo() {
     open: async () => new SimNodeConnection({ serial: 'DEMODISPLY', probes: [brisket, ribs], hops: 1 }),
     identify: async () => ({ serial: 'DEMODISPLY', productType: 'display' }),
   });
-  toast('Demo: a simulated Display with two probes. Nothing is real.');
+  toast('Demo mode: simulated probes.');
 }
 
 // MARK: Events
@@ -1095,7 +1094,7 @@ const lifecycle = watchLifecycle({
   // Chrome froze the tab (no events meanwhile): reconnect what dropped.
   onResume: () => {
     for (const d of app.devices.values()) if (!d.link) app.retry(d.id);
-    toast('Colby was paused by the browser. Reconnecting…');
+    toast('The browser paused Colby. Reconnecting…');
   },
 });
 guardUnload(cookAtRisk);
@@ -1108,14 +1107,14 @@ navigator.serviceWorker?.addEventListener('message', (e) => {
 });
 navigator.serviceWorker?.startMessages?.();
 navigator.bluetooth?.addEventListener?.('availabilitychanged', (e) => {
-  if (!e.value) toast('Bluetooth was turned off. Colby cannot reach your devices until it is back on.', 8000);
+  if (!e.value) toast('Bluetooth is off. Turn it on to reconnect.', 8000);
 });
 
 // MARK: Start
 
 if ('serviceWorker' in navigator && isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (!heartbeat.worker) console.warn('No Web Worker: timers may run late while this tab is in the background.');
-if (lifecycle.discarded) toast('The browser unloaded Colby while it was in the background. Reconnect your devices.', 10000);
+if (lifecycle.discarded) toast('The browser closed Colby in the background. Reconnect your devices.', 10000);
 
 // Reconnect devices this origin was allowed before (needs the getDevices flag).
 const remembered = prefs.get('devices', []);

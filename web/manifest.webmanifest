@@ -1,7 +1,7 @@
 {
   "name": "Colby - Monitor for Combustion thermometers",
   "short_name": "Colby",
-  "description": "Browser monitor for Combustion Predictive Thermometers over Web Bluetooth.",
+  "description": "Monitor Combustion thermometers from your computer.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

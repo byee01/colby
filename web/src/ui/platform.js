@@ -52,8 +52,8 @@ export class NotificationSink {
    */
   async test() {
     if (NotificationSink.permission !== 'granted') return false;
-    const ok = await this.#post('Colby: notifications are on', {
-      body: 'Alerts appear like this while Colby is open in another tab or behind other windows.', tag: 'colby-test',
+    const ok = await this.#post('Colby notifications are on', {
+      body: 'Alerts will look like this.', tag: 'colby-test',
     });
     if (!ok) return false;
     try {
