@@ -81,6 +81,7 @@ Source: [WebBluetoothCG implementation status](https://github.com/WebBluetoothCG
 | First-run setup | Yes | Bluetooth check, notification permission, background tips; shown again while Bluetooth is unusable and nothing is set up (`#setup` forces it) |
 | Keep the computer awake during a cook | Partly | Screen Wake Lock; the browser releases it when the tab is hidden |
 | Kitchen mode | Yes | Full screen |
+| Time remaining in the tab title | Yes | The selected probe's countdown (else the soonest cook's), e.g. `2:13 · Colby` |
 | Reconnect after a dropped link | Yes | Backoff 1, 2, 4 … 30 s |
 | Reconnect after reloading the page | Flag only | `getDevices()` needs chrome://flags/#enable-experimental-web-platform-features; otherwise pick the devices again |
 | Passive advertisement scanning (no connection) | Flag only | `requestLEScan()`, same flag |

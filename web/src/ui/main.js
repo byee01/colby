@@ -61,7 +61,7 @@ const titleFlasher = new TitleFlasher();
 const heartbeat = startHeartbeat(() => {
   clock.pump();
   const a = state.active.find((x) => x.state === 'firing');
-  titleFlasher.tick(a ? `${probeName(a.serial)}: ${fmt.describeAlert(a, state.unit).title}` : null);
+  titleFlasher.tick(a ? `${probeName(a.serial)}: ${fmt.describeAlert(a, state.unit).title}` : null, tabTitle());
 });
 
 const app = new ColbyApp({
@@ -112,6 +112,27 @@ function sortedProbes() {
   return [...app.store.snapshots().values()]
     .filter((p) => !app.hidden.has(p.serial))
     .sort((a, b) => a.probeNumber - b.probeNumber || a.serial.localeCompare(b.serial));
+}
+
+/** Tab title: the selected probe's time to ready, else the soonest among other cooks, e.g. `2:13 · Colby`. */
+function tabTitle() {
+  const remaining = (p) => {
+    const view = p.isOffline ? null : app.presenter.view(p.serial);
+    return view?.state === 'predicting' && !view.isStale ? view.secondsRemaining ?? null : null;
+  };
+  let seconds = null;
+  try {
+    const probes = sortedProbes();
+    const selected = probes.find((p) => p.serial === state.selected);
+    seconds = selected ? remaining(selected) : null;
+    if (seconds == null) {
+      const all = probes.map(remaining).filter((s) => s != null);
+      if (all.length) seconds = Math.min(...all);
+    }
+  } catch {
+    /* the heartbeat can tick before `app` exists (top-level await during startup) */
+  }
+  return seconds == null ? 'Colby' : `${fmt.countdown(seconds)} · Colby`;
 }
 
 function probeName(serial) {
